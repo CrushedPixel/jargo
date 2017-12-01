@@ -2,6 +2,8 @@ package jargo
 
 import (
 	"crushedpixel.net/margo"
+	"reflect"
+	"errors"
 )
 
 type Controller struct {
@@ -10,12 +12,19 @@ type Controller struct {
 	Actions  []*Action
 }
 
-func NewController(path string, model interface{}) *Controller {
+var ErrInvalidModel = errors.New("controller model must be pointer to struct")
+
+func NewController(path string, model interface{}) (*Controller, error) {
+	val := reflect.ValueOf(model)
+	if val.Kind() != reflect.Ptr || val.Elem().Kind() != reflect.Struct {
+		return nil, ErrInvalidModel
+	}
+
 	controller := &Controller{path, model, []*Action{}}
 	//controller.AddAction(NewAction(http.MethodGet, "/", index))
 	// TODO: builtin actions (index) and a way to override them
 
-	return controller
+	return controller, nil
 }
 
 func (c *Controller) AddAction(action *Action) {

@@ -17,12 +17,13 @@ type Context struct {
 
 // JSON API query parameters for fetching data
 // (see http://jsonapi.org/format/#fetching)
+// Custom filter mechanism: filter[name:like]=*name*
 type FetchParams struct {
-	Include string            `param:"include"`
-	Fields  map[string]string `param:"fields"`
-	Filter  map[string]string `param:"filter"`
-	Page    map[string]string `param:"page"`
-	Sort    string            `param:"sort"`
+	Include string
+	Fields  map[string]string
+	Filter  Filter
+	Page    map[string]string
+	Sort    string
 }
 
 // set by injectApplicationMiddleware

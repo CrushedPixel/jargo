@@ -10,6 +10,7 @@ import (
 
 const (
 	invalidQueryParams = "INVALID_QUERY_PARAMS"
+	invalidFilter      = "INVALID_FILTER"
 )
 
 func NewErrorObject(status int, code string, detail ...string) *jsonapi.ErrorObject {
@@ -21,6 +22,19 @@ func NewErrorObject(status int, code string, detail ...string) *jsonapi.ErrorObj
 	}
 }
 
-func NewInvalidQueryParamsError() *jsonapi.ErrorObject {
+func ToErrorResponse(e *jsonapi.ErrorObject) *ErrorResponse {
+	status, err := strconv.Atoi(e.Status)
+	if err != nil {
+		panic(err)
+	}
+	return NewErrorResponse(status, e)
+}
+
+func InvalidQueryParamsError() *jsonapi.ErrorObject {
 	return NewErrorObject(http.StatusBadRequest, invalidQueryParams)
 }
+
+func InvalidFilterError(detail string) *jsonapi.ErrorObject {
+	return NewErrorObject(http.StatusBadRequest, invalidFilter, detail)
+}
+
