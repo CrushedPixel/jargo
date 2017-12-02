@@ -70,9 +70,16 @@ func fetchParamsMiddleware(action *Action) HandlerFunc {
 			return ToErrorResponse(invalidQueryParams(err))
 		}
 
+		// parse pagination settings
+		pagination, err := parsePageParameters(c.GetApplication(), pfp.Page)
+		if err != nil {
+			return ToErrorResponse(invalidQueryParams(err))
+		}
+
 		fp := &FetchParams{
 			Filter: *filters,
 			Sort:   *sorting,
+			Page:   *pagination,
 		}
 
 		c.Set(fetchParams, fp)

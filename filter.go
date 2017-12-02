@@ -52,7 +52,7 @@ func parseFilterParameters(model *Model, values map[string]string) (*Filters, er
 
 		field, ok := model.Fields[key]
 		if !ok {
-			return nil, errors.New(fmt.Sprintf("unknown attribute: %s", key))
+			return nil, errors.New(fmt.Sprintf("unknown filter attribute: %s", key))
 		}
 
 		// check if field has jargo:"filter" tag

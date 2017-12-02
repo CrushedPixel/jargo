@@ -1,0 +1,5 @@
+- automatically create indices for sortable fields to improve pagination speed
+
+- pagination system:
+page[cursor] is the value of the last entry of the previous page.
+the generated query looks like the one at http://leopard.in.ua/2014/10/11/postgresql-paginattion#.WiH5sLSFh24

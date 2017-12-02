@@ -19,7 +19,7 @@ type Application struct {
 
 	DB          *pg.DB
 	Controllers []*Controller
-	PageSize    int
+	MaxPageSize int
 }
 
 func NewApplication(db *pg.DB) *Application {

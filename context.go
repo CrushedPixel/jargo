@@ -23,7 +23,7 @@ type FetchParams struct {
 	// Fields  params.Fields
 	Filter Filters
 	Sort   Sorting
-	// Page    map[string]string
+	Page   Pagination
 }
 
 // set by injectApplicationMiddleware
