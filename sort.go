@@ -53,7 +53,7 @@ func parseSortParameters(model *Model, str string) (*Sorting, error) {
 			}
 
 			// check if field has jargo:"sort" tag
-			if !field.Settings.Sort {
+			if !field.Settings.AllowSorting {
 				return nil, errors.New(fmt.Sprintf("sorting by %s is disabled", key))
 			}
 

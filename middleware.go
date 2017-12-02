@@ -9,14 +9,14 @@ import (
 // gin middleware injecting the jargo application into the context
 func injectApplicationMiddleware(app *Application) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Set(application, app)
+		setApplication(c, app)
 	}
 }
 
 // middleware injecting the jargo controller into the context
 func injectControllerMiddleware(cont *Controller) HandlerFunc {
 	return func(c *Context) Response {
-		c.Set(controller, cont)
+		c.setController(cont)
 		return nil
 	}
 }
@@ -48,41 +48,57 @@ type parserFetchParams struct {
 	Sort    string            `param:"sort"`
 }
 
-// margo middleware unmarshaling jsonapi-specific query parameters
-func fetchParamsMiddleware(action *Action) HandlerFunc {
-	return func(c *Context) Response {
-		if action.method != http.MethodGet {
-			return nil
-		}
-
-		pfp := &parserFetchParams{}
-		param.Parse(c.Request.URL.Query(), pfp)
-
-		// parse filter settings
-		filters, err := parseFilterParameters(c.GetController().Model, pfp.Filter)
-		if err != nil {
-			return ToErrorResponse(invalidQueryParams(err))
-		}
-
-		// parse sort settings
-		sorting, err := parseSortParameters(c.GetController().Model, pfp.Sort)
-		if err != nil {
-			return ToErrorResponse(invalidQueryParams(err))
-		}
-
-		// parse pagination settings
-		pagination, err := parsePageParameters(c.GetApplication(), pfp.Page)
-		if err != nil {
-			return ToErrorResponse(invalidQueryParams(err))
-		}
-
-		fp := &FetchParams{
-			Filter: *filters,
-			Sort:   *sorting,
-			Page:   *pagination,
-		}
-
-		c.Set(fetchParams, fp)
+// middleware unmarshaling jsonapi-specific query parameters
+func parseRequestMiddleware(action *Action) HandlerFunc {
+	switch action.method {
+	case http.MethodGet:
+		return parseFetchRequest
+	case http.MethodPost:
+		return parseCreateRequest
+	default:
 		return nil
 	}
+}
+
+func parseFetchRequest(c *Context) Response {
+	pfp := &parserFetchParams{}
+	param.Parse(c.Request.URL.Query(), pfp)
+
+	// parse filter settings
+	filters, err := parseFilterParameters(c.GetController().Model, pfp.Filter)
+	if err != nil {
+		return ToErrorResponse(invalidQueryParams(err))
+	}
+
+	// parse sort settings
+	sorting, err := parseSortParameters(c.GetController().Model, pfp.Sort)
+	if err != nil {
+		return ToErrorResponse(invalidQueryParams(err))
+	}
+
+	// parse pagination settings
+	pagination, err := parsePageParameters(c.GetApplication(), pfp.Page)
+	if err != nil {
+		return ToErrorResponse(invalidQueryParams(err))
+	}
+
+	fp := &FetchParams{
+		Filter: *filters,
+		Sort:   *sorting,
+		Page:   *pagination,
+	}
+
+	c.setFetchParams(fp)
+	return nil
+}
+
+func parseCreateRequest(c *Context) Response {
+	model := c.GetController().Model
+	instance, err := model.UnmarshalCreate(c.Request.Body)
+	if err != nil {
+		return ToErrorResponse(invalidPayload(err))
+	}
+
+	c.setCreatedModel(instance)
+	return nil
 }

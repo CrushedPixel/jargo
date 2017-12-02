@@ -3,3 +3,11 @@
 - pagination system:
 page[cursor] is the value of the last entry of the previous page.
 the generated query looks like the one at http://leopard.in.ua/2014/10/11/postgresql-paginattion#.WiH5sLSFh24
+
+- change filter operator system from filter[attr:op] to filter[attr][op] for easier encoding on the client
+
+- only numeric ids are supported due to go-pg restrictions
+
+Ideas:
+- add websocket support, mirroring all REST endpoints and adding PubSub capabilities
+- add authentication system to avoid having to write one for every new app

@@ -2,13 +2,14 @@ package jargo
 
 import (
 	"crushedpixel.net/margo"
+	"github.com/gin-gonic/gin"
 )
 
 const (
-	application = "__jargoApplication"
-	controller  = "__jargoController"
-
-	fetchParams = "__fetchParams"
+	keyApplication  = "__jargoApplication"
+	keyController   = "__jargoController"
+	keyFetchParams  = "__fetchParams"
+	keyCreatedModel = "__createdModel"
 )
 
 type Context struct {
@@ -26,20 +27,38 @@ type FetchParams struct {
 	Page   Pagination
 }
 
-// set by injectApplicationMiddleware
 func (c *Context) GetApplication() *Application {
-	a, _ := c.Get(application)
+	a, _ := c.Get(keyApplication)
 	return a.(*Application)
 }
 
-// set in Action#toMargoHandler
+func setApplication(c *gin.Context, a *Application) {
+	c.Set(keyApplication, a)
+}
+
 func (c *Context) GetController() *Controller {
-	b, _ := c.Get(controller)
+	b, _ := c.Get(keyController)
 	return b.(*Controller)
 }
 
-// set by fetchParamsMiddleware
+func (c *Context) setController(cont *Controller) {
+	c.Set(keyController, cont)
+}
+
 func (c *Context) GetFetchParams() *FetchParams {
-	p, _ := c.Get(fetchParams)
+	p, _ := c.Get(keyFetchParams)
 	return p.(*FetchParams)
+}
+
+func (c *Context) setFetchParams(p *FetchParams) {
+	c.Set(keyFetchParams, p)
+}
+
+func (c *Context) GetCreatedModel() interface{} {
+	m, _ := c.Get(keyCreatedModel)
+	return m
+}
+
+func (c *Context) setCreatedModel(m interface{}) {
+	c.Set(keyCreatedModel, m)
 }

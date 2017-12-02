@@ -29,7 +29,7 @@ func (a *Action) toEndpoint(c *Controller) *margo.Endpoint {
 	endpoint := margo.NewEndpoint(a.method, path,
 		toMargoHandler(
 			injectControllerMiddleware(c),
-			fetchParamsMiddleware(a),
+			parseRequestMiddleware(a),
 			contentTypeMiddleware(a),
 		),
 		toMargoHandler(a.handlers...))
@@ -42,6 +42,9 @@ func toMargoHandler(handlers ...HandlerFunc) margo.HandlerFunc {
 		context := &Context{c}
 
 		for _, h := range handlers {
+			if h == nil {
+				continue
+			}
 			if response := h(context); response != nil {
 				return response
 			}

@@ -56,7 +56,7 @@ func parseFilterParameters(model *Model, values map[string]string) (*Filters, er
 		}
 
 		// check if field has jargo:"filter" tag
-		if !field.Settings.Filter {
+		if !field.Settings.AllowFiltering {
 			return nil, errors.New(fmt.Sprintf("filtering by %s is disabled", key))
 		}
 

@@ -10,6 +10,8 @@ import (
 
 const (
 	codeInvalidQueryParams = "INVALID_QUERY_PARAMS"
+	codeInvalidPayload     = "INVALID_PAYLOAD"
+	codeForbidden          = "FORBIDDEN"
 )
 
 func NewErrorObject(status int, code string, detail ...string) *jsonapi.ErrorObject {
@@ -31,4 +33,12 @@ func ToErrorResponse(e *jsonapi.ErrorObject) *ErrorResponse {
 
 func invalidQueryParams(err error) *jsonapi.ErrorObject {
 	return NewErrorObject(http.StatusBadRequest, codeInvalidQueryParams, err.Error())
+}
+
+func invalidPayload(err error) *jsonapi.ErrorObject {
+	return NewErrorObject(http.StatusBadRequest, codeInvalidPayload, err.Error())
+}
+
+func forbidden(err error) *jsonapi.ErrorObject {
+	return NewErrorObject(http.StatusForbidden, codeForbidden, err.Error())
 }
