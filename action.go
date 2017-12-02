@@ -4,7 +4,9 @@ import (
 	"crushedpixel.net/margo"
 	"fmt"
 	"net/http"
-	"crushedpixel.net/jargo/response"
+	"crushedpixel.net/jargo/models"
+	"github.com/google/jsonapi"
+	"strconv"
 )
 
 type Route struct {
@@ -12,7 +14,7 @@ type Route struct {
 	Path   string
 }
 
-type HandlerFunc func(context *Context) response.Response
+type HandlerFunc func(context *Context) interface{}
 
 type Action struct {
 	Enabled  bool
@@ -80,7 +82,6 @@ func (a *Action) toEndpoint(c *Controller, route Route) *margo.Endpoint {
 	endpoint := margo.NewEndpoint(route.Method, fullPath,
 		toMargoHandler(
 			injectControllerMiddleware(c),
-			parseRequestMiddleware(route.Method),
 			contentTypeMiddleware(a),
 		),
 		toMargoHandler(a.handlers...))
@@ -90,6 +91,26 @@ func (a *Action) toEndpoint(c *Controller, route Route) *margo.Endpoint {
 
 func toMargoHandler(handlers ...HandlerFunc) margo.HandlerFunc {
 	return func(c *margo.Context) margo.Response {
+		defer func() {
+			if err := recover(); err != nil {
+				if errObj, ok := err.(*jsonapi.ErrorObject); ok {
+					i, err := strconv.Atoi(errObj.Status)
+					if err != nil {
+						panic(err)
+					}
+					c.Status(i)
+
+					setJsonApiHeaders(c.Context)
+					err = jsonapi.MarshalErrors(c.Writer, []*jsonapi.ErrorObject{errObj})
+					if err != nil {
+						panic(err)
+					}
+				} else {
+					panic(err)
+				}
+			}
+		}()
+
 		context := &Context{c}
 
 		for _, h := range handlers {
@@ -97,7 +118,7 @@ func toMargoHandler(handlers ...HandlerFunc) margo.HandlerFunc {
 				continue
 			}
 			if res := h(context); res != nil {
-				return res
+				return NewResponse(res)
 			}
 		}
 
@@ -105,18 +126,22 @@ func toMargoHandler(handlers ...HandlerFunc) margo.HandlerFunc {
 	}
 }
 
-var IndexHandler = func(c *Context) response.Response {
-	q := c.GetController().Model.ManyQuery(c.GetApplication().DB)
+var IndexResourceQuery = func(c *Context) *models.Query {
+	fp := c.GetFetchParams()
 
-	// TODO: handle fetch parameters like sparse fieldsets and includes
-	// apply filter params
-	c.GetFetchParams().Filter.ApplyToQuery(q)
-	// apply sort params
-	c.GetFetchParams().Sort.ApplyToQuery(q)
-	// apply pagination params
-	c.GetFetchParams().Page.ApplyToQuery(q)
+	q := c.GetController().Model.Select(c.GetApplication().DB)
+	fp.ApplyToQuery(q)
 
-	return response.NewQueryResponse(q)
+	return q
 }
 
-var defaultIndexAction = NewAction(IndexHandler)
+var CreateResourceHandler HandlerFunc = func(c *Context) interface{} {
+	cm := c.GetCreateModel()
+
+	_, err := c.GetApplication().DB.Model(cm).Insert()
+	if err != nil {
+		panic(err)
+	}
+
+	return cm
+}

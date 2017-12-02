@@ -26,7 +26,11 @@ func NewController(path string, model interface{}, defaultActions bool) (*Contro
 	}
 
 	if defaultActions {
-		controller.Actions.SetIndexAction(defaultIndexAction)
+		controller.Actions.SetIndexAction(NewAction(func(c *Context) interface{} {
+			return IndexResourceQuery(c)
+		}))
+
+		controller.Actions.SetCreateAction(NewAction(CreateResourceHandler))
 	}
 
 	return controller, nil

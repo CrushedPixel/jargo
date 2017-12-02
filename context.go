@@ -6,25 +6,14 @@ import (
 )
 
 const (
-	keyApplication  = "__jargoApplication"
-	keyController   = "__jargoController"
-	keyFetchParams  = "__fetchParams"
-	keyCreatedModel = "__createdModel"
+	keyApplication = "__jargoApplication"
+	keyController  = "__jargoController"
+	keyFetchParams = "__fetchParams"
+	keyCreateModel = "__createdModel"
 )
 
 type Context struct {
 	*margo.Context
-}
-
-// JSON API query parameters for fetching data
-// (see http://jsonapi.org/format/#fetching)
-// Custom filter mechanism: filter[name:like]=*name*
-type FetchParams struct {
-	// Include params.Include
-	// Fields  params.Fields
-	Filter Filters
-	Sort   Sorting
-	Page   Pagination
 }
 
 func (c *Context) GetApplication() *Application {
@@ -46,19 +35,27 @@ func (c *Context) setController(cont *Controller) {
 }
 
 func (c *Context) GetFetchParams() *FetchParams {
-	p, _ := c.Get(keyFetchParams)
+	p, ok := c.Get(keyFetchParams)
+	if !ok {
+		var err error
+		p, err = parseFetchRequest(c)
+		if err != nil {
+			panic(invalidQueryParams(err))
+		}
+		c.Set(keyFetchParams, p)
+	}
 	return p.(*FetchParams)
 }
 
-func (c *Context) setFetchParams(p *FetchParams) {
-	c.Set(keyFetchParams, p)
-}
-
-func (c *Context) GetCreatedModel() interface{} {
-	m, _ := c.Get(keyCreatedModel)
+func (c *Context) GetCreateModel() interface{} {
+	m, ok := c.Get(keyCreateModel)
+	if !ok {
+		var err error
+		m, err = parseCreateRequest(c)
+		if err != nil {
+			panic(invalidPayload(err))
+		}
+		c.Set(keyCreateModel, m)
+	}
 	return m
-}
-
-func (c *Context) setCreatedModel(m interface{}) {
-	c.Set(keyCreatedModel, m)
 }

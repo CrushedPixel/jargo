@@ -98,7 +98,7 @@ func New(model interface{}) (*Model, error) {
 	}, nil
 }
 
-func (m *Model) ManyQuery(db *pg.DB) *Query {
+func (m *Model) Select(db *pg.DB) *Query {
 	instance := m.newSlice()
 	return &Query{
 		Query: db.Model(instance),
@@ -107,7 +107,7 @@ func (m *Model) ManyQuery(db *pg.DB) *Query {
 	}
 }
 
-func (m *Model) OneQuery(db *pg.DB) *Query {
+func (m *Model) SelectOne(db *pg.DB) *Query {
 	instance := m.newInstance()
 	return &Query{
 		Query: db.Model(instance),
@@ -211,7 +211,7 @@ func (m *Model) CreateTable(db *pg.DB) error {
 }
 
 // parses a jsonapi payload as sent in a POST request
-func (m *Model) unmarshalCreate(in io.Reader) (interface{}, error) {
+func (m *Model) UnmarshalCreate(in io.Reader) (interface{}, error) {
 	instance := m.newInstance()
 	err := jsonapi.UnmarshalPayload(in, instance)
 	if err != nil {
@@ -228,7 +228,7 @@ func (m *Model) unmarshalCreate(in io.Reader) (interface{}, error) {
 
 // parses a jsonapi payload as sent in a PATCH request,
 // applying it to the existing entry, modifying its non-readonly values.
-func (m *Model) unmarshalUpdate(in io.Reader, instance interface{}) (interface{}, error) {
+func (m *Model) UnmarshalUpdate(in io.Reader, instance interface{}) (interface{}, error) {
 	err := jsonapi.UnmarshalPayload(in, instance)
 	if err != nil {
 		return nil, err

@@ -8,6 +8,8 @@ import (
 	"crushedpixel.net/jargo/models"
 )
 
+// Custom filter format: filter[name:like]=*name*
+// TODO: implement better custom filter format
 type Filters map[types.Q]*FilterOptions
 
 type FilterOptions struct {

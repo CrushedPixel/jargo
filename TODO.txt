@@ -1,11 +1,14 @@
+Todos:
+- add custom error type translating into a pretty error response when called using ToErrorResponse
+- change filter operator system from filter[attr:op] to filter[attr][op] for easier encoding on the client
+
 - automatically create indices for sortable fields to improve pagination speed
 
 - pagination system:
 page[cursor] is the value of the last entry of the previous page.
 the generated query looks like the one at http://leopard.in.ua/2014/10/11/postgresql-paginattion#.WiH5sLSFh24
 
-- change filter operator system from filter[attr:op] to filter[attr][op] for easier encoding on the client
-
+Gotchas:
 - only numeric ids are supported due to go-pg restrictions
 
 Ideas:
