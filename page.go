@@ -1,10 +1,10 @@
 package jargo
 
 import (
-	"github.com/go-pg/pg/orm"
 	"errors"
 	"fmt"
 	"strconv"
+	"crushedpixel.net/jargo/models"
 )
 
 type strategy int
@@ -29,7 +29,7 @@ type Pagination struct {
 	Size   int // page[size]
 }
 
-func (p *Pagination) ApplyToQuery(q *orm.Query) {
+func (p *Pagination) ApplyToQuery(q *models.Query) {
 	switch p.strategy {
 	case page:
 		q.Offset(p.Number * p.Size).Limit(p.Size)

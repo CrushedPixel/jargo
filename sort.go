@@ -2,10 +2,10 @@ package jargo
 
 import (
 	"github.com/go-pg/pg/types"
-	"github.com/go-pg/pg/orm"
 	"fmt"
 	"strings"
 	"errors"
+	"crushedpixel.net/jargo/models"
 )
 
 const (
@@ -15,7 +15,7 @@ const (
 
 type Sorting map[types.Q]bool
 
-func (sort *Sorting) ApplyToQuery(q *orm.Query) {
+func (sort *Sorting) ApplyToQuery(q *models.Query) {
 	for column, asc := range *sort {
 		var dir string
 		if asc {
@@ -28,7 +28,7 @@ func (sort *Sorting) ApplyToQuery(q *orm.Query) {
 	}
 }
 
-func parseSortParameters(model *Model, str string) (*Sorting, error) {
+func parseSortParameters(model *models.Model, str string) (*Sorting, error) {
 	sorting := make(Sorting)
 
 	if str != "" {

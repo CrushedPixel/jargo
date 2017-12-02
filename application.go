@@ -5,7 +5,6 @@ import (
 	"github.com/go-pg/pg"
 	"errors"
 	"log"
-	"github.com/go-pg/pg/orm"
 )
 
 const (
@@ -38,13 +37,7 @@ func (app *Application) Run(addr ...string) error {
 	app.Use(injectApplicationMiddleware(app))
 
 	for _, c := range app.Controllers {
-		// create table for controller's model
-		app.DB.CreateTable(c.Model, &orm.CreateTableOptions{IfNotExists: true})
-
-		// register actions
-		for _, e := range c.toEndpoints() {
-			app.Register(e)
-		}
+		c.initialize(app)
 	}
 
 	return app.Server.Run(addr...)

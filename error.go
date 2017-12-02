@@ -6,6 +6,7 @@ import (
 	"github.com/satori/go.uuid"
 	"strings"
 	"net/http"
+	"crushedpixel.net/jargo/response"
 )
 
 const (
@@ -23,12 +24,12 @@ func NewErrorObject(status int, code string, detail ...string) *jsonapi.ErrorObj
 	}
 }
 
-func ToErrorResponse(e *jsonapi.ErrorObject) *ErrorResponse {
+func ToErrorResponse(e *jsonapi.ErrorObject) *response.ErrorResponse {
 	status, err := strconv.Atoi(e.Status)
 	if err != nil {
 		panic(err)
 	}
-	return NewErrorResponse(status, e)
+	return response.NewErrorResponse(status, e)
 }
 
 func invalidQueryParams(err error) *jsonapi.ErrorObject {

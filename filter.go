@@ -1,11 +1,11 @@
 package jargo
 
 import (
-	"github.com/go-pg/pg/orm"
 	"fmt"
 	"github.com/go-pg/pg/types"
 	"strings"
 	"errors"
+	"crushedpixel.net/jargo/models"
 )
 
 type Filters map[types.Q]*FilterOptions
@@ -20,7 +20,7 @@ type FilterOptions struct {
 	Lte  []string
 }
 
-func (filter *Filters) ApplyToQuery(q *orm.Query) {
+func (filter *Filters) ApplyToQuery(q *models.Query) {
 	for column, options := range *filter {
 		whereOr(q, column, "=", options.Eq)
 		whereOr(q, column, "<>", options.Ne)
@@ -32,13 +32,13 @@ func (filter *Filters) ApplyToQuery(q *orm.Query) {
 	}
 }
 
-func whereOr(q *orm.Query, column types.Q, op string, values []string) {
+func whereOr(q *models.Query, column types.Q, op string, values []string) {
 	for _, val := range values {
 		q.WhereOr(fmt.Sprintf("%s %s ?", column, op), val)
 	}
 }
 
-func parseFilterParameters(model *Model, values map[string]string) (*Filters, error) {
+func parseFilterParameters(model *models.Model, values map[string]string) (*Filters, error) {
 	filters := make(Filters)
 
 	for k, v := range values {

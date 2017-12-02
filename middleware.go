@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"github.com/gin-gonic/gin"
 	"github.com/goji/param"
+	"crushedpixel.net/jargo/response"
 )
 
 // gin middleware injecting the jargo application into the context
@@ -15,7 +16,7 @@ func injectApplicationMiddleware(app *Application) gin.HandlerFunc {
 
 // middleware injecting the jargo controller into the context
 func injectControllerMiddleware(cont *Controller) HandlerFunc {
-	return func(c *Context) Response {
+	return func(c *Context) response.Response {
 		c.setController(cont)
 		return nil
 	}
@@ -23,7 +24,7 @@ func injectControllerMiddleware(cont *Controller) HandlerFunc {
 
 // margo middleware validating JSON API requests
 func contentTypeMiddleware(action *Action) HandlerFunc {
-	return func(c *Context) Response {
+	return func(c *Context) response.Response {
 		/* TODO reimplement according to jsonapi spec
 		var headerKey string
 		if action.method == http.MethodGet {
@@ -49,8 +50,8 @@ type parserFetchParams struct {
 }
 
 // middleware unmarshaling jsonapi-specific query parameters
-func parseRequestMiddleware(action *Action) HandlerFunc {
-	switch action.method {
+func parseRequestMiddleware(method string) HandlerFunc {
+	switch method {
 	case http.MethodGet:
 		return parseFetchRequest
 	case http.MethodPost:
@@ -60,7 +61,7 @@ func parseRequestMiddleware(action *Action) HandlerFunc {
 	}
 }
 
-func parseFetchRequest(c *Context) Response {
+func parseFetchRequest(c *Context) response.Response {
 	pfp := &parserFetchParams{}
 	param.Parse(c.Request.URL.Query(), pfp)
 
@@ -92,13 +93,15 @@ func parseFetchRequest(c *Context) Response {
 	return nil
 }
 
-func parseCreateRequest(c *Context) Response {
+func parseCreateRequest(c *Context) response.Response {
+	/* TODO
 	model := c.GetController().Model
-	instance, err := model.UnmarshalCreate(c.Request.Body)
+	instance, err := model.unmarshalCreate(c.Request.Body)
 	if err != nil {
 		return ToErrorResponse(invalidPayload(err))
 	}
 
 	c.setCreatedModel(instance)
+	*/
 	return nil
 }

@@ -1,38 +1,42 @@
 package jargo
 
 import (
-	"crushedpixel.net/margo"
+	"crushedpixel.net/jargo/models"
 )
 
 type Controller struct {
 	BasePath string
-	Model    *Model
-	Actions  []*Action
+	Model    *models.Model
+	Actions  *Actions
 }
 
-func NewController(path string, model interface{}) (*Controller, error) {
-	m, err := newModel(model)
+func NewController(path string, model interface{}, defaultActions bool) (*Controller, error) {
+	m, err := models.New(model)
 	if err != nil {
 		return nil, err
 	}
 
-	controller := &Controller{path, m, []*Action{}}
-	//controller.AddAction(NewAction(http.MethodGet, "/", index))
-	// TODO: builtin actions (index) and a way to override them
+	a := make(Actions)
+	actions := &a
+
+	controller := &Controller{
+		BasePath: path,
+		Model:    m,
+		Actions:  actions,
+	}
+
+	if defaultActions {
+		controller.Actions.SetIndexAction(defaultIndexAction)
+	}
 
 	return controller, nil
 }
 
-func (c *Controller) AddAction(action *Action) {
-	c.Actions = append(c.Actions, action)
-}
+func (c *Controller) initialize(app *Application) {
+	c.Model.CreateTable(app.DB)
 
-func (c *Controller) toEndpoints() []*margo.Endpoint {
-	endpoints := make([]*margo.Endpoint, len(c.Actions))
-
-	for i := range c.Actions {
-		endpoints[i] = c.Actions[i].toEndpoint(c)
+	// register actions
+	for k, v := range *c.Actions {
+		app.Register(v.toEndpoint(c, k))
 	}
-
-	return endpoints
 }

@@ -1,13 +1,14 @@
-package jargo
+package models
 
 import (
-	"github.com/go-pg/pg/orm"
 	"github.com/go-pg/pg/types"
 	"reflect"
 	"errors"
 	"strings"
 	"github.com/google/jsonapi"
 	"io"
+	"github.com/go-pg/pg"
+	"github.com/go-pg/pg/orm"
 )
 
 const (
@@ -26,7 +27,8 @@ const (
 )
 
 var ErrInvalidModelType = errors.New("controller model must be pointer to struct")
-var ErrInvalidIdField = errors.New("non-integer id fields are not supported")
+var ErrInvalidIdType = errors.New("non-integer id fields are not supported")
+var ErrMissingSQLPK = errors.New("jsonapi primary field must be marked as primary key in sql struct tag")
 var ErrClientId = errors.New("client-generated ids are not supported")
 
 type Model struct {
@@ -35,34 +37,7 @@ type Model struct {
 	Fields ModelFields  // information about the model's fields
 }
 
-type ModelFields map[string]*ModelField
-
-type ModelField struct {
-	StructField       *reflect.StructField
-	Column            types.Q // database column name
-	Settings          *FieldSettings
-	JsonApiProperties *JsonApiProperties
-}
-
-type FieldSettings struct {
-	AllowFiltering bool // if true, filtering by this field is allowed
-	AllowSorting   bool // if true, sorting by this field is allowed
-}
-
-type JsonApiFieldType int
-
-const (
-	PrimaryField   JsonApiFieldType = iota + 1
-	AttributeField
-	RelationField
-)
-
-type JsonApiProperties struct {
-	Name string
-	Type JsonApiFieldType
-}
-
-func newModel(model interface{}) (*Model, error) {
+func New(model interface{}) (*Model, error) {
 	val := reflect.ValueOf(model)
 	if val.Kind() != reflect.Ptr || val.Elem().Kind() != reflect.Struct {
 		return nil, ErrInvalidModelType
@@ -85,8 +60,17 @@ func newModel(model interface{}) (*Model, error) {
 			continue
 		}
 
-		if prop.Type == PrimaryField && field.Type.Kind() != reflect.Int {
-			return nil, ErrInvalidIdField
+		if prop.Type == PrimaryField {
+			if field.Type.Kind() != reflect.Int {
+				return nil, ErrInvalidIdType
+			}
+
+			// ensure the primary key field has the sql pk struct tag
+			sqlTag := field.Tag.Get("sql")
+			spl := strings.Split(sqlTag, annotationSeparator)
+			if len(spl) < 2 || spl[1] != "pk" {
+				return nil, ErrMissingSQLPK
+			}
 		}
 
 		column := getSQLColumnName(table, &field)
@@ -112,6 +96,24 @@ func newModel(model interface{}) (*Model, error) {
 		Table:  table,
 		Fields: fields,
 	}, nil
+}
+
+func (m *Model) ManyQuery(db *pg.DB) *Query {
+	instance := m.newSlice()
+	return &Query{
+		Query: db.Model(instance),
+		Type:  Select,
+		value: reflect.ValueOf(instance),
+	}
+}
+
+func (m *Model) OneQuery(db *pg.DB) *Query {
+	instance := m.newInstance()
+	return &Query{
+		Query: db.Model(instance),
+		Type:  Select,
+		value: reflect.ValueOf(instance),
+	}
 }
 
 // returns a field's jsonapi name by parsing the jsonapi struct tag
@@ -182,35 +184,35 @@ func getFieldSettings(field *reflect.StructField) *FieldSettings {
 	return fieldSettings
 }
 
-func (m *ModelFields) GetPrimaryField() *ModelField {
-	for _, v := range *m {
-		if v.JsonApiProperties.Type == PrimaryField {
-			return v
-		}
-	}
-
-	return nil
-}
-
 // returns a struct pointer
-func (m *Model) NewInstance() interface{} {
+func (m *Model) newInstance() interface{} {
 	return reflect.New(m.typ).Interface()
 }
 
 // returns a pointer to a slice of struct pointers
-func (m *Model) NewSlice() interface{} {
+func (m *Model) newSlice() interface{} {
 	return reflect.New(reflect.SliceOf(reflect.PtrTo(m.typ))).Interface()
 }
 
-func MarshalSlice(value interface{}) (jsonapi.Payloader, error) {
-	// jsonapi.Marshal requires a slice instead of a pointer to a slice,
-	// so we dereference it using reflection
-	return jsonapi.Marshal(reflect.Indirect(reflect.ValueOf(value)).Interface())
+func Marshal(value interface{}) (jsonapi.Payloader, error) {
+	t := reflect.TypeOf(value)
+	if t.Kind() == reflect.Ptr && t.Elem().Kind() == reflect.Slice {
+		// jsonapi.Marshal requires a slice instead of a pointer to a slice,
+		// so we dereference it using reflection
+		return jsonapi.Marshal(reflect.Indirect(reflect.ValueOf(value)).Interface())
+	}
+
+	return jsonapi.Marshal(value)
+}
+
+// creates the database table for the model if it doesn't exist
+func (m *Model) CreateTable(db *pg.DB) error {
+	return db.CreateTable(m.newInstance(), &orm.CreateTableOptions{IfNotExists: true})
 }
 
 // parses a jsonapi payload as sent in a POST request
-func (m *Model) UnmarshalCreate(in io.Reader) (interface{}, error) {
-	instance := m.NewInstance()
+func (m *Model) unmarshalCreate(in io.Reader) (interface{}, error) {
+	instance := m.newInstance()
 	err := jsonapi.UnmarshalPayload(in, instance)
 	if err != nil {
 		return nil, err
@@ -226,7 +228,7 @@ func (m *Model) UnmarshalCreate(in io.Reader) (interface{}, error) {
 
 // parses a jsonapi payload as sent in a PATCH request,
 // applying it to the existing entry, modifying its non-readonly values.
-func (m *Model) UnmarshalUpdate(in io.Reader, instance interface{}) (interface{}, error) {
+func (m *Model) unmarshalUpdate(in io.Reader, instance interface{}) (interface{}, error) {
 	err := jsonapi.UnmarshalPayload(in, instance)
 	if err != nil {
 		return nil, err
