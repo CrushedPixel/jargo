@@ -2,25 +2,21 @@ package jargo
 
 import (
 	"crushedpixel.net/margo"
-	"reflect"
-	"errors"
 )
 
 type Controller struct {
 	BasePath string
-	Model    interface{}
+	Model    *Model
 	Actions  []*Action
 }
 
-var ErrInvalidModel = errors.New("controller model must be pointer to struct")
-
 func NewController(path string, model interface{}) (*Controller, error) {
-	val := reflect.ValueOf(model)
-	if val.Kind() != reflect.Ptr || val.Elem().Kind() != reflect.Struct {
-		return nil, ErrInvalidModel
+	m, err := newModel(model)
+	if err != nil {
+		return nil, err
 	}
 
-	controller := &Controller{path, model, []*Action{}}
+	controller := &Controller{path, m, []*Action{}}
 	//controller.AddAction(NewAction(http.MethodGet, "/", index))
 	// TODO: builtin actions (index) and a way to override them
 
@@ -40,15 +36,3 @@ func (c *Controller) toEndpoints() []*margo.Endpoint {
 
 	return endpoints
 }
-
-func index(c *Context) Response {
-	app := c.GetApplication()
-	cnt := c.GetController()
-
-	app.DB.Model(cnt.Model).Select()
-
-	// TODO: return database results, marshalled into jsonapi
-	return NewDataResponse(200, nil)
-}
-
-// TODO utility functions for JSON API CRUDing

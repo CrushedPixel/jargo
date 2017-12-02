@@ -19,11 +19,11 @@ type Context struct {
 // (see http://jsonapi.org/format/#fetching)
 // Custom filter mechanism: filter[name:like]=*name*
 type FetchParams struct {
-	Include string
-	Fields  map[string]string
-	Filter  Filter
-	Page    map[string]string
-	Sort    string
+	// Include params.Include
+	// Fields  params.Fields
+	Filter Filters
+	Sort   Sorting
+	// Page    map[string]string
 }
 
 // set by injectApplicationMiddleware

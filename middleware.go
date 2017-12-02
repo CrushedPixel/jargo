@@ -4,8 +4,6 @@ import (
 	"net/http"
 	"github.com/gin-gonic/gin"
 	"github.com/goji/param"
-	"strings"
-	"fmt"
 )
 
 // gin middleware injecting the jargo application into the context
@@ -60,77 +58,21 @@ func fetchParamsMiddleware(action *Action) HandlerFunc {
 		pfp := &parserFetchParams{}
 		param.Parse(c.Request.URL.Query(), pfp)
 
-		// parse and validate filters
-		filters := make(Filter)
+		// parse filter settings
+		filters, err := parseFilterParameters(c.GetController().Model, pfp.Filter)
+		if err != nil {
+			return ToErrorResponse(invalidQueryParams(err))
+		}
 
-		// convert filter parameters to FilterOptions struct
-		for k, v := range pfp.Filter {
-			ks := strings.SplitN(k, ":", 2)
-
-			if len(ks) < 1 {
-				continue
-			}
-
-			key := ks[0] // the field to filter by
-
-			column, ann := sqlColumnForAttrName(c.GetController().Model, key)
-			if column == nil {
-				return ToErrorResponse(InvalidFilterError(fmt.Sprintf("filtering by %s is disabled", key)))
-			}
-
-			// check if field has jargo:"filter" tag
-			if !ann.filter {
-				return ToErrorResponse(InvalidFilterError(fmt.Sprintf("filtering by %s is disabled", key)))
-			}
-
-			var op string // the filtering operator
-			if len(ks) == 2 {
-				op = ks[1]
-			} else {
-				op = "eq"
-			}
-
-			values := strings.Split(v, ",")
-
-			filter, ok := filters[*column]
-			if !ok {
-				filter = &FilterOptions{}
-				filters[*column] = filter
-			}
-
-			switch op {
-			case "eq":
-				filter.Eq = append(filter.Eq, values...)
-				break
-			case "ne":
-				filter.Ne = append(filter.Ne, values...)
-				break
-			case "like":
-				filter.Like = append(filter.Like, values...)
-				break
-			case "gt":
-				filter.Gt = append(filter.Gt, values...)
-				break
-			case "gte":
-				filter.Gte = append(filter.Gte, values...)
-				break
-			case "lt":
-				filter.Lt = append(filter.Lt, values...)
-				break
-			case "lte":
-				filter.Lte = append(filter.Lte, values...)
-				break
-			default:
-				return ToErrorResponse(InvalidFilterError(fmt.Sprintf("invalid filter operator: %s", op)))
-			}
+		// parse sort settings
+		sorting, err := parseSortParameters(c.GetController().Model, pfp.Sort)
+		if err != nil {
+			return ToErrorResponse(invalidQueryParams(err))
 		}
 
 		fp := &FetchParams{
-			Include: pfp.Include,
-			Fields:  pfp.Fields,
-			Filter:  filters,
-			Page:    pfp.Page,
-			Sort:    pfp.Sort,
+			Filter: *filters,
+			Sort:   *sorting,
 		}
 
 		c.Set(fetchParams, fp)
