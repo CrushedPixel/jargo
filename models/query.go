@@ -56,5 +56,11 @@ func (q *Query) GetValue() (interface{}, error) {
 		}
 	}
 
-	return q.value.Elem().Interface(), nil
+	// dereference slice pointers
+	if q.value.Elem().Kind() == reflect.Slice {
+		return q.value.Elem().Interface(), nil
+	}
+
+	// return pointer to struct
+	return q.value.Interface(), nil
 }

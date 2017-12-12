@@ -9,6 +9,7 @@ import (
 	"github.com/google/jsonapi"
 	"net/http"
 	"strconv"
+	"github.com/go-pg/pg"
 )
 
 type Response struct {
@@ -59,7 +60,11 @@ func (r *Response) Send(c *gin.Context) {
 		var err error
 		value, err = query.GetValue()
 		if err != nil {
-			panic(err)
+			if err == pg.ErrNoRows {
+				value = http.StatusNotFound
+			} else {
+				panic(err)
+			}
 		}
 	}
 

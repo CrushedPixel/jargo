@@ -110,6 +110,21 @@ var IndexResourceQuery = func(c *Context) *models.Query {
 	return q
 }
 
+var IndexResourceHandler HandlerFunc = func(c *Context) interface{} {
+	return IndexResourceQuery(c)
+}
+
+var ShowResourceQuery = func(c *Context) *models.Query {
+	q := c.GetController().Model.SelectOne(c.GetApplication().DB)
+	q.Where("id = ?", c.Params.ByName("id"))
+
+	return q
+}
+
+var ShowResourceHandler HandlerFunc = func(c *Context) interface{} {
+	return ShowResourceQuery(c)
+}
+
 var CreateResourceHandler HandlerFunc = func(c *Context) interface{} {
 	cm := c.GetCreateModel()
 
@@ -119,4 +134,15 @@ var CreateResourceHandler HandlerFunc = func(c *Context) interface{} {
 	}
 
 	return cm
+}
+
+var UpdateResourceHandler HandlerFunc = func(c *Context) interface{} {
+	um := c.GetUpdateModel()
+
+	_, err := c.GetApplication().DB.Model(um).Update()
+	if err != nil {
+		panic(err)
+	}
+
+	return um
 }

@@ -269,6 +269,9 @@ func (m *Model) UnmarshalCreate(in io.Reader) (interface{}, error) {
 		return nil, err
 	}
 
+	// TODO: copy instance, overriding all readonly fields with the original value
+	// TODO: undo jsonapi patch
+
 	// disallow client-generated ids
 	if reflect.ValueOf(instance).Elem().FieldByIndex(m.Fields.GetPrimaryField().StructField.Index).Int() != 0 {
 		return nil, ErrClientId
@@ -284,6 +287,8 @@ func (m *Model) UnmarshalUpdate(in io.Reader, instance interface{}) (interface{}
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO: copy instance, overriding all readonly fields with the original value
 
 	return instance, nil
 }

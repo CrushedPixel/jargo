@@ -10,6 +10,7 @@ const (
 	keyController  = "__jargoController"
 	keyFetchParams = "__fetchParams"
 	keyCreateModel = "__createdModel"
+	keyUpdateModel = "__updateModel"
 )
 
 type Context struct {
@@ -56,6 +57,19 @@ func (c *Context) GetCreateModel() interface{} {
 			panic(invalidPayload(err))
 		}
 		c.Set(keyCreateModel, m)
+	}
+	return m
+}
+
+func (c *Context) GetUpdateModel() interface{} {
+	m, ok := c.Get(keyUpdateModel)
+	if !ok {
+		var err error
+		m, err = parseUpdateRequest(c)
+		if err != nil {
+			panic(invalidPayload(err))
+		}
+		c.Set(keyUpdateModel, m)
 	}
 	return m
 }

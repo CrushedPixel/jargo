@@ -69,3 +69,19 @@ func parseCreateRequest(c *Context) (interface{}, error) {
 
 	return instance, nil
 }
+
+func parseUpdateRequest(c *Context) (interface{}, error) {
+	/*
+	model := c.GetController().Model
+
+	// TODO find current instance by id
+
+	instance, err := model.UnmarshalUpdate(c.Request.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return instance, nil
+	*/
+	return nil, nil
+}
