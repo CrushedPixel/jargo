@@ -1,7 +1,6 @@
 package jargo
 
 import (
-	"github.com/go-pg/pg/types"
 	"fmt"
 	"strings"
 	"errors"
@@ -13,10 +12,10 @@ const (
 	dirDescending = "DESC"
 )
 
-type Sorting map[types.Q]bool
+type Sorting map[*models.ModelField]bool
 
 func (sort *Sorting) ApplyToQuery(q *models.Query) {
-	for column, asc := range *sort {
+	for field, asc := range *sort {
 		var dir string
 		if asc {
 			dir = dirAscending
@@ -24,7 +23,12 @@ func (sort *Sorting) ApplyToQuery(q *models.Query) {
 			dir = dirDescending
 		}
 
-		q.OrderExpr(fmt.Sprintf("%s %s", column, dir))
+		if field.Type == models.RelationField {
+			// TODO support sorting by relationship
+			println("SORTING BY RELATIONSHIPS NOT SUPPORTED YET")
+		} else {
+			q.OrderExpr(fmt.Sprintf("%s %s", field.PGField.Column, dir))
+		}
 	}
 }
 
@@ -57,7 +61,7 @@ func parseSortParameters(model *models.Model, str string) (*Sorting, error) {
 				return nil, errors.New(fmt.Sprintf("sorting by %s is disabled", key))
 			}
 
-			sorting[field.Column] = asc
+			sorting[field] = asc
 		}
 	}
 

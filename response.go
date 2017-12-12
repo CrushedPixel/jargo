@@ -8,6 +8,7 @@ import (
 	"crushedpixel.net/jargo/models"
 	"github.com/google/jsonapi"
 	"net/http"
+	"strconv"
 )
 
 type Response struct {
@@ -32,16 +33,26 @@ func NewResponse(value interface{}) *Response {
 func (r *Response) Send(c *gin.Context) {
 	value := r.value
 
-	// error and *jsonapi.ErrorObject are handled by
-	// recover() statement in action.go#toMargoHandler
-	// error
+	// error is handled by recover() statement in action.go#toMargoHandler
 	if err, ok := r.value.(error); ok {
 		panic(err)
 	}
 
 	// *jsonapi.ErrorObject
 	if errObj, ok := r.value.(*jsonapi.ErrorObject); ok {
-		panic(errObj)
+		i, err := strconv.Atoi(errObj.Status)
+		if err != nil {
+			panic(err)
+		}
+		c.Status(i)
+
+		setJsonApiHeaders(c)
+
+		err = jsonapi.MarshalErrors(c.Writer, []*jsonapi.ErrorObject{errObj})
+		if err != nil {
+			panic(err)
+		}
+		return
 	}
 
 	if query, ok := r.value.(*models.Query); ok {
@@ -60,7 +71,8 @@ func (r *Response) Send(c *gin.Context) {
 		// *struct
 		if typ.Elem().Kind() == reflect.Struct {
 			setJsonApiHeaders(c)
-			err := jsonapi.MarshalPayload(c.Writer, value)
+			// do not include relationships, as they are not populated with relationships
+			err := jsonapi.MarshalPayloadWithoutIncluded(c.Writer, value)
 			if err != nil {
 				panic(err)
 			}
@@ -72,7 +84,8 @@ func (r *Response) Send(c *gin.Context) {
 		// []*struct
 		if typ.Elem().Kind() == reflect.Ptr && typ.Elem().Elem().Kind() == reflect.Struct {
 			setJsonApiHeaders(c)
-			err := jsonapi.MarshalPayload(c.Writer, value)
+			// do not include relationships, as they are not populated with relationships
+			err := jsonapi.MarshalPayloadWithoutIncluded(c.Writer, value)
 			if err != nil {
 				panic(err)
 			}

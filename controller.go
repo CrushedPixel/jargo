@@ -5,12 +5,11 @@ import (
 )
 
 type Controller struct {
-	BasePath string
-	Model    *models.Model
-	Actions  *Actions
+	Model   *models.Model
+	Actions *Actions
 }
 
-func NewController(path string, model interface{}, defaultActions bool) (*Controller, error) {
+func NewController(model interface{}, defaultActions bool) (*Controller, error) {
 	m, err := models.New(model)
 	if err != nil {
 		return nil, err
@@ -20,9 +19,8 @@ func NewController(path string, model interface{}, defaultActions bool) (*Contro
 	actions := &a
 
 	controller := &Controller{
-		BasePath: path,
-		Model:    m,
-		Actions:  actions,
+		Model:   m,
+		Actions: actions,
 	}
 
 	if defaultActions {
@@ -32,7 +30,6 @@ func NewController(path string, model interface{}, defaultActions bool) (*Contro
 
 		controller.Actions.SetCreateAction(NewAction(CreateResourceHandler))
 	}
-
 	return controller, nil
 }
 

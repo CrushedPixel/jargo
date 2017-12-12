@@ -2,16 +2,17 @@ package models
 
 import (
 	"reflect"
-	"github.com/go-pg/pg/types"
+	"github.com/go-pg/pg/orm"
 )
 
 type ModelFields map[string]*ModelField
 
 type ModelField struct {
-	StructField       *reflect.StructField
-	Column            types.Q // database column name
-	Settings          *FieldSettings
-	JsonApiProperties *JsonApiProperties
+	StructField *reflect.StructField
+	Name        string         // jsonapi attribute name
+	Type        FieldType      // jsonapi field type
+	PGField     *orm.Field     // go-pg field
+	Settings    *FieldSettings // jargo field settings
 }
 
 type FieldSettings struct {
@@ -19,26 +20,31 @@ type FieldSettings struct {
 	AllowSorting   bool // if true, sorting by this field is allowed
 }
 
-
-type JsonApiFieldType int
+type FieldType int
 
 const (
-	PrimaryField   JsonApiFieldType = iota + 1
+	PrimaryField   FieldType = iota + 1
 	AttributeField
 	RelationField
 )
 
-type JsonApiProperties struct {
-	Name string
-	Type JsonApiFieldType
-}
-
 func (m *ModelFields) GetPrimaryField() *ModelField {
-	for _, v := range *m {
-		if v.JsonApiProperties.Type == PrimaryField {
-			return v
+	for _, field := range *m {
+		if field.Type == PrimaryField {
+			return field
 		}
 	}
 
 	return nil
+}
+
+func (m *ModelFields) GetRelationFields() []*ModelField {
+	fields := make([]*ModelField, 0)
+	for _, field := range *m {
+		if field.Type == RelationField {
+			fields = append(fields, field)
+		}
+	}
+
+	return fields
 }

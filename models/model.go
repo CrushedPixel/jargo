@@ -1,7 +1,6 @@
 package models
 
 import (
-	"github.com/go-pg/pg/types"
 	"reflect"
 	"errors"
 	"strings"
@@ -9,6 +8,7 @@ import (
 	"io"
 	"github.com/go-pg/pg"
 	"github.com/go-pg/pg/orm"
+	"fmt"
 )
 
 const (
@@ -28,13 +28,22 @@ const (
 
 var ErrInvalidModelType = errors.New("controller model must be pointer to struct")
 var ErrInvalidIdType = errors.New("non-integer id fields are not supported")
+var ErrMissingPrimaryField = errors.New("missing jsonapi primary field")
 var ErrMissingSQLPK = errors.New("jsonapi primary field must be marked as primary key in sql struct tag")
 var ErrClientId = errors.New("client-generated ids are not supported")
 
 type Model struct {
-	typ    reflect.Type // the database model type (pointer to a struct)
-	Table  *orm.Table   // the database table
-	Fields ModelFields  // information about the model's fields
+	Name   string      // resource name for jsonapi
+	Table  *orm.Table  // the database table
+	Fields ModelFields // information about the model's fields
+
+	typ reflect.Type // the database model type (pointer to a struct)
+}
+
+// internally used for parsing jsonapi struct tags
+type jsonapiField struct {
+	Name string
+	Type FieldType
 }
 
 func New(model interface{}) (*Model, error) {
@@ -49,13 +58,15 @@ func New(model interface{}) (*Model, error) {
 	typ := prtType.Elem()
 	table := orm.Tables.Get(typ)
 
+	modelName := ""
+
 	fields := make(ModelFields)
 	for i := 0; i < typ.NumField(); i++ {
 		// iterate over model's fields,
 		// parsing field information
 
 		field := typ.Field(i)
-		prop := getJsonApiProperties(&field)
+		prop := parseJsonapiTag(&field)
 		if prop == nil {
 			continue
 		}
@@ -71,11 +82,24 @@ func New(model interface{}) (*Model, error) {
 			if len(spl) < 2 || spl[1] != "pk" {
 				return nil, ErrMissingSQLPK
 			}
+
+			modelName = prop.Name
+
+			// the name of the field itself is "id"
+			prop.Name = jsonApiIdField
 		}
 
-		column := getSQLColumnName(table, &field)
-		if column == nil {
-			continue
+		var pgField *orm.Field
+		// relationships are persisted with a non-jsonapi-annotated id field
+		if prop.Type != RelationField {
+			pgField = getPGField(table, &field)
+			if pgField == nil {
+				continue
+			}
+		} else {
+			pgField = getPGField(table, &field)
+			// TODO
+			println(fmt.Sprintf("relationship pgfield %v", pgField))
 		}
 
 		settings := getFieldSettings(&field)
@@ -84,24 +108,45 @@ func New(model interface{}) (*Model, error) {
 		}
 
 		fields[prop.Name] = &ModelField{
-			StructField:       &field,
-			Column:            *column,
-			Settings:          settings,
-			JsonApiProperties: prop,
+			StructField: &field,
+			Name:        prop.Name,
+			Type:        prop.Type,
+			PGField:     pgField,
+			Settings:    settings,
 		}
 	}
 
+	if modelName == "" {
+		return nil, ErrMissingPrimaryField
+	}
+
 	return &Model{
-		typ:    typ,
+		Name:   modelName,
 		Table:  table,
 		Fields: fields,
+		typ:    typ,
 	}, nil
+}
+
+func (m *Model) selectAllColumns(q *orm.Query) {
+	// select all columns ("table".*)
+	q.Column(fmt.Sprintf("%s.*", m.Table.ModelName))
+
+	// include all relationships
+	for _, field := range m.Fields.GetRelationFields() {
+		println(fmt.Sprintf("ey %v", field))
+		q.Column(field.StructField.Name)
+	}
 }
 
 func (m *Model) Select(db *pg.DB) *Query {
 	instance := m.newSlice()
+
+	q := db.Model(instance)
+	m.selectAllColumns(q)
+
 	return &Query{
-		Query: db.Model(instance),
+		Query: q,
 		Type:  Select,
 		value: reflect.ValueOf(instance),
 	}
@@ -109,39 +154,45 @@ func (m *Model) Select(db *pg.DB) *Query {
 
 func (m *Model) SelectOne(db *pg.DB) *Query {
 	instance := m.newInstance()
+
+	q := db.Model(instance)
+	m.selectAllColumns(q)
+
 	return &Query{
-		Query: db.Model(instance),
+		Query: q,
 		Type:  Select,
 		value: reflect.ValueOf(instance),
 	}
 }
 
 // returns a field's jsonapi name by parsing the jsonapi struct tag
-func getJsonApiProperties(field *reflect.StructField) *JsonApiProperties {
-	// parse jsonapi tag
+func parseJsonapiTag(field *reflect.StructField) *jsonapiField {
 	jsonTag := field.Tag.Get(annotationJSONAPI)
 	if jsonTag == "" {
 		return nil
 	}
 
 	args := strings.Split(jsonTag, annotationSeparator)
-	if args[0] == annotationPrimary {
-		return &JsonApiProperties{
-			Name: jsonApiIdField,
-			Type: PrimaryField,
-		}
-	} else if len(args) > 1 {
+	if len(args) > 1 {
 		name := args[1]
-		if args[0] == annotationAttribute {
-			return &JsonApiProperties{
-				Name: name,
-				Type: AttributeField,
-			}
-		} else if args[1] == annotationRelation {
-			return &JsonApiProperties{
-				Name: name,
-				Type: RelationField,
-			}
+		var typ FieldType
+		switch args[0] {
+		case annotationPrimary:
+			typ = PrimaryField
+			break
+		case annotationAttribute:
+			typ = AttributeField
+			break
+		case annotationRelation:
+			typ = RelationField
+			break
+		default:
+			return nil
+		}
+
+		return &jsonapiField{
+			Name: name,
+			Type: typ,
 		}
 	}
 
@@ -149,10 +200,10 @@ func getJsonApiProperties(field *reflect.StructField) *JsonApiProperties {
 }
 
 // returns a field's SQL column name
-func getSQLColumnName(table *orm.Table, field *reflect.StructField) *types.Q {
+func getPGField(table *orm.Table, field *reflect.StructField) *orm.Field {
 	for _, f := range table.Fields {
 		if f.GoName == field.Name {
-			return &f.Column
+			return f
 		}
 	}
 

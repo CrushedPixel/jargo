@@ -1,16 +1,18 @@
-Todos:
+TODO:
+- relationships
 - add custom error type translating into a pretty error response when called using ToErrorResponse
 - change filter operator system from filter[attr:op] to filter[attr][op] for easier encoding on the client
 
 - automatically create indices for sortable fields to improve pagination speed
 
-- pagination system:
-page[cursor] is the value of the last entry of the previous page.
-the generated query looks like the one at http://leopard.in.ua/2014/10/11/postgresql-paginattion#.WiH5sLSFh24
+Features:
+- "jsonapi" struct tag allows for "readonly" tag now
 
 Gotchas:
 - only numeric ids are supported due to go-pg restrictions
+- panicking in handler functions is allowed and handled
 
 Ideas:
 - add websocket support, mirroring all REST endpoints and adding PubSub capabilities
 - add authentication system to avoid having to write one for every new app
+- unify "jsonapi" and "jargo" struct tags

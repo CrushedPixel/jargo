@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"crushedpixel.net/jargo/models"
-	"github.com/google/jsonapi"
-	"strconv"
 )
 
 type Route struct {
@@ -77,7 +75,7 @@ func (a Actions) SetDeleteAction(action *Action) {
 }
 
 func (a *Action) toEndpoint(c *Controller, route Route) *margo.Endpoint {
-	fullPath := fmt.Sprintf("%s%s", c.BasePath, route.Path)
+	fullPath := fmt.Sprintf("%s%s", c.Model.Name, route.Path)
 
 	endpoint := margo.NewEndpoint(route.Method, fullPath,
 		toMargoHandler(
@@ -91,32 +89,9 @@ func (a *Action) toEndpoint(c *Controller, route Route) *margo.Endpoint {
 
 func toMargoHandler(handlers ...HandlerFunc) margo.HandlerFunc {
 	return func(c *margo.Context) margo.Response {
-		defer func() {
-			if err := recover(); err != nil {
-				if errObj, ok := err.(*jsonapi.ErrorObject); ok {
-					i, err := strconv.Atoi(errObj.Status)
-					if err != nil {
-						panic(err)
-					}
-					c.Status(i)
-
-					setJsonApiHeaders(c.Context)
-					err = jsonapi.MarshalErrors(c.Writer, []*jsonapi.ErrorObject{errObj})
-					if err != nil {
-						panic(err)
-					}
-				} else {
-					panic(err)
-				}
-			}
-		}()
-
 		context := &Context{c}
 
 		for _, h := range handlers {
-			if h == nil {
-				continue
-			}
 			if res := h(context); res != nil {
 				return NewResponse(res)
 			}

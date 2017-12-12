@@ -14,16 +14,20 @@ const (
 type Application struct {
 	*margo.Server
 
-	ran bool
-
 	DB          *pg.DB
 	Controllers []*Controller
 	MaxPageSize int
+
+	ran bool
 }
 
 func NewApplication(db *pg.DB) *Application {
 	server := margo.NewServer()
-	return &Application{server, false, db, []*Controller{}, defaultPageSize}
+	return &Application{server, db, []*Controller{}, defaultPageSize, false}
+}
+
+func (app *Application) AddController(c *Controller) {
+	app.Controllers = append(app.Controllers, c)
 }
 
 func (app *Application) Run(addr ...string) error {

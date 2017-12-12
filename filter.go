@@ -2,7 +2,6 @@ package jargo
 
 import (
 	"fmt"
-	"github.com/go-pg/pg/types"
 	"strings"
 	"errors"
 	"crushedpixel.net/jargo/models"
@@ -10,7 +9,7 @@ import (
 
 // Custom filter format: filter[name:like]=*name*
 // TODO: implement better custom filter format
-type Filters map[types.Q]*FilterOptions
+type Filters map[*models.ModelField]*FilterOptions
 
 type FilterOptions struct {
 	Eq   []string
@@ -23,20 +22,25 @@ type FilterOptions struct {
 }
 
 func (filter *Filters) ApplyToQuery(q *models.Query) {
-	for column, options := range *filter {
-		whereOr(q, column, "=", options.Eq)
-		whereOr(q, column, "<>", options.Ne)
-		whereOr(q, column, "LIKE", options.Like)
-		whereOr(q, column, "<", options.Lt)
-		whereOr(q, column, "<=", options.Lte)
-		whereOr(q, column, ">", options.Gt)
-		whereOr(q, column, ">=", options.Gte)
+	for field, options := range *filter {
+		whereOr(q, field, "=", options.Eq)
+		whereOr(q, field, "<>", options.Ne)
+		whereOr(q, field, "LIKE", options.Like)
+		whereOr(q, field, "<", options.Lt)
+		whereOr(q, field, "<=", options.Lte)
+		whereOr(q, field, ">", options.Gt)
+		whereOr(q, field, ">=", options.Gte)
 	}
 }
 
-func whereOr(q *models.Query, column types.Q, op string, values []string) {
+func whereOr(q *models.Query, field *models.ModelField, op string, values []string) {
 	for _, val := range values {
-		q.WhereOr(fmt.Sprintf("%s %s ?", column, op), val)
+		if field.Type == models.RelationField {
+			// TODO support filtering by relationship
+			println("FILTERING BY RELATIONSHIPS NOT SUPPORTED YET")
+		} else {
+			q.WhereOr(fmt.Sprintf("%s %s ?", field.PGField.Column, op), val)
+		}
 	}
 }
 
@@ -71,10 +75,10 @@ func parseFilterParameters(model *models.Model, values map[string]string) (*Filt
 
 		values := strings.Split(v, ",")
 
-		filter, ok := filters[field.Column]
+		filter, ok := filters[field]
 		if !ok {
 			filter = &FilterOptions{}
-			filters[field.Column] = filter
+			filters[field] = filter
 		}
 
 		switch op {
