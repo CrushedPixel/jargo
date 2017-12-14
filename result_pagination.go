@@ -4,16 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"crushedpixel.net/jargo/models"
 )
 
 type strategy int
 
-// TODO: support for cursor-based pagination?
-
 const (
-	page   strategy = iota + 1
-	cursor
+	page strategy = iota + 1
 )
 
 const (
@@ -22,14 +18,14 @@ const (
 	keySize   = "size"
 )
 
-type Pagination struct {
+type ResultPagination struct {
 	strategy strategy
 
 	Number int // page[number]
 	Size   int // page[size]
 }
 
-func (p *Pagination) ApplyToQuery(q *models.Query) {
+func (p *ResultPagination) ApplyToQuery(q *Query) {
 	switch p.strategy {
 	case page:
 		q.Offset(p.Number * p.Size).Limit(p.Size)
@@ -37,8 +33,8 @@ func (p *Pagination) ApplyToQuery(q *models.Query) {
 	}
 }
 
-func parsePageParameters(application *Application, values map[string]string) (*Pagination, error) {
-	pagination := &Pagination{}
+func parsePageParameters(application *Application, values map[string]string) (*ResultPagination, error) {
+	pagination := &ResultPagination{}
 
 	pagination.Size = application.MaxPageSize
 
@@ -80,7 +76,7 @@ func parsePageParameters(application *Application, values map[string]string) (*P
 	return pagination, nil
 }
 
-func (p *Pagination) assignStrategy(strategy strategy) error {
+func (p *ResultPagination) assignStrategy(strategy strategy) error {
 	if p.strategy != 0 && p.strategy != strategy {
 		return errors.New("pagination strategies can't be mixed")
 	}

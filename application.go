@@ -5,6 +5,7 @@ import (
 	"github.com/go-pg/pg"
 	"errors"
 	"log"
+	"github.com/gin-gonic/gin"
 )
 
 const (
@@ -21,8 +22,17 @@ type Application struct {
 	ran bool
 }
 
+var defaultErrorHandler margo.ErrorHandlerFunc = func(c *gin.Context, r interface{}) {
+	res := NewErrorResponse(InternalServerError)
+	err := res.Send(c)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func NewApplication(db *pg.DB) *Application {
 	server := margo.NewServer()
+	server.ErrorHandler = defaultErrorHandler
 	return &Application{server, db, []*Controller{}, defaultPageSize, false}
 }
 

@@ -4,116 +4,76 @@ import (
 	"github.com/gin-gonic/gin"
 	"reflect"
 	"errors"
-	"fmt"
-	"crushedpixel.net/jargo/models"
 	"github.com/google/jsonapi"
 	"net/http"
-	"strconv"
-	"github.com/go-pg/pg"
 )
 
-type Response struct {
-	value interface{}
+var ErrInvalidDataResponse = errors.New("expected slice of struct pointers or struct pointer as data value")
+
+type ErrorResponse struct {
+	Error error
 }
 
-func NewResponse(value interface{}) *Response {
-	return &Response{value: value}
+func NewErrorResponse(err error) *ErrorResponse {
+	return &ErrorResponse{Error: err}
 }
 
-// the following value types are turned into the following responses:
-// *models.Query        => json-encoded result of query execution
-// *jsonapi.ErrorObject => json-encoded error object
-// *struct              => json-encoded resource
-// []*struct            => json-encoded resource collection
-// int                  => HTTP Status Code
-// error                => 500 Internal Server Error
-// true                 => 204 No Content
-// false                => 401 Unauthorized
-//
-// satisfies margo.Response
-func (r *Response) Send(c *gin.Context) {
-	value := r.value
+func (r *ErrorResponse) Send(c *gin.Context) error {
+	apiError, ok := r.Error.(*ApiError)
 
-	// error is handled by recover() statement in action.go#toMargoHandler
-	if err, ok := r.value.(error); ok {
-		panic(err)
+	if !ok {
+		// if error is not an api error, return internal server error response
+		apiError = InternalServerError
 	}
 
-	// *jsonapi.ErrorObject
-	if errObj, ok := r.value.(*jsonapi.ErrorObject); ok {
-		i, err := strconv.Atoi(errObj.Status)
-		if err != nil {
-			panic(err)
-		}
-		c.Status(i)
+	return apiError.Send(c)
+}
 
-		setJsonApiHeaders(c)
+type DataResponse struct {
+	Data   interface{}
+	Fields *ResultFields
+	Status int
+}
 
-		err = jsonapi.MarshalErrors(c.Writer, []*jsonapi.ErrorObject{errObj})
-		if err != nil {
-			panic(err)
-		}
-		return
+func NewDataResponseAllFields(data interface{}) *DataResponse {
+	return NewDataResponse(data, nil)
+}
+
+func NewDataResponse(data interface{}, fields *ResultFields) *DataResponse {
+	return NewDataResponseWithStatusCode(data, fields, http.StatusOK)
+}
+
+func NewDataResponseWithStatusCode(data interface{}, fields *ResultFields, status int) *DataResponse {
+	return &DataResponse{
+		Data:   data,
+		Fields: fields,
+		Status: status,
+	}
+}
+
+func (r *DataResponse) Send(c *gin.Context) error {
+	val := reflect.ValueOf(r.Data)
+
+	// data must be slice of struct pointers or struct pointer
+	if val.Kind() != reflect.Slice && val.Kind() != reflect.Ptr || val.Elem().Kind() != reflect.Struct {
+		return ErrInvalidDataResponse
 	}
 
-	if query, ok := r.value.(*models.Query); ok {
+	var value = val.Interface()
+
+	// resolve query result if value is a query
+	query, ok := value.(*Query)
+	if ok {
 		var err error
 		value, err = query.GetValue()
 		if err != nil {
-			if err == pg.ErrNoRows {
-				value = http.StatusNotFound
-			} else {
-				panic(err)
-			}
+			return err
 		}
 	}
 
-	val := reflect.ValueOf(value)
-	typ := val.Type()
+	// TODO if Fields != nil, filter fields
 
-	switch typ.Kind() {
-	case reflect.Ptr:
-		// *struct
-		if typ.Elem().Kind() == reflect.Struct {
-			setJsonApiHeaders(c)
-			// do not include relationships, as they are not populated with relationships
-			err := jsonapi.MarshalPayloadWithoutIncluded(c.Writer, value)
-			if err != nil {
-				panic(err)
-			}
-			return
-		}
-
-		break
-	case reflect.Slice:
-		// []*struct
-		if typ.Elem().Kind() == reflect.Ptr && typ.Elem().Elem().Kind() == reflect.Struct {
-			setJsonApiHeaders(c)
-			// do not include relationships, as they are not populated with relationships
-			err := jsonapi.MarshalPayloadWithoutIncluded(c.Writer, value)
-			if err != nil {
-				panic(err)
-			}
-			return
-		}
-
-		break
-	case reflect.Int:
-		c.Status(int(val.Int()))
-		return
-
-	case reflect.Bool:
-		if val.Bool() {
-			c.Status(http.StatusNoContent)
-		} else {
-			c.Status(http.StatusForbidden)
-		}
-		return
-	}
-
-	panic(errors.New(fmt.Sprintf("invalid handler return value type: %s", typ)))
-}
-
-func setJsonApiHeaders(c *gin.Context) {
+	c.Status(r.Status)
 	c.Header("Content-Type", jsonapi.MediaType)
+	return jsonapi.MarshalPayloadWithoutIncluded(c.Writer, value)
 }

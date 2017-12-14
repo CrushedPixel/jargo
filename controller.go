@@ -1,16 +1,12 @@
 package jargo
 
-import (
-	"crushedpixel.net/jargo/models"
-)
-
 type Controller struct {
-	Model   *models.Model
-	Actions *Actions
+	Resource *Resource
+	Actions  *Actions
 }
 
 func NewController(model interface{}, defaultActions bool) (*Controller, error) {
-	m, err := models.New(model)
+	r, err := NewResource(model)
 	if err != nil {
 		return nil, err
 	}
@@ -19,8 +15,8 @@ func NewController(model interface{}, defaultActions bool) (*Controller, error) 
 	actions := &a
 
 	controller := &Controller{
-		Model:   m,
-		Actions: actions,
+		Resource: r,
+		Actions:  actions,
 	}
 
 	if defaultActions {
@@ -32,7 +28,7 @@ func NewController(model interface{}, defaultActions bool) (*Controller, error) 
 }
 
 func (c *Controller) initialize(app *Application) {
-	c.Model.CreateTable(app.DB)
+	c.Resource.CreateTable(app.DB)
 
 	// register actions
 	for k, v := range *c.Actions {

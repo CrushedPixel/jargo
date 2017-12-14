@@ -10,8 +10,8 @@ Features:
 Gotchas:
 - only int64 ids are supported due to go-pg restrictions
 - panicking in handler functions is allowed and handled
+- inclusion of related resources is not possible (yet)
 
 Ideas:
 - add websocket support, mirroring all REST endpoints and adding PubSub capabilities
 - add authentication system to avoid having to write one for every new app
-- unify "jsonapi" and "jargo" struct tags

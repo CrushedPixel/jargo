@@ -4,7 +4,6 @@ import (
 	"crushedpixel.net/margo"
 	"fmt"
 	"net/http"
-	"crushedpixel.net/jargo/models"
 )
 
 type Route struct {
@@ -12,7 +11,7 @@ type Route struct {
 	Path   string
 }
 
-type HandlerFunc func(context *Context) interface{}
+type HandlerFunc func(context *Context) margo.Response
 
 type Action struct {
 	Enabled  bool
@@ -75,12 +74,12 @@ func (a Actions) SetDeleteAction(action *Action) {
 }
 
 func (a *Action) toEndpoint(c *Controller, route Route) *margo.Endpoint {
-	fullPath := fmt.Sprintf("%s%s", c.Model.Name, route.Path)
+	fullPath := fmt.Sprintf("%s%s", c.Resource.Name, route.Path)
 
 	endpoint := margo.NewEndpoint(route.Method, fullPath,
 		toMargoHandler(
 			injectControllerMiddleware(c),
-			contentTypeMiddleware(a),
+			contentTypeMiddleware,
 		),
 		toMargoHandler(a.handlers...))
 
@@ -93,7 +92,7 @@ func toMargoHandler(handlers ...HandlerFunc) margo.HandlerFunc {
 
 		for _, h := range handlers {
 			if res := h(context); res != nil {
-				return NewResponse(res)
+				return res
 			}
 		}
 
@@ -101,48 +100,88 @@ func toMargoHandler(handlers ...HandlerFunc) margo.HandlerFunc {
 	}
 }
 
-var IndexResourceQuery = func(c *Context) *models.Query {
-	fp := c.GetFetchParams()
+var IndexResourceQuery = func(c *Context) (*Query, error) {
+	q := c.GetController().Resource.Select(c.GetApplication().DB)
 
-	q := c.GetController().Model.Select(c.GetApplication().DB)
-	fp.ApplyToQuery(q)
+	params, err := c.GetQueryParams()
+	if err != nil {
+		return nil, err
+	}
+	q.ApplyQueryParams(params)
 
-	return q
+	indexParams, err := c.GetIndexQueryParams()
+	if err != nil {
+		return nil, err
+	}
+	q.ApplyIndexQueryParams(indexParams)
+
+	return q, nil
 }
 
-var IndexResourceHandler HandlerFunc = func(c *Context) interface{} {
-	return IndexResourceQuery(c)
+var IndexResourceHandler HandlerFunc = func(c *Context) margo.Response {
+	params, err := c.GetQueryParams()
+	if err != nil {
+		return NewErrorResponse(err)
+	}
+
+	query, err := IndexResourceQuery(c)
+	if err != nil {
+		return NewErrorResponse(err)
+	}
+
+	return NewDataResponse(query, &params.Fields)
 }
 
-var ShowResourceQuery = func(c *Context) *models.Query {
-	q := c.GetController().Model.SelectOne(c.GetApplication().DB)
+var ShowResourceQuery = func(c *Context) *Query {
+	q := c.GetController().Resource.SelectOne(c.GetApplication().DB)
 	q.Where("id = ?", c.Params.ByName("id"))
 
 	return q
 }
 
-var ShowResourceHandler HandlerFunc = func(c *Context) interface{} {
-	return ShowResourceQuery(c)
-}
-
-var CreateResourceHandler HandlerFunc = func(c *Context) interface{} {
-	cm := c.GetCreateModel()
-
-	_, err := c.GetApplication().DB.Model(cm).Insert()
+var ShowResourceHandler HandlerFunc = func(c *Context) margo.Response {
+	params, err := c.GetQueryParams()
 	if err != nil {
-		panic(err)
+		return NewErrorResponse(err)
 	}
 
-	return cm
+	return NewDataResponse(ShowResourceQuery(c), &params.Fields)
 }
 
-var UpdateResourceHandler HandlerFunc = func(c *Context) interface{} {
-	um := c.GetUpdateModel()
-
-	_, err := c.GetApplication().DB.Model(um).Update()
+var CreateResourceHandler HandlerFunc = func(c *Context) margo.Response {
+	params, err := c.GetQueryParams()
 	if err != nil {
-		panic(err)
+		return NewErrorResponse(err)
 	}
 
-	return um
+	cm, err := c.GetCreateModel()
+	if err != nil {
+		return NewErrorResponse(err)
+	}
+
+	_, err = c.GetApplication().DB.Model(cm).Insert()
+	if err != nil {
+		return NewErrorResponse(err)
+	}
+
+	return NewDataResponseWithStatusCode(cm, &params.Fields, http.StatusCreated)
+}
+
+var UpdateResourceHandler HandlerFunc = func(c *Context) margo.Response {
+	params, err := c.GetQueryParams()
+	if err != nil {
+		return NewErrorResponse(err)
+	}
+
+	um, err := c.GetUpdateModel()
+	if err != nil {
+		return NewErrorResponse(err)
+	}
+
+	_, err = c.GetApplication().DB.Model(um).Update()
+	if err != nil {
+		return NewErrorResponse(err)
+	}
+
+	return NewDataResponse(um, &params.Fields)
 }

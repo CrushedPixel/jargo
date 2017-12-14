@@ -2,67 +2,91 @@ package jargo
 
 import (
 	"github.com/goji/param"
-	"crushedpixel.net/jargo/models"
+	"errors"
 )
+
+var ErrIncludeNotSupported = errors.New("include parameter not supported")
 
 // JSON API query parameters for fetching data
 // (see http://jsonapi.org/format/#fetching)
-type FetchParams struct {
+type QueryParams struct {
 	// Include params.Include
-	// Fields  params.Fields
-	Filter Filters
-	Sort   Sorting
-	Page   Pagination
+	Fields ResultFields
+	Sort   ResultSorting
+	Page   ResultPagination
 }
 
-func (f *FetchParams) ApplyToQuery(q *models.Query) {
-	f.Filter.ApplyToQuery(q)
-	f.Sort.ApplyToQuery(q)
-	f.Page.ApplyToQuery(q)
-}
-
-type parserFetchParams struct {
+// used internally to parse jsonapi query parameters
+type parserQueryParams struct {
 	Include string            `param:"include"`
 	Fields  map[string]string `param:"fields"`
-	Filter  map[string]string `param:"filter"`
 	Page    map[string]string `param:"page"`
 	Sort    string            `param:"sort"`
 }
 
-func parseFetchRequest(c *Context) (*FetchParams, error) {
-	pfp := &parserFetchParams{}
-	param.Parse(c.Request.URL.Query(), pfp)
+// jsonapi query parameters specific to index actions
+// (see http://jsonapi.org/format/#fetching)
+type IndexQueryParams struct {
+	Filter Filters
+}
 
-	// parse filter settings
-	filters, err := parseFilterParameters(c.GetController().Model, pfp.Filter)
-	if err != nil {
-		return nil, err
+// used internally to parse index action specific query parameters
+type parserIndexQueryParams struct {
+	Filter map[string]string `param:"filter"`
+}
+
+func parseQueryParams(c *Context) (*QueryParams, error) {
+	parsed := &parserQueryParams{}
+	param.Parse(c.Request.URL.Query(), parsed)
+
+	// parse include settings
+	if parsed.Include != "" {
+		return nil, ErrIncludeNotSupported
 	}
 
+	// TODO parse fields settings
+
 	// parse sort settings
-	sorting, err := parseSortParameters(c.GetController().Model, pfp.Sort)
+	sorting, err := parseSortParameters(c.GetController().Resource, parsed.Sort)
 	if err != nil {
 		return nil, err
 	}
 
 	// parse pagination settings
-	pagination, err := parsePageParameters(c.GetApplication(), pfp.Page)
+	pagination, err := parsePageParameters(c.GetApplication(), parsed.Page)
 	if err != nil {
 		return nil, err
 	}
 
-	fp := &FetchParams{
-		Filter: *filters,
-		Sort:   *sorting,
-		Page:   *pagination,
+	params := &QueryParams{
+		Sort: *sorting,
+		Page: *pagination,
 	}
 
-	return fp, nil
+	return params, nil
+}
+
+func parseIndexQueryParams(c *Context) (*IndexQueryParams, error) {
+	// TODO: change filter query parameter format
+	parsed := &parserIndexQueryParams{}
+	param.Parse(c.Request.URL.Query(), parsed)
+
+	// parse filter settings
+	filters, err := parseFilterParameters(c.GetController().Resource, parsed.Filter)
+	if err != nil {
+		return nil, err
+	}
+
+	params := &IndexQueryParams{
+		Filter: *filters,
+	}
+
+	return params, nil
 }
 
 func parseCreateRequest(c *Context) (interface{}, error) {
-	model := c.GetController().Model
-	instance, err := model.UnmarshalCreate(c.Request.Body)
+	resource := c.GetController().Resource
+	instance, err := resource.UnmarshalCreate(c.Request.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -72,11 +96,11 @@ func parseCreateRequest(c *Context) (interface{}, error) {
 
 func parseUpdateRequest(c *Context) (interface{}, error) {
 	/*
-	model := c.GetController().Model
+	model := c.GetController().Resource
 
 	// TODO find current instance by id
 
-	instance, err := model.UnmarshalUpdate(c.Request.Body)
+	instance, err := model.UnmarshalUpdate(c.Body)
 	if err != nil {
 		return nil, err
 	}

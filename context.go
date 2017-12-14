@@ -6,11 +6,12 @@ import (
 )
 
 const (
-	keyApplication = "__jargoApplication"
-	keyController  = "__jargoController"
-	keyFetchParams = "__fetchParams"
-	keyCreateModel = "__createdModel"
-	keyUpdateModel = "__updateModel"
+	keyApplication      = "__jargoApplication"
+	keyController       = "__jargoController"
+	keyQueryParams      = "__queryParams"
+	keyIndexQueryParams = "__indexQueryParams"
+	keyCreateModel      = "__createdModel"
+	keyUpdateModel      = "__updateModel"
 )
 
 type Context struct {
@@ -35,41 +36,55 @@ func (c *Context) setController(cont *Controller) {
 	c.Set(keyController, cont)
 }
 
-func (c *Context) GetFetchParams() *FetchParams {
-	p, ok := c.Get(keyFetchParams)
+func (c *Context) GetQueryParams() (*QueryParams, error) {
+	p, ok := c.Get(keyQueryParams)
 	if !ok {
 		var err error
-		p, err = parseFetchRequest(c)
+		p, err = parseQueryParams(c)
 		if err != nil {
-			panic(invalidQueryParams(err))
+			return nil, invalidQueryParams(err)
 		}
-		c.Set(keyFetchParams, p)
+		c.Set(keyQueryParams, p)
 	}
-	return p.(*FetchParams)
+	return p.(*QueryParams), nil
 }
 
-func (c *Context) GetCreateModel() interface{} {
+func (c *Context) GetIndexQueryParams() (*IndexQueryParams, error) {
+	p, ok := c.Get(keyIndexQueryParams)
+	if !ok {
+		var err error
+		p, err = parseIndexQueryParams(c)
+		if err != nil {
+			return nil, invalidQueryParams(err)
+		}
+
+		c.Set(keyIndexQueryParams, p)
+	}
+	return p.(*IndexQueryParams), nil
+}
+
+func (c *Context) GetCreateModel() (interface{}, error) {
 	m, ok := c.Get(keyCreateModel)
 	if !ok {
 		var err error
 		m, err = parseCreateRequest(c)
 		if err != nil {
-			panic(invalidPayload(err))
+			return nil, invalidPayload(err)
 		}
 		c.Set(keyCreateModel, m)
 	}
-	return m
+	return m, nil
 }
 
-func (c *Context) GetUpdateModel() interface{} {
+func (c *Context) GetUpdateModel() (interface{}, error) {
 	m, ok := c.Get(keyUpdateModel)
 	if !ok {
 		var err error
 		m, err = parseUpdateRequest(c)
 		if err != nil {
-			panic(invalidPayload(err))
+			return nil, invalidPayload(err)
 		}
 		c.Set(keyUpdateModel, m)
 	}
-	return m
+	return m, nil
 }

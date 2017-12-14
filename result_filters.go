@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"strings"
 	"errors"
-	"crushedpixel.net/jargo/models"
 )
 
 // Custom filter format: filter[name:like]=*name*
 // TODO: implement better custom filter format
-type Filters map[*models.ModelField]*FilterOptions
+type Filters map[*ResourceField]*FilterOptions
 
 type FilterOptions struct {
 	Eq   []string
@@ -21,7 +20,7 @@ type FilterOptions struct {
 	Lte  []string
 }
 
-func (filter *Filters) ApplyToQuery(q *models.Query) {
+func (filter *Filters) ApplyToQuery(q *Query) {
 	for field, options := range *filter {
 		whereOr(q, field, "=", options.Eq)
 		whereOr(q, field, "<>", options.Ne)
@@ -33,9 +32,9 @@ func (filter *Filters) ApplyToQuery(q *models.Query) {
 	}
 }
 
-func whereOr(q *models.Query, field *models.ModelField, op string, values []string) {
+func whereOr(q *Query, field *ResourceField, op string, values []string) {
 	for _, val := range values {
-		if field.Type == models.RelationField {
+		if field.Type == RelationField {
 			// TODO support filtering by relationship
 			println("FILTERING BY RELATIONSHIPS NOT SUPPORTED YET")
 		} else {
@@ -44,7 +43,7 @@ func whereOr(q *models.Query, field *models.ModelField, op string, values []stri
 	}
 }
 
-func parseFilterParameters(model *models.Model, values map[string]string) (*Filters, error) {
+func parseFilterParameters(resource *Resource, values map[string]string) (*Filters, error) {
 	filters := make(Filters)
 
 	for k, v := range values {
@@ -56,7 +55,7 @@ func parseFilterParameters(model *models.Model, values map[string]string) (*Filt
 
 		key := spl[0] // the field to filter by
 
-		field, ok := model.Fields[key]
+		field, ok := resource.Fields[key]
 		if !ok {
 			return nil, errors.New(fmt.Sprintf("unknown filter attribute: %s", key))
 		}

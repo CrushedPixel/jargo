@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"errors"
-	"crushedpixel.net/jargo/models"
 )
 
 const (
@@ -12,9 +11,9 @@ const (
 	dirDescending = "DESC"
 )
 
-type Sorting map[*models.ModelField]bool
+type ResultSorting map[*ResourceField]bool
 
-func (sort *Sorting) ApplyToQuery(q *models.Query) {
+func (sort *ResultSorting) ApplyToQuery(q *Query) {
 	for field, asc := range *sort {
 		var dir string
 		if asc {
@@ -23,7 +22,7 @@ func (sort *Sorting) ApplyToQuery(q *models.Query) {
 			dir = dirDescending
 		}
 
-		if field.Type == models.RelationField {
+		if field.Type == RelationField {
 			// TODO support sorting by relationship
 			println("SORTING BY RELATIONSHIPS NOT SUPPORTED YET")
 		} else {
@@ -32,8 +31,8 @@ func (sort *Sorting) ApplyToQuery(q *models.Query) {
 	}
 }
 
-func parseSortParameters(model *models.Model, str string) (*Sorting, error) {
-	sorting := make(Sorting)
+func parseSortParameters(resource *Resource, str string) (*ResultSorting, error) {
+	sorting := make(ResultSorting)
 
 	if str != "" {
 		spl := strings.Split(str, ",")
@@ -51,7 +50,7 @@ func parseSortParameters(model *models.Model, str string) (*Sorting, error) {
 				asc = true
 			}
 
-			field, ok := model.Fields[key]
+			field, ok := resource.Fields[key]
 			if !ok {
 				return nil, errors.New(fmt.Sprintf("unknown attribute: %s", key))
 			}
