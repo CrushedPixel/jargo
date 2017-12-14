@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log"
 	"github.com/gin-gonic/gin"
+	"fmt"
 )
 
 const (
@@ -23,6 +24,8 @@ type Application struct {
 }
 
 var defaultErrorHandler margo.ErrorHandlerFunc = func(c *gin.Context, r interface{}) {
+	println(fmt.Sprintf("%s", r)) // TODO: proper logging
+
 	res := NewErrorResponse(InternalServerError)
 	err := res.Send(c)
 	if err != nil {

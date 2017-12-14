@@ -44,7 +44,8 @@ func parseQueryParams(c *Context) (*QueryParams, error) {
 		return nil, ErrIncludeNotSupported
 	}
 
-	// TODO parse fields settings
+	// parse fields settings
+	fields, err := parseFieldParameters(parsed.Fields)
 
 	// parse sort settings
 	sorting, err := parseSortParameters(c.GetController().Resource, parsed.Sort)
@@ -59,8 +60,9 @@ func parseQueryParams(c *Context) (*QueryParams, error) {
 	}
 
 	params := &QueryParams{
-		Sort: *sorting,
-		Page: *pagination,
+		Sort:   *sorting,
+		Page:   *pagination,
+		Fields: fields,
 	}
 
 	return params, nil

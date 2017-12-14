@@ -6,9 +6,12 @@ import (
 	"errors"
 	"github.com/google/jsonapi"
 	"net/http"
+	"encoding/json"
+	"fmt"
 )
 
 var ErrInvalidDataResponse = errors.New("expected slice of struct pointers or struct pointer as data value")
+var ErrInvalidMarshalResult = errors.New("jsonapi.Marshal returned an unexpected value")
 
 type ErrorResponse struct {
 	Error error
@@ -23,6 +26,7 @@ func (r *ErrorResponse) Send(c *gin.Context) error {
 
 	if !ok {
 		// if error is not an api error, return internal server error response
+		println(fmt.Sprintf("Internal server error: %s", r.Error.Error())) // TODO use a proper logging library
 		apiError = InternalServerError
 	}
 
@@ -31,7 +35,7 @@ func (r *ErrorResponse) Send(c *gin.Context) error {
 
 type DataResponse struct {
 	Data   interface{}
-	Fields *ResultFields
+	Fields ResultFields
 	Status int
 }
 
@@ -39,11 +43,11 @@ func NewDataResponseAllFields(data interface{}) *DataResponse {
 	return NewDataResponse(data, nil)
 }
 
-func NewDataResponse(data interface{}, fields *ResultFields) *DataResponse {
+func NewDataResponse(data interface{}, fields ResultFields) *DataResponse {
 	return NewDataResponseWithStatusCode(data, fields, http.StatusOK)
 }
 
-func NewDataResponseWithStatusCode(data interface{}, fields *ResultFields, status int) *DataResponse {
+func NewDataResponseWithStatusCode(data interface{}, fields ResultFields, status int) *DataResponse {
 	return &DataResponse{
 		Data:   data,
 		Fields: fields,
@@ -62,8 +66,8 @@ func (r *DataResponse) Send(c *gin.Context) error {
 	var value = val.Interface()
 
 	// resolve query result if value is a query
-	query, ok := value.(*Query)
-	if ok {
+	query, isOP := value.(*Query)
+	if isOP {
 		var err error
 		value, err = query.GetValue()
 		if err != nil {
@@ -71,9 +75,45 @@ func (r *DataResponse) Send(c *gin.Context) error {
 		}
 	}
 
-	// TODO if Fields != nil, filter fields
+	payload, err := jsonapi.Marshal(value)
+	if err != nil {
+		return err
+	}
+
+	op, isOP := payload.(*jsonapi.OnePayload)
+	if isOP {
+		if r.Fields != nil {
+			r.Fields.ApplyToNode(op.Data)
+		}
+
+		// clear included records, as they are not supported yet
+		op.Included = []*jsonapi.Node{}
+	}
+
+	mp, isMP := payload.(*jsonapi.ManyPayload)
+	if isMP {
+		if r.Fields != nil {
+			for _, node := range mp.Data {
+				r.Fields.ApplyToNode(node)
+			}
+		}
+
+		// clear included records, as they are not supported yet
+		mp.Included = []*jsonapi.Node{}
+	}
+
+	if !isOP && !isMP {
+		return ErrInvalidMarshalResult
+	}
+
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
 
 	c.Status(r.Status)
 	c.Header("Content-Type", jsonapi.MediaType)
-	return jsonapi.MarshalPayloadWithoutIncluded(c.Writer, value)
+	_, err = c.Writer.Write(b)
+
+	return err
 }

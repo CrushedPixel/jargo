@@ -134,7 +134,6 @@ func (m *Resource) selectAllColumns(q *orm.Query) {
 
 	// include all relationships
 	for _, field := range m.Fields.GetRelationFields() {
-		println(fmt.Sprintf("ey %v", field))
 		q.Column(field.StructField.Name)
 	}
 }
