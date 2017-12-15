@@ -3,6 +3,7 @@ package jargo
 import (
 	"github.com/goji/param"
 	"errors"
+	"github.com/go-pg/pg"
 )
 
 var ErrIncludeNotSupported = errors.New("include parameter not supported")
@@ -97,17 +98,24 @@ func parseCreateRequest(c *Context) (interface{}, error) {
 }
 
 func parseUpdateRequest(c *Context) (interface{}, error) {
-	/*
-	model := c.GetController().Resource
+	res := c.GetController().Resource
 
-	// TODO find current instance by id
+	id := c.Params.ByName("id")
 
-	instance, err := model.UnmarshalUpdate(c.Body)
+	q := res.SelectOne(c.GetApplication().DB)
+	q.Where("id = ?", id)
+	val, err := q.GetValue()
+	if err != nil {
+		if err == pg.ErrNoRows {
+			return nil, ApiErrNotFound
+		}
+		return nil, err
+	}
+
+	instance, err := res.UnmarshalUpdate(c.Request.Body, val, id)
 	if err != nil {
 		return nil, err
 	}
 
 	return instance, nil
-	*/
-	return nil, nil
 }

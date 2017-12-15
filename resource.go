@@ -9,6 +9,10 @@ import (
 	"github.com/go-pg/pg"
 	"github.com/go-pg/pg/orm"
 	"fmt"
+	"github.com/ulule/deepcopier"
+	"strconv"
+	"encoding/json"
+	"bytes"
 )
 
 const (
@@ -19,11 +23,13 @@ const (
 	annotationAttribute = "attr"
 	annotationRelation  = "relation"
 
-	annotationSeparator = ","
+	annotationSeparator         = ","
+	annotationKeyValueSeparator = ":"
 
-	annotationJargo  = "jargo"
-	annotationFilter = "filter"
-	annotationSort   = "sort"
+	annotationJargo    = "jargo"
+	annotationFilter   = "filter"
+	annotationSort     = "sort"
+	annotationReadonly = "readonly"
 )
 
 var ErrInvalidResourceType = errors.New("resource must be pointer to struct")
@@ -31,6 +37,8 @@ var ErrInvalidIdType = errors.New("only int64 id fields are supported")
 var ErrMissingPrimaryField = errors.New("missing jsonapi primary field")
 var ErrMissingSQLPK = errors.New("jsonapi primary field must be marked as primary key in sql struct tag")
 var ErrClientId = errors.New("client-generated ids are not supported")
+var ErrInvalidOriginal = errors.New("original must be a struct pointer")
+var ErrMismatchedId = errors.New("payload id does not match original id")
 
 type Resource struct {
 	Name   string         // resource name parsed from jsonapi
@@ -102,9 +110,9 @@ func NewResource(model interface{}) (*Resource, error) {
 			println(fmt.Sprintf("relationship pgfield %v", pgField))
 		}
 
-		settings := getFieldSettings(&field)
-		if settings == nil {
-			continue
+		settings, err := getFieldSettings(&field)
+		if err != nil {
+			return nil, err
 		}
 
 		fields[prop.Name] = &ResourceField{
@@ -210,28 +218,42 @@ func getPGField(table *orm.Table, field *reflect.StructField) *orm.Field {
 }
 
 // parses a field's jargo struct tags
-func getFieldSettings(field *reflect.StructField) *FieldSettings {
+func getFieldSettings(field *reflect.StructField) (*FieldSettings, error) {
 	fieldSettings := new(FieldSettings)
 
+	fieldSettings.AllowFiltering = true
+	fieldSettings.AllowSorting = true
+	fieldSettings.Readonly = false
+
 	val, ok := field.Tag.Lookup(annotationJargo)
-	if !ok {
-		fieldSettings.AllowFiltering = true
-		fieldSettings.AllowSorting = true
-	} else {
+	if ok {
 		spl := strings.Split(val, annotationSeparator)
 		for _, s := range spl {
-			switch s {
+			kv := strings.Split(s, annotationKeyValueSeparator)
+			if len(kv) != 2 {
+				return nil, errors.New(fmt.Sprintf(`jargo option "%s" must be in "key:value" format`, s))
+			}
+
+			// parse boolean value
+			val, err := strconv.ParseBool(kv[1])
+			if err != nil {
+				return nil, errors.New(fmt.Sprintf(`jargo option value: "%s". must be a boolean`, kv[1]))
+			}
+
+			switch kv[0] {
 			case annotationFilter:
-				fieldSettings.AllowFiltering = true
+				fieldSettings.AllowFiltering = val
 			case annotationSort:
-				fieldSettings.AllowSorting = true
+				fieldSettings.AllowSorting = val
+			case annotationReadonly:
+				fieldSettings.Readonly = val
 			default:
-				// TODO: error handling?
+				return nil, errors.New(fmt.Sprintf(`unknown jargo option key: "%s"`, kv[0]))
 			}
 		}
 	}
 
-	return fieldSettings
+	return fieldSettings, nil
 }
 
 // returns a struct pointer
@@ -262,32 +284,78 @@ func (m *Resource) CreateTable(db *pg.DB) error {
 
 // parses a jsonapi payload as sent in a POST request
 func (m *Resource) UnmarshalCreate(in io.Reader) (interface{}, error) {
+	original := m.newInstance()
+
 	instance := m.newInstance()
 	err := jsonapi.UnmarshalPayload(in, instance)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: copy instance, overriding all readonly fields with the original value
-	// TODO: undo jsonapi patch
-
 	// disallow client-generated ids
 	if reflect.ValueOf(instance).Elem().FieldByIndex(m.Fields.GetPrimaryField().StructField.Index).Int() != 0 {
 		return nil, ErrClientId
 	}
+
+	// revert changes to all readonly fields
+	m.revertReadonlyChanges(reflect.ValueOf(original).Elem(), reflect.ValueOf(instance).Elem())
 
 	return instance, nil
 }
 
 // parses a jsonapi payload as sent in a PATCH request,
 // applying it to the existing entry, modifying its non-readonly values.
-func (m *Resource) UnmarshalUpdate(in io.Reader, instance interface{}) (interface{}, error) {
-	err := jsonapi.UnmarshalPayload(in, instance)
+func (m *Resource) UnmarshalUpdate(in io.Reader, original interface{}, originalId string) (interface{}, error) {
+	originalValue := reflect.ValueOf(original)
+	// original must be struct pointer
+	if originalValue.Kind() != reflect.Ptr || originalValue.Elem().Kind() != reflect.Struct {
+		return nil, ErrInvalidOriginal
+	}
+
+	originalStruct := originalValue.Elem().Interface()
+	instance := reflect.New(originalValue.Type().Elem()).Interface()
+
+	// copy original instance to be able to retain original values
+	err := deepcopier.Copy(originalStruct).To(instance)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: copy instance, overriding all readonly fields with the original value
+	// ensure id value of payload matches original id
+	// read payload into buffer to be able to read it multiple times
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(in)
+
+	// manually parse payload to be able to access id value
+	payload := new(jsonapi.OnePayload)
+	err = json.Unmarshal(buf.Bytes(), payload)
+	if err != nil {
+		return nil, err
+	}
+
+	if payload.Data.ID != originalId {
+		return nil, ApiErrInvalidPayload(ErrMismatchedId)
+	}
+
+	// unmarshal payload into instance
+	err = jsonapi.UnmarshalPayload(buf, instance)
+	if err != nil {
+		return nil, err
+	}
+
+	// revert changes to all readonly fields
+	originalStructValue := reflect.ValueOf(originalStruct)
+	instanceStructValue := reflect.ValueOf(instance).Elem()
+	m.revertReadonlyChanges(originalStructValue, instanceStructValue)
 
 	return instance, nil
+}
+
+func (m *Resource) revertReadonlyChanges(original reflect.Value, instance reflect.Value) {
+	for _, field := range m.Fields {
+		if field.Settings.Readonly {
+			instance.FieldByIndex(field.StructField.Index).
+				Set(original.FieldByIndex(field.StructField.Index))
+		}
+	}
 }

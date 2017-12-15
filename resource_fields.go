@@ -18,6 +18,7 @@ type ResourceField struct {
 type FieldSettings struct {
 	AllowFiltering bool // if true, filtering by this field is allowed
 	AllowSorting   bool // if true, sorting by this field is allowed
+	Readonly       bool // if true, this field may not be set using POST or PATCH requests
 }
 
 type ResourceFieldType int
