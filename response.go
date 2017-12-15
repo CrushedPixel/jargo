@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"encoding/json"
 	"fmt"
+	"github.com/go-pg/pg"
 )
 
 var ErrInvalidDataResponse = errors.New("expected slice of struct pointers or struct pointer as data value")
@@ -27,7 +28,7 @@ func (r *ErrorResponse) Send(c *gin.Context) error {
 	if !ok {
 		// if error is not an api error, return internal server error response
 		println(fmt.Sprintf("Internal server error: %s", r.Error.Error())) // TODO use a proper logging library
-		apiError = InternalServerError
+		apiError = ApiErrInternalServerError
 	}
 
 	return apiError.Send(c)
@@ -71,6 +72,9 @@ func (r *DataResponse) Send(c *gin.Context) error {
 		var err error
 		value, err = query.GetValue()
 		if err != nil {
+			if err == pg.ErrNoRows {
+				return ApiErrNotFound
+			}
 			return err
 		}
 	}

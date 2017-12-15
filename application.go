@@ -24,10 +24,17 @@ type Application struct {
 }
 
 var defaultErrorHandler margo.ErrorHandlerFunc = func(c *gin.Context, r interface{}) {
-	println(fmt.Sprintf("%s", r)) // TODO: proper logging
+	var err error
+	var ok bool
 
-	res := NewErrorResponse(InternalServerError)
-	err := res.Send(c)
+	err, ok = r.(error)
+	if !ok {
+		println(fmt.Sprintf("%s", r)) // TODO: proper logging
+		err = ApiErrInternalServerError
+	}
+
+	res := NewErrorResponse(err)
+	err = res.Send(c)
 	if err != nil {
 		panic(err)
 	}

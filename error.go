@@ -2,23 +2,9 @@ package jargo
 
 import (
 	"github.com/google/jsonapi"
-	"net/http"
 	"strconv"
 	"github.com/satori/go.uuid"
 	"github.com/gin-gonic/gin"
-)
-
-const (
-	codeInvalidQueryParams  = "INVALID_QUERY_PARAMS"
-	codeInvalidPayload      = "INVALID_PAYLOAD"
-	codeForbidden           = "FORBIDDEN"
-	codeInternalServerError = "INTERNAL_SERVER_ERROR"
-)
-
-var InternalServerError = NewApiError(
-	http.StatusInternalServerError,
-	codeInternalServerError,
-	"internal server error",
 )
 
 type ApiError struct {
@@ -54,16 +40,4 @@ func NewApiError(status int, code string, detail string) *ApiError {
 		Code:   code,
 		Detail: detail,
 	}
-}
-
-func invalidQueryParams(err error) *ApiError {
-	return NewApiError(http.StatusBadRequest, codeInvalidQueryParams, err.Error())
-}
-
-func invalidPayload(err error) *ApiError {
-	return NewApiError(http.StatusBadRequest, codeInvalidPayload, err.Error())
-}
-
-func forbidden(err error) *ApiError {
-	return NewApiError(http.StatusForbidden, codeForbidden, err.Error())
 }

@@ -20,9 +20,9 @@ func NewController(model interface{}, defaultActions bool) (*Controller, error) 
 	}
 
 	if defaultActions {
-		controller.Actions.SetShowAction(NewAction(ShowResourceHandler))
-		controller.Actions.SetIndexAction(NewAction(IndexResourceHandler))
-		controller.Actions.SetCreateAction(NewAction(CreateResourceHandler))
+		controller.Actions.SetShowAction(NewAction(DefaultShowResourceHandler))
+		controller.Actions.SetIndexAction(NewAction(DefaultIndexResourceHandler))
+		controller.Actions.SetCreateAction(NewAction(DefaultCreateResourceHandler))
 	}
 	return controller, nil
 }
