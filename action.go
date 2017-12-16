@@ -73,10 +73,15 @@ func (a Actions) SetDeleteAction(action *Action) {
 	a[deleteRoute] = action
 }
 
+func (a Actions) SetAction(route *Route, action *Action) {
+	a[*route] = action
+}
+
 func (a *Action) toEndpoint(c *Controller, route Route) *margo.Endpoint {
 	fullPath := fmt.Sprintf("%s%s", c.Resource.Name, route.Path)
 
 	endpoint := margo.NewEndpoint(route.Method, fullPath,
+		toMargoHandler(c.Middleware...),
 		toMargoHandler(
 			injectControllerMiddleware(c),
 			contentTypeMiddleware,

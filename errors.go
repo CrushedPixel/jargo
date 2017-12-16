@@ -13,6 +13,7 @@ const (
 	codeNotFound             = "RESOURCE_NOT_FOUND"
 	codeInvalidQueryParams   = "INVALID_QUERY_PARAMS"
 	codeInvalidPayload       = "INVALID_PAYLOAD"
+	codeUnauthorized         = "UNAUTHORIZED"
 	codeForbidden            = "FORBIDDEN"
 )
 
@@ -40,14 +41,30 @@ var ApiErrNotFound = NewApiError(
 	"resource not found",
 )
 
-func ApiErrInvalidQueryParams(err error) *ApiError {
-	return NewApiError(http.StatusBadRequest, codeInvalidQueryParams, err.Error())
+var ApiErrForbidden = NewApiError(
+	http.StatusForbidden,
+	codeForbidden,
+	"forbidden",
+)
+
+func ApiErrUnauthorized(detail string) *ApiError {
+	return NewApiError(
+		http.StatusUnauthorized,
+		codeUnauthorized,
+		detail,
+	)
 }
 
-func ApiErrInvalidPayload(err error) *ApiError {
-	return NewApiError(http.StatusBadRequest, codeInvalidPayload, err.Error())
+func ApiErrInvalidQueryParams(detail string) *ApiError {
+	return NewApiError(http.StatusBadRequest,
+		codeInvalidQueryParams,
+		detail,
+	)
 }
 
-func ApiErrForbidden(err error) *ApiError {
-	return NewApiError(http.StatusForbidden, codeForbidden, err.Error())
+func ApiErrInvalidPayload(detail string) *ApiError {
+	return NewApiError(http.StatusBadRequest,
+		codeInvalidPayload,
+		detail,
+	)
 }

@@ -38,7 +38,6 @@ var ErrMissingPrimaryField = errors.New("missing jsonapi primary field")
 var ErrMissingSQLPK = errors.New("jsonapi primary field must be marked as primary key in sql struct tag")
 var ErrClientId = errors.New("client-generated ids are not supported")
 var ErrInvalidOriginal = errors.New("original must be a struct pointer")
-var ErrMismatchedId = errors.New("payload id does not match original id")
 
 type Resource struct {
 	Name   string         // resource name parsed from jsonapi
@@ -105,9 +104,7 @@ func NewResource(model interface{}) (*Resource, error) {
 				continue
 			}
 		} else {
-			pgField = getPGField(table, &field)
-			// TODO
-			println(fmt.Sprintf("relationship pgfield %v", pgField))
+			// TODO get the corresponding pg field if
 		}
 
 		settings, err := getFieldSettings(&field)
@@ -336,7 +333,7 @@ func (m *Resource) UnmarshalUpdate(in io.Reader, original interface{}, originalI
 	}
 
 	if payload.Data.ID != originalId {
-		return nil, ApiErrInvalidPayload(ErrMismatchedId)
+		return nil, ApiErrInvalidPayload("payload id does not match original id")
 	}
 
 	// unmarshal payload into instance

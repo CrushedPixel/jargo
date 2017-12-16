@@ -42,7 +42,7 @@ func (c *Context) GetQueryParams() (*QueryParams, error) {
 		var err error
 		p, err = parseQueryParams(c)
 		if err != nil {
-			return nil, ApiErrInvalidQueryParams(err)
+			return nil, ApiErrInvalidQueryParams(err.Error())
 		}
 		c.Set(keyQueryParams, p)
 	}
@@ -55,7 +55,7 @@ func (c *Context) GetIndexQueryParams() (*IndexQueryParams, error) {
 		var err error
 		p, err = parseIndexQueryParams(c)
 		if err != nil {
-			return nil, ApiErrInvalidQueryParams(err)
+			return nil, ApiErrInvalidQueryParams(err.Error())
 		}
 
 		c.Set(keyIndexQueryParams, p)
@@ -69,7 +69,7 @@ func (c *Context) GetCreateModel() (interface{}, error) {
 		var err error
 		m, err = parseCreateRequest(c)
 		if err != nil {
-			return nil, ApiErrInvalidPayload(err)
+			return nil, ApiErrInvalidPayload(err.Error())
 		}
 		c.Set(keyCreateModel, m)
 	}
@@ -82,7 +82,7 @@ func (c *Context) GetUpdateModel() (interface{}, error) {
 		var err error
 		m, err = parseUpdateRequest(c)
 		if err != nil {
-			return nil, ApiErrInvalidPayload(err)
+			return nil, ApiErrInvalidPayload(err.Error())
 		}
 		c.Set(keyUpdateModel, m)
 	}
