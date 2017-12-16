@@ -24,6 +24,7 @@ func NewController(model interface{}, defaultActions bool) (*Controller, error) 
 		controller.Actions.SetIndexAction(NewAction(DefaultIndexResourceHandler))
 		controller.Actions.SetCreateAction(NewAction(DefaultCreateResourceHandler))
 		controller.Actions.SetUpdateAction(NewAction(DefaultUpdateResourceHandler))
+		controller.Actions.SetDeleteAction(NewAction(DefaultDeleteResourceHandler))
 	}
 	return controller, nil
 }

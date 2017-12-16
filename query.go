@@ -4,6 +4,10 @@ import (
 	"github.com/go-pg/pg/orm"
 	"reflect"
 	"errors"
+	"github.com/gin-gonic/gin"
+	"github.com/go-pg/pg"
+	"net/http"
+	"crushedpixel.net/margo"
 )
 
 var ErrQueryType = errors.New("invalid query type")
@@ -21,22 +25,76 @@ type Query struct {
 	*orm.Query
 	Type QueryType
 
-	Filter Filters
+	// parameters used by Select queries
 	Sort   ResultSorting
 	Page   *ResultPagination
+	Filter Filters
+
+	Fields ResultFields // passed to DataResponse
 
 	value          reflect.Value // reference to the model which is operated on by the orm query
 	executed       bool
 	executionError error
 }
 
-func (q *Query) ApplyQueryParams(qp *QueryParams) {
-	q.Sort = qp.Sort
-	q.Page = &qp.Page
+func newQuery(typ QueryType, db *pg.DB, instance interface{}) *Query {
+	return &Query{
+		Query: db.Model(instance),
+		Type:  typ,
+		value: reflect.ValueOf(instance),
+	}
 }
 
-func (q *Query) ApplyIndexQueryParams(qp *IndexQueryParams) {
+func NewSelectQuery(db *pg.DB, instance interface{}) *Query {
+	return newQuery(Select, db, instance)
+}
+
+func NewInsertQuery(db *pg.DB, instance interface{}) *Query {
+	return newQuery(Insert, db, instance)
+}
+
+func NewUpdateQuery(db *pg.DB, instance interface{}) *Query {
+	return newQuery(Update, db, instance)
+}
+
+func NewDeleteQuery(db *pg.DB, instance interface{}) *Query {
+	return newQuery(Delete, db, instance)
+}
+
+// implements margo.Response
+func (q *Query) Send(c *gin.Context) error {
+	val, err := q.GetValue()
+	if err != nil {
+		if err == pg.ErrNoRows {
+			return ApiErrNotFound
+		}
+		return err
+	}
+
+	switch q.Type {
+	case Select, Update:
+		return NewDataResponse(val, q.Fields).Send(c)
+	case Insert:
+		return NewDataResponseWithStatusCode(val, q.Fields, http.StatusCreated).Send(c)
+	case Delete:
+		return margo.NewEmptyResponse(http.StatusNoContent).Send(c)
+	}
+
+	return ErrQueryType
+}
+
+func (q *Query) ApplyQueryParams(qp *QueryParams) *Query {
+	q.Sort = qp.Sort
+	q.Page = &qp.Page
+	q.Fields = qp.Fields
+
+	return q
+}
+
+func (q *Query) ApplyIndexQueryParams(qp *IndexQueryParams) *Query {
 	q.Filter = qp.Filter
+
+	return q
 }
 
 func (q *Query) execute() {

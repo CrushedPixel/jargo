@@ -136,7 +136,7 @@ func NewResource(model interface{}) (*Resource, error) {
 	}, nil
 }
 
-func (m *Resource) selectAllColumns(q *orm.Query) {
+func (m *Resource) selectAllColumns(q *Query) {
 	// select all columns ("table".*)
 	q.Column(fmt.Sprintf("%s.*", m.Table.ModelName))
 
@@ -147,29 +147,31 @@ func (m *Resource) selectAllColumns(q *orm.Query) {
 }
 
 func (m *Resource) Select(db *pg.DB) *Query {
-	instance := m.newSlice()
-
-	q := db.Model(instance)
+	q := NewSelectQuery(db, m.newSlice())
 	m.selectAllColumns(q)
 
-	return &Query{
-		Query: q,
-		Type:  Select,
-		value: reflect.ValueOf(instance),
-	}
+	return q
 }
 
 func (m *Resource) SelectOne(db *pg.DB) *Query {
-	instance := m.newInstance()
-
-	q := db.Model(instance)
+	q := NewSelectQuery(db, m.newInstance())
 	m.selectAllColumns(q)
 
-	return &Query{
-		Query: q,
-		Type:  Select,
-		value: reflect.ValueOf(instance),
-	}
+	return q
+}
+
+func (m *Resource) SelectById(db *pg.DB, id string) *Query {
+	q := m.SelectOne(db)
+	q.Where("id = ?", id)
+
+	return q
+}
+
+func (m *Resource) DeleteById(db *pg.DB, id string) *Query {
+	q := NewDeleteQuery(db, m.newInstance())
+	q.Where("id = ?", id)
+
+	return q
 }
 
 // returns a field's jsonapi name by parsing the jsonapi struct tag

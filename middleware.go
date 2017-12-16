@@ -28,7 +28,9 @@ func contentTypeMiddleware(c *Context) margo.Response {
 	// if Content-Type header not the jsonapi media type,
 	// return 415 Unsupported Media Type
 	ct := c.Request.Header.Get("Content-Type")
-	if c.Request.Method != http.MethodGet && ct != jsonapi.MediaType {
+	if ct != jsonapi.MediaType &&
+		c.Request.Method != http.MethodGet &&
+		c.Request.Method != http.MethodDelete {
 		return ApiErrUnsupportedMediaType
 	}
 

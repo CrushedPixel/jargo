@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"encoding/json"
 	"fmt"
-	"github.com/go-pg/pg"
 )
 
 var ErrInvalidDataResponse = errors.New("expected slice of struct pointers or struct pointer as data value")
@@ -60,26 +59,15 @@ func (r *DataResponse) Send(c *gin.Context) error {
 	val := reflect.ValueOf(r.Data)
 
 	// data must be slice of struct pointers or struct pointer
-	if val.Kind() != reflect.Slice && val.Kind() != reflect.Ptr || val.Elem().Kind() != reflect.Struct {
+	if !((val.Kind() == reflect.Slice &&
+		val.Type().Elem().Kind() == reflect.Ptr &&
+		val.Type().Elem().Elem().Kind() == reflect.Struct) ||
+		(val.Kind() == reflect.Ptr &&
+			val.Type().Elem().Kind() == reflect.Struct)) {
 		return ErrInvalidDataResponse
 	}
 
-	var value = val.Interface()
-
-	// resolve query result if value is a query
-	query, isOP := value.(*Query)
-	if isOP {
-		var err error
-		value, err = query.GetValue()
-		if err != nil {
-			if err == pg.ErrNoRows {
-				return ApiErrNotFound
-			}
-			return err
-		}
-	}
-
-	payload, err := jsonapi.Marshal(value)
+	payload, err := jsonapi.Marshal(val.Interface())
 	if err != nil {
 		return err
 	}
