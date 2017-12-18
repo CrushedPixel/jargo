@@ -5,7 +5,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type EmptyTestModel struct {}
+type EmptyTestModel struct{}
 
 type InvalidIdTypeTestModel struct {
 	Id string
@@ -33,6 +33,21 @@ type InvalidTypeNameTestModel1 struct {
 
 type ValidTypeNameTestModel struct {
 	Id int64 `jargo:"resources,table:tbl_resources"`
+}
+
+type SimpleTestModel0 struct {
+	Id       int64 `jargo:""`
+	Property string
+}
+
+type SimpleTestModel1 struct {
+	Id       int64  `jargo:""`
+	Property string `jargo:"prop"`
+}
+
+type SimpleTestModel2 struct {
+	Id       int64  `jargo:""`
+	Property string `jargo:"prop,column:col_property"`
 }
 
 func TestParseResourceStruct(t *testing.T) {
@@ -65,61 +80,19 @@ func TestParseResourceStruct(t *testing.T) {
 	rd, err = parseResourceStruct(ValidTypeNameTestModel{})
 	assert.Equal(t, "resources", rd.name)
 	assert.Equal(t, "tbl_resources", rd.table)
-}
 
-func TestPluralize(t *testing.T) {
-	val := pluralize("")
-	assert.Equal(t, "", val)
+	// test simple attribute field parsing
+	rd, err = parseResourceStruct(SimpleTestModel0{})
+	assert.Contains(t, rd.fields, &field{
+		name:   "property",
+		column: "property",
+	})
 
-	val = pluralize("resource")
-	assert.Equal(t, "resources", val)
+	rd, err = parseResourceStruct(SimpleTestModel2{})
+	assert.Contains(t, rd.fields, &field{
+		name:   "prop",
+		column: "col_property",
+	})
 
-	val = pluralize("resources")
-	assert.Equal(t, "resources", val)
-}
-
-func TestIsValidJsonapiMemberName(t *testing.T) {
-	ok := isValidJsonapiMemberName("")
-	assert.Equal(t, false, ok)
-
-	ok = isValidJsonapiMemberName("h")
-	assert.Equal(t, true, ok)
-
-	ok = isValidJsonapiMemberName("-hi")
-	assert.Equal(t, false, ok)
-
-	ok = isValidJsonapiMemberName("hi-")
-	assert.Equal(t, false, ok)
-
-	ok = isValidJsonapiMemberName("$hi")
-	assert.Equal(t, false, ok)
-
-	ok = isValidJsonapiMemberName("hi$")
-	assert.Equal(t, false, ok)
-
-	ok = isValidJsonapiMemberName("hi$hi")
-	assert.Equal(t, false, ok)
-
-	ok = isValidJsonapiMemberName("hi hi")
-	assert.Equal(t, false, ok)
-
-	ok = isValidJsonapiMemberName("test_01")
-	assert.Equal(t, true, ok)
-
-	ok = isValidJsonapiMemberName("Test01")
-	assert.Equal(t, true, ok)
-}
-
-func TestIsValidSQLName(t *testing.T) {
-	ok := isValidJsonapiMemberName("")
-	assert.Equal(t, false, ok)
-
-	ok = isValidSQLName("%hi")
-	assert.Equal(t, false, ok)
-
-	ok = isValidSQLName("hi")
-	assert.Equal(t, true, ok)
-
-	ok = isValidSQLName("_hi")
-	assert.Equal(t, true, ok)
+	// TODO: tests for rest of field properties
 }

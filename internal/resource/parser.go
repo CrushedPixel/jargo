@@ -5,16 +5,19 @@ import (
 	"reflect"
 	"crushedpixel.net/jargo/internal/parser"
 	"github.com/iancoleman/strcase"
-	"regexp"
 )
 
 const (
+	primaryFieldName  = "Id"
+	primaryColumnName = "id"
+
+	unexportedFieldName = "-"
+
 	jargoFieldTag   = "jargo"
 	tableNameOption = "table"
-)
 
-var sqlNameRegex = regexp.MustCompile(`^[0-9a-zA-Z$_]+$`)
-var memberNameRegex = regexp.MustCompile(`^[[:alnum:]]([a-zA-Z0-9\-_]*[[:alnum:]])?$`)
+	columnNameOption = "column"
+)
 
 type resourceDefinition struct {
 	fields []*field
@@ -37,58 +40,100 @@ func parseResourceStruct(model interface{}) (*resourceDefinition, error) {
 	}
 
 	// parse Id field
-	idField, ok := t.FieldByName("Id")
-	if !ok {
-		return nil, errMissingIdField
-	}
-
-	if idField.Type != reflect.TypeOf(int64(0)) {
-		return nil, errInvalidIdType
-	}
-
-	idTag, ok := idField.Tag.Lookup(jargoFieldTag)
-	if !ok {
-		return nil, errUnannotatedIdField
+	name, table, err := parseIdField(t)
+	if err != nil {
+		return nil, err
 	}
 
 	rd := new(resourceDefinition)
+	rd.name = name
+	rd.table = table
 
-	defaultName := pluralize(strcase.ToSnake(t.Name()))
-	parsed := parser.ParseJargoTagDefaultName(idTag, defaultName)
+	// parse all attributes
+	for i := 0; i < t.NumField(); i++ {
+		f := t.Field(i)
+		field, err := parseAttrField(&f)
+		if err != nil {
+			return nil, err
+		}
 
-	rd.name = parsed.Name
-	if table := parsed.Options[tableNameOption]; table != "" {
-		rd.table = table
-	} else {
-		rd.table = rd.name
-	}
-
-	// validate member name
-	if !isValidJsonapiMemberName(rd.name) {
-		return nil, errInvalidMemberName
-	}
-
-	// validate table name
-	if !isValidSQLName(rd.table) {
-		return nil, errInvalidTableName
+		rd.fields = append(rd.fields, field)
 	}
 
 	return rd, nil
 }
 
-func pluralize(val string) string {
-	l := len(val)
-	if l == 0 || val[l - 1] == 's' {
-		return val
+func parseIdField(t reflect.Type) (name string, table string, err error) {
+	idField, ok := t.FieldByName(primaryFieldName)
+	if !ok {
+		return "", "", errMissingIdField
 	}
 
-	return val + "s"
+	if idField.Type != reflect.TypeOf(int64(0)) {
+		return "", "", errInvalidIdType
+	}
+
+	idTag, ok := idField.Tag.Lookup(jargoFieldTag)
+	if !ok {
+		return "", "", errUnannotatedIdField
+	}
+
+	defaultName := pluralize(strcase.ToSnake(t.Name()))
+	parsed := parser.ParseJargoTagDefaultName(idTag, defaultName)
+
+	name = parsed.Name
+	if tbl := parsed.Options[tableNameOption]; tbl != "" {
+		table = tbl
+	} else {
+		table = name
+	}
+
+	// validate member name
+	if !isValidJsonapiMemberName(name) {
+		return "", "", errInvalidMemberName
+	}
+
+	// validate table name
+	if !isValidSQLName(table) {
+		return "", "", errInvalidTableName
+	}
+
+	return name, table, nil
 }
 
-func isValidJsonapiMemberName(val string) bool {
-	return memberNameRegex.MatchString(val)
-}
+func parseAttrField(f *reflect.StructField) (*field, error) {
+	field := new(field)
 
-func isValidSQLName(val string) bool {
-	return sqlNameRegex.MatchString(val)
+	if f.Name == primaryFieldName {
+		field.typ = id
+		field.column = primaryColumnName
+		return field, nil
+	}
+
+	defaultName := strcase.ToSnake(f.Name)
+	parsed := parser.ParseJargoTagDefaultName(f.Tag.Get(jargoFieldTag), defaultName)
+
+	field.name = parsed.Name
+	if column := parsed.Options[columnNameOption]; column != "" {
+		field.column = column
+	} else {
+		if field.name != unexportedFieldName {
+			field.column = field.name
+		} else {
+			field.column = defaultName
+		}
+	}
+
+	// validate member name
+	if field.name != unexportedFieldName && !isValidJsonapiMemberName(field.name) {
+		return nil, errInvalidMemberName
+	}
+
+	// validate table name
+	if !isValidSQLName(field.column) {
+		return nil, errInvalidColumnName
+	}
+
+	// TODO parse rest of field attributes
+	return field, nil
 }
