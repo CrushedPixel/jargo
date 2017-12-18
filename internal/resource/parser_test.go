@@ -23,6 +23,14 @@ type InvalidTableName struct {
 	Id int64 `jargo:",table:äöü"`
 }
 
+type InvalidTableAlias struct {
+	Id int64 `jargo:",table:resources,alias:äöü"`
+}
+
+type TableAliasEqualsTableName struct {
+	Id int64 `jargo:",table:information,alias:information"`
+}
+
 type InvalidTypeName0 struct {
 	Id int64 `jargo:"-asdf"`
 }
@@ -158,6 +166,12 @@ func TestParseResourceStruct(t *testing.T) {
 
 	_, err = parseResourceStruct(InvalidTableName{})
 	assert.EqualError(t, err, errInvalidTableName.Error())
+
+	_, err = parseResourceStruct(InvalidTableAlias{})
+	assert.EqualError(t, err, errInvalidTableAlias.Error())
+
+	_, err = parseResourceStruct(TableAliasEqualsTableName{})
+	assert.EqualError(t, err, errAliasEqualsTableName.Error())
 
 	_, err = parseResourceStruct(InvalidTypeName0{})
 	assert.EqualError(t, err, errInvalidMemberName.Error())

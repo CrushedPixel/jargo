@@ -15,6 +15,7 @@ const (
 
 	jargoFieldTag   = "jargo"
 	optionTable     = "table"
+	optionAlias     = "alias"
 	optionColumn    = "column"
 	optionHas       = "has"
 	optionBelongsTo = "belongsTo"
@@ -31,6 +32,7 @@ type resourceDefinition struct {
 	fields []*field
 	name   string
 	table  string
+	alias  string
 }
 
 var errInvalidModelType = errors.New("model has to be struct")
@@ -39,6 +41,8 @@ var errInvalidIdType = errors.New("id field must be of type int64")
 var errUnannotatedIdField = errors.New("id field is missing jargo annotation")
 var errInvalidMemberName = errors.New(`member name has to adhere to the jsonapi specification and not include characters marked as "not recommended"`)
 var errInvalidTableName = errors.New("table name may only consist of [0-9,a-z,A-Z$_]")
+var errInvalidTableAlias = errors.New("alias may only consist of [0-9,a-z,A-Z$_]")
+var errAliasEqualsTableName = errors.New("alias may not be equal to table name")
 var errInvalidColumnName = errors.New("column name may only consist of [0-9,a-z,A-Z$_]")
 var errStructType = errors.New("structs are not allowed as a field type. for a relation, use a struct pointer instead")
 var errMissingRelationTag = errors.New("missing relation tag on struct pointer or slice field. has, belongsTo or many2many option is required")
@@ -53,22 +57,21 @@ func errDisallowedOption(option string) error {
 }
 
 func parseResourceStruct(model interface{}) (*resourceDefinition, error) {
-	t := reflect.TypeOf(model)
+	return parseResourceType(reflect.TypeOf(model))
+}
+
+func parseResourceType(t reflect.Type) (*resourceDefinition, error) {
 	if t.Kind() != reflect.Struct {
 		return nil, errInvalidModelType
 	}
 
 	// parse Id field
-	name, table, err := parseIdField(t)
+	rd, err := parseIdField(t)
 	if err != nil {
 		return nil, err
 	}
 
-	rd := &resourceDefinition{
-		name:   name,
-		table:  table,
-		fields: make([]*field, 0),
-	}
+	rd.fields = make([]*field, 0)
 
 	// parse all attributes
 	for i := 0; i < t.NumField(); i++ {
@@ -84,47 +87,63 @@ func parseResourceStruct(model interface{}) (*resourceDefinition, error) {
 	return rd, nil
 }
 
-func parseIdField(t reflect.Type) (name string, table string, err error) {
+func parseIdField(t reflect.Type) (*resourceDefinition, error) {
 	idField, ok := t.FieldByName(primaryFieldName)
 	if !ok {
-		return "", "", errMissingIdField
+		return nil, errMissingIdField
 	}
 
 	if idField.Type != reflect.TypeOf(int64(0)) {
-		return "", "", errInvalidIdType
+		return nil, errInvalidIdType
 	}
 
 	idTag, ok := idField.Tag.Lookup(jargoFieldTag)
 	if !ok {
-		return "", "", errUnannotatedIdField
+		return nil, errUnannotatedIdField
 	}
 
-	defaultName := pluralize(strcase.ToSnake(t.Name()))
+	singleName := strcase.ToSnake(t.Name())
+	defaultName := pluralize(singleName)
 	parsed := parser.ParseJargoTagDefaultName(idTag, defaultName)
 
-	name = parsed.Name
-	if tbl := parsed.Options[optionTable]; tbl != "" {
-		table = tbl
-	} else {
-		table = name
+	rd := &resourceDefinition{
+		name:  parsed.Name,
+		table: parsed.Name,
+		alias: singleName,
 	}
 
-	// ensure user is not trying to set column name
-	if parsed.Options[optionColumn] != "" {
-		return "", "", errDisallowedOption(optionColumn)
+	for option, value := range parsed.Options {
+		switch option {
+		case optionTable:
+			rd.table = value
+		case optionAlias:
+			rd.alias = value
+		default:
+			return nil, errDisallowedOption(option)
+		}
 	}
 
 	// validate member name
-	if !isValidJsonapiMemberName(name) {
-		return "", "", errInvalidMemberName
+	if !isValidJsonapiMemberName(rd.name) {
+		return nil, errInvalidMemberName
 	}
 
 	// validate table name
-	if !isValidSQLName(table) {
-		return "", "", errInvalidTableName
+	if !isValidSQLName(rd.table) {
+		return nil, errInvalidTableName
 	}
 
-	return name, table, nil
+	// validate alias
+	if !isValidSQLName(rd.alias) {
+		return nil, errInvalidTableAlias
+	}
+
+	// ensure alias is not the same as table name
+	if rd.alias == rd.table {
+		return nil, errAliasEqualsTableName
+	}
+
+	return rd, nil
 }
 
 func parseAttrField(f *reflect.StructField) (*field, error) {

@@ -13,3 +13,4 @@ Gotchas:
 Ideas:
 - add websocket support, mirroring all REST endpoints and adding PubSub capabilities
 - add authentication system to avoid having to write one for every new app
+- support for non-int64 ids
