@@ -1,5 +1,7 @@
 package resource
 
+import "reflect"
+
 type Resource struct {
 	// TODO
 }
@@ -16,19 +18,21 @@ const (
 )
 
 type field struct {
+	structField *reflect.StructField
+
 	typ fieldType
 
-	name   string // jsonapi attribute name
-	column string // table column name
+	name   string // jsonapi attribute name. typ=attribute,relationship only
+	column string // table column name.      typ=attribute only
 
 	readonly bool
 	sort     bool
 	filter   bool
 
-	notnull bool
-	unique  bool
-	defavlt string
+	sqlNotnull bool   // typ=attribute,relationship only
+	sqlUnique  bool   // typ=attribute,relationship only
+	sqlDefault string // typ=attribute only
 
-	fk        string // has, belongsTo only
-	joinTable string // many2many only
+	pgFk        string // typ=has only
+	pgJoinTable string // typ=many2many only
 }
