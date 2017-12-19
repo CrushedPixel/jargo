@@ -1,4 +1,4 @@
-package jargo
+package application
 
 import (
 	"crushedpixel.net/margo"

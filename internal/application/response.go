@@ -1,4 +1,4 @@
-package jargo
+package application
 
 import (
 	"github.com/gin-gonic/gin"

@@ -48,6 +48,7 @@ func (r *Registry) getResource(t reflect.Type) (*Resource, error) {
 	}
 
 	res := &Resource{
+		Type:        t,
 		initialized: false,
 		definition:  definition,
 	}
@@ -73,8 +74,24 @@ func (r *Registry) InitializeResources() error {
 
 	// initialize resources
 	for _, res := range r.resources {
-		res.jsonapiModel = generateJsonapiStructType(res.definition)
-		res.pgModel = generatePGModel(r, res.definition)
+		// generate static jsonapi fields
+		res.staticJsonapiFields = generateStaticJsonapiFields(res.definition)
+
+		// generate static pg fields
+		pgFields := generateStaticPGFields(res.definition)
+
+		// generate ResourceFields
+		res.fields = make([]*resourceField, 0)
+		for _, f := range res.definition.fields {
+			if f.typ != id { // the id field is not part of the resources fields
+				field := newResourceField(f, r)
+				res.fields = append(res.fields, field)
+				pgFields = append(pgFields, field.pgFields...)
+			}
+		}
+
+		// generate pg model
+		res.pgModel = reflect.StructOf(pgFields)
 
 		res.initialized = true
 	}

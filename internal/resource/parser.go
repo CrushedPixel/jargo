@@ -23,16 +23,50 @@ const (
 	optionReadonly  = "readonly"
 	optionSort      = "sort"
 	optionFilter    = "filter"
+	optionOmitempty = "omitempty"
 	optionNotnull   = "notnull"
 	optionUnique    = "unique"
 	optionDefault   = "default"
 )
 
 type resourceDefinition struct {
-	fields []*field
+	fields []*fieldDefinition
 	name   string
 	table  string
 	alias  string
+}
+
+type fieldType int
+
+const (
+	_         fieldType = iota
+	id
+	attribute
+	has
+	belongsTo
+	many2many
+)
+
+type fieldDefinition struct {
+	structField *reflect.StructField
+
+	typ fieldType
+
+	name   string // jsonapi attribute name. typ=attribute,relationship only
+	column string // table column name.      typ=attribute,belongsTo only
+
+	readonly bool
+	sort     bool
+	filter   bool
+
+	jsonOmitempty bool // typ=attribute,relationship only
+
+	sqlNotnull bool   // typ=attribute,relationship only
+	sqlUnique  bool   // typ=attribute,relationship only
+	sqlDefault string // typ=attribute only
+
+	pgFk        string // typ=has only
+	pgJoinTable string // typ=many2many only
 }
 
 var errInvalidModelType = errors.New("model has to be struct")
@@ -71,7 +105,7 @@ func parseResourceType(t reflect.Type) (*resourceDefinition, error) {
 		return nil, err
 	}
 
-	rd.fields = make([]*field, 0)
+	rd.fields = make([]*fieldDefinition, 0)
 
 	// parse all attributes
 	for i := 0; i < t.NumField(); i++ {
@@ -146,9 +180,9 @@ func parseIdField(t reflect.Type) (*resourceDefinition, error) {
 	return rd, nil
 }
 
-func parseAttrField(f *reflect.StructField) (*field, error) {
+func parseAttrField(f *reflect.StructField) (*fieldDefinition, error) {
 	if f.Name == primaryFieldName {
-		return &field{
+		return &fieldDefinition{
 			structField: f,
 			typ:         id,
 		}, nil
@@ -157,18 +191,19 @@ func parseAttrField(f *reflect.StructField) (*field, error) {
 	defaultName := strcase.ToSnake(f.Name)
 	parsed := parser.ParseJargoTagDefaultName(f.Tag.Get(jargoFieldTag), defaultName)
 
-	field := &field{
+	field := &fieldDefinition{
 		structField: f,
 		name:        parsed.Name,
 
-		readonly:    false,
-		sort:        true,
-		filter:      true,
-		sqlNotnull:  false,
-		sqlUnique:   false,
-		sqlDefault:  "",
-		pgFk:        "",
-		pgJoinTable: "",
+		readonly:      false,
+		sort:          true,
+		filter:        true,
+		jsonOmitempty: false,
+		sqlNotnull:    false,
+		sqlUnique:     false,
+		sqlDefault:    "",
+		pgFk:          "",
+		pgJoinTable:   "",
 	}
 
 	// get field type
@@ -279,6 +314,12 @@ func parseAttrField(f *reflect.StructField) (*field, error) {
 				return nil, err
 			}
 			field.filter = b
+		case optionOmitempty:
+			b, err := parseBool(value)
+			if err != nil {
+				return nil, err
+			}
+			field.jsonOmitempty = b
 		case optionNotnull:
 			b, err := parseBool(value)
 			if err != nil {

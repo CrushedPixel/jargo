@@ -1,4 +1,4 @@
-package jargo
+package application
 
 type Controller struct {
 	Resource   *Resource

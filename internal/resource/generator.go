@@ -3,106 +3,150 @@ package resource
 import (
 	"reflect"
 	"fmt"
-	"github.com/pkg/errors"
 )
 
-// TODO: allow for omitempty
-func generateJsonapiStructType(definition *resourceDefinition) reflect.Type {
-	var fields []reflect.StructField
+const (
+	primaryFieldJsonapiName = "id"
+	primaryFieldColumn      = "id"
+)
 
-	for _, f := range definition.fields {
+// generates all fields that are always required to describe a resource via jsonapi,
+// currently only the Id field
+func generateStaticJsonapiFields(d *resourceDefinition) []reflect.StructField {
+	for _, f := range d.fields {
+		if f.typ != id {
+			continue
+		}
+
+		tag := fmt.Sprintf(`jsonapi:"primary,%s"`, d.name)
+
 		sf := reflect.StructField{
 			Name: f.structField.Name,
 			Type: f.structField.Type,
+			Tag:  reflect.StructTag(tag),
 		}
 
-		var tag string
-		switch f.typ {
-		case id:
-			tag = fmt.Sprintf(`jsonapi:"primary,%s"`, definition.name)
-		case attribute:
-			tag = fmt.Sprintf(`jsonapi:"attr,%s"`, f.name)
-		case has, belongsTo, many2many:
-			tag = fmt.Sprintf(`jsonapi:"relation,%s"`, f.name)
-		}
-
-		sf.Tag = reflect.StructTag(tag)
-		fields = append(fields, sf)
+		return []reflect.StructField{sf}
 	}
 
-	return reflect.StructOf(fields)
+	panic("could not find id field")
 }
 
-func generatePGModel(r *Registry, definition *resourceDefinition) reflect.Type {
-	var fields []reflect.StructField
-	// specify table name and alias
-	str := new(struct{})
+// generates the struct fields required to describe an attribute field via jsonapi
+func generateJsonapiFields(f *fieldDefinition) []reflect.StructField {
+	sf := reflect.StructField{
+		Name: f.structField.Name,
+		Type: f.structField.Type,
+	}
+
+	tag := `jsonapi:"`
+	switch f.typ {
+	case attribute:
+		tag += fmt.Sprintf(`attr,%s`, f.name)
+	case has, belongsTo, many2many:
+		tag += fmt.Sprintf(`relation,%s`, f.name)
+	default:
+		panic("can only generate jsonapi fields for member fields")
+	}
+
+	if f.jsonOmitempty {
+		tag += `,omitempty`
+	}
+
+	tag += `"`
+
+	sf.Tag = reflect.StructTag(tag)
+	return []reflect.StructField{sf}
+}
+
+// generates all fields that are always required to describe a resource via go-pg,
+// currently the TableName and Id field
+func generateStaticPGFields(d *resourceDefinition) []reflect.StructField {
+	empty := new(struct{})
 	tableNameField := reflect.StructField{
 		Name: "TableName",
-		Type: reflect.TypeOf(*str),
-		Tag:  reflect.StructTag(fmt.Sprintf(`sql:"%s,alias:%s"`, definition.table, definition.alias)),
+		Type: reflect.TypeOf(*empty),
+		Tag:  reflect.StructTag(fmt.Sprintf(`sql:"%s,alias:%s"`, d.table, d.alias)),
 	}
-	fields = append(fields, tableNameField)
 
-	for _, f := range definition.fields {
+	fields := []reflect.StructField{tableNameField}
+
+	for _, f := range d.fields {
+		if f.typ != id {
+			continue
+		}
+
 		sf := reflect.StructField{
 			Name: f.structField.Name,
 			Type: f.structField.Type,
+			Tag:  reflect.StructTag(fmt.Sprintf(`sql:"%s,pk"`, primaryFieldColumn)),
 		}
 
-		tag := ""
-		switch f.typ {
-		case id:
-			tag = `sql:",pk"`
-		case attribute:
-			tag = fmt.Sprintf(`sql:"%s`, f.column)
-
-			if f.sqlNotnull {
-				tag += ",notnull"
-			}
-			if f.sqlUnique {
-				tag += ",unique"
-			}
-			if f.sqlDefault != "" {
-				tag += fmt.Sprintf(",default:%s", f.sqlDefault)
-			}
-
-			tag += `"`
-		case has:
-			if f.pgFk != "" {
-				tag = fmt.Sprintf(`pg:",fk:%s"`, f.pgFk)
-			}
-		case belongsTo:
-			// generate id field holding id of relation field
-			res, err := r.getResource(getStructType(f.structField.Type))
-			if err != nil {
-				panic(err)
-			}
-
-			// get id field of relation and get its type
-			var idFieldType reflect.Type
-			for _, f0 := range res.definition.fields {
-				if f0.typ == id {
-					idFieldType = f0.structField.Type
-				}
-			}
-			if idFieldType == nil {
-				panic(errors.New("could not get id type of relation"))
-			}
-
-			idField := reflect.StructField{
-				Name: fmt.Sprintf("%sId", f.structField.Name),
-				Type: idFieldType,
-			}
-
-			fields = append(fields, idField)
-		case many2many:
-			tag = fmt.Sprintf(`pg:",many2many:%s"`, f.pgJoinTable)
-		}
-
-		sf.Tag = reflect.StructTag(tag)
-		fields = append(fields, sf)
+		return append(fields, sf)
 	}
 
-	return reflect.StructOf(fields)
+	panic("could not find id field")
+}
+
+// generates the struct field required to describe an attribute field via go-pg.
+// for belongsTo relation fields, generates the id field for the foreign value.
+func generatePGFields(f *fieldDefinition, r *Registry) []reflect.StructField {
+	fields := make([]reflect.StructField, 0)
+
+	sf := reflect.StructField{
+		Name: f.structField.Name,
+		Type: f.structField.Type,
+	}
+
+	tag := ""
+	switch f.typ {
+	case attribute:
+		tag = fmt.Sprintf(`sql:"%s`, f.column)
+
+		if f.sqlNotnull {
+			tag += ",notnull"
+		}
+		if f.sqlUnique {
+			tag += ",unique"
+		}
+		if f.sqlDefault != "" {
+			tag += fmt.Sprintf(",default:%s", f.sqlDefault)
+		}
+
+		tag += `"`
+	case has:
+		if f.pgFk != "" {
+			tag = fmt.Sprintf(`pg:",fk:%s"`, f.pgFk)
+		}
+	case belongsTo:
+		// get id field of relation from registry to determine id type
+		res, err := r.getResource(getStructType(f.structField.Type))
+		if err != nil {
+			panic(err)
+		}
+
+		var idFieldType reflect.Type
+		for _, f0 := range res.definition.fields {
+			if f0.typ == id {
+				idFieldType = f0.structField.Type
+			}
+		}
+		if idFieldType == nil {
+			panic("could not get id type of relation")
+		}
+
+		idField := reflect.StructField{
+			Name: fmt.Sprintf("%sId", f.structField.Name),
+			Type: idFieldType,
+		}
+
+		fields = append(fields, idField)
+	case many2many:
+		tag = fmt.Sprintf(`pg:",many2many:%s"`, f.pgJoinTable)
+	default:
+		panic("can only generate pg fields for member fields")
+	}
+
+	sf.Tag = reflect.StructTag(tag)
+	return append(fields, sf)
 }

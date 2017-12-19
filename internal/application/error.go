@@ -1,4 +1,4 @@
-package jargo
+package application
 
 import (
 	"github.com/google/jsonapi"

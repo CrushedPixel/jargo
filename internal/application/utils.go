@@ -1,4 +1,4 @@
-package jargo
+package application
 
 func containsValue(slice []string, value string) bool {
 	for _, val := range slice {

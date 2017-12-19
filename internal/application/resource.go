@@ -1,4 +1,4 @@
-package jargo
+package application
 
 import (
 	"reflect"
@@ -15,124 +15,6 @@ import (
 	"bytes"
 )
 
-const (
-	jsonApiIdField = "id"
-
-	annotationJSONAPI   = "jsonapi"
-	annotationPrimary   = "primary"
-	annotationAttribute = "attr"
-	annotationRelation  = "relation"
-
-	annotationSeparator         = ","
-	annotationKeyValueSeparator = ":"
-
-	annotationJargo    = "jargo"
-	annotationFilter   = "filter"
-	annotationSort     = "sort"
-	annotationReadonly = "readonly"
-)
-
-var ErrInvalidResourceType = errors.New("resource must be pointer to struct")
-var ErrInvalidIdType = errors.New("only int64 id fields are supported")
-var ErrMissingPrimaryField = errors.New("missing jsonapi primary field")
-var ErrMissingSQLPK = errors.New("jsonapi primary field must be marked as primary key in sql struct tag")
-var ErrClientId = errors.New("client-generated ids are not supported")
-var ErrInvalidOriginal = errors.New("original must be a struct pointer")
-
-type Resource struct {
-	Name   string         // resource name parsed from jsonapi
-	Table  *orm.Table     // the database table
-	Fields ResourceFields // information about the model's fields
-
-	typ reflect.Type // the database model type (pointer to a struct)
-}
-
-// internally used for parsing jsonapi struct tags
-type jsonapiField struct {
-	Name string
-	Type ResourceFieldType
-}
-
-func NewResource(model interface{}) (*Resource, error) {
-	val := reflect.ValueOf(model)
-	if val.Kind() != reflect.Ptr || val.Elem().Kind() != reflect.Struct {
-		return nil, ErrInvalidResourceType
-	}
-
-	prtType := reflect.TypeOf(model)
-
-	// get type of struct type points at
-	typ := prtType.Elem()
-	table := orm.Tables.Get(typ)
-
-	modelName := ""
-
-	fields := make(ResourceFields)
-	for i := 0; i < typ.NumField(); i++ {
-		// iterate over model's fields,
-		// parsing field information
-
-		field := typ.Field(i)
-		prop := parseJsonapiTag(&field)
-		if prop == nil {
-			continue
-		}
-
-		if prop.Type == PrimaryField {
-			if field.Type.Kind() != reflect.Int64 {
-				return nil, ErrInvalidIdType
-			}
-
-			// ensure the primary key field has the sql pk struct tag
-			sqlTag := field.Tag.Get("sql")
-			spl := strings.Split(sqlTag, annotationSeparator)
-			if len(spl) < 2 || spl[1] != "pk" {
-				return nil, ErrMissingSQLPK
-			}
-
-			modelName = prop.Name
-
-			// the name of the field itself is "id"
-			prop.Name = jsonApiIdField
-		}
-
-		var pgField *orm.Field
-		// relationships are persisted with a non-jsonapi-annotated id field
-		if prop.Type != RelationField {
-			pgField = getPGField(table, &field)
-			if pgField == nil {
-				continue
-			}
-		} else {
-			// TODO get the corresponding pg field if
-		}
-
-		settings, err := getFieldSettings(&field)
-		if err != nil {
-			return nil, err
-		}
-
-		fields[prop.Name] = &ResourceField{
-			StructField: &field,
-			Name:        prop.Name,
-			Type:        prop.Type,
-			PGField:     pgField,
-			Settings:    settings,
-		}
-	}
-
-	if modelName == "" {
-		return nil, ErrMissingPrimaryField
-	}
-
-	return &Resource{
-		Name:   modelName,
-		Table:  table,
-		Fields: fields,
-		typ:    typ,
-	}, nil
-}
-
 func (m *Resource) selectAllColumns(q *Query) {
 	// select all columns ("table".*)
 	q.Column(fmt.Sprintf("%s.*", m.Table.ModelName))
@@ -144,14 +26,14 @@ func (m *Resource) selectAllColumns(q *Query) {
 }
 
 func (m *Resource) Select(db *pg.DB) *Query {
-	q := NewSelectQuery(db, m.newSlice())
+	q := newSelectQuery(db, m.newSlice())
 	m.selectAllColumns(q)
 
 	return q
 }
 
 func (m *Resource) SelectOne(db *pg.DB) *Query {
-	q := NewSelectQuery(db, m.newInstance())
+	q := newSelectQuery(db, m.newInstance())
 	m.selectAllColumns(q)
 
 	return q

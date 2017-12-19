@@ -1,4 +1,4 @@
-package jargo
+package application
 
 import (
 	"github.com/go-pg/pg/orm"
@@ -45,19 +45,19 @@ func newQuery(typ QueryType, db *pg.DB, instance interface{}) *Query {
 	}
 }
 
-func NewSelectQuery(db *pg.DB, instance interface{}) *Query {
+func newSelectQuery(db *pg.DB, instance interface{}) *Query {
 	return newQuery(Select, db, instance)
 }
 
-func NewInsertQuery(db *pg.DB, instance interface{}) *Query {
+func newInsertQuery(db *pg.DB, instance interface{}) *Query {
 	return newQuery(Insert, db, instance)
 }
 
-func NewUpdateQuery(db *pg.DB, instance interface{}) *Query {
+func newUpdateQuery(db *pg.DB, instance interface{}) *Query {
 	return newQuery(Update, db, instance)
 }
 
-func NewDeleteQuery(db *pg.DB, instance interface{}) *Query {
+func newDeleteQuery(db *pg.DB, instance interface{}) *Query {
 	return newQuery(Delete, db, instance)
 }
 

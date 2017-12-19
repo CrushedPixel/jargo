@@ -51,14 +51,15 @@ func TestRegistry(t *testing.T) {
 	assert.Nil(t, err)
 
 	// validate jsonapi and pg models
-	assertStructField(t, human.jsonapiModel, "Id", `jsonapi:"primary,humans"`)
-	assertStructField(t, human.jsonapiModel, "Name", `jsonapi:"attr,name"`)
-	assertStructField(t, human.jsonapiModel, "Age", `jsonapi:"attr,age"`)
-	assertStructField(t, human.jsonapiModel, "Gender", `jsonapi:"attr,gender"`)
-	assertStructField(t, human.jsonapiModel, "Dogs", `jsonapi:"relation,dogs"`)
+	jsonapiModel := human.jsonapiModel(allFields(human))
+	assertStructField(t, jsonapiModel, "Id", `jsonapi:"primary,humans"`)
+	assertStructField(t, jsonapiModel, "Name", `jsonapi:"attr,name"`)
+	assertStructField(t, jsonapiModel, "Age", `jsonapi:"attr,age"`)
+	assertStructField(t, jsonapiModel, "Gender", `jsonapi:"attr,gender"`)
+	assertStructField(t, jsonapiModel, "Dogs", `jsonapi:"relation,dogs"`)
 
 	assertStructField(t, human.pgModel, "TableName", `sql:"humans,alias:human"`)
-	assertStructField(t, human.pgModel, "Id", `sql:",pk"`)
+	assertStructField(t, human.pgModel, "Id", `sql:"id,pk"`)
 	assertStructField(t, human.pgModel, "Name", `sql:"name"`)
 	assertStructField(t, human.pgModel, "Age", `sql:"age"`)
 	assertStructField(t, human.pgModel, "Gender", `sql:"gender"`)
@@ -68,6 +69,7 @@ func TestRegistry(t *testing.T) {
 	assertStructField(t, dog.pgModel, "Owner", "")
 
 	// TODO: test many2many and hasMany relations
+	// TODO: test notnull, unique, default options
 }
 
 func assertStructField(t *testing.T, typ reflect.Type, name string, tag string) {
