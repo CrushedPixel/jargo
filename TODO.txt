@@ -1,6 +1,5 @@
 TODO:
 - support for namespaces
-- change filter operator system from filter[attr:op] to filter[attr][op] for easier encoding on the client
 - support for included values
 
 - automatically create indices for sortable fields to improve pagination speed
