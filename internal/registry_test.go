@@ -47,7 +47,7 @@ func TestRegistry(t *testing.T) {
 	dog, err := registry.RegisterResource(Dog{})
 	assert.Nil(t, err)
 
-	err = registry.initializeResources()
+	err = registry.InitializeResources()
 	assert.Nil(t, err)
 
 	// validate jsonapi and pg models
@@ -58,7 +58,7 @@ func TestRegistry(t *testing.T) {
 	assertStructField(t, jsonapiModel, "Gender", `jsonapi:"attr,gender"`)
 	assertStructField(t, jsonapiModel, "Dogs", `jsonapi:"relation,dogs"`)
 
-	assertStructField(t, human.pgModel, "TableName", `sql:"humans,alias:human"`)
+	assertStructField(t, human.pgModel, "TableName", `sql:"\"humans\",alias:\"human\""`)
 	assertStructField(t, human.pgModel, "Id", `sql:"id,pk"`)
 	assertStructField(t, human.pgModel, "Name", `sql:"name"`)
 	assertStructField(t, human.pgModel, "Age", `sql:"age"`)

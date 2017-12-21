@@ -71,7 +71,7 @@ type fieldDefinition struct {
 
 var errInvalidModelType = errors.New("model has to be struct")
 var errMissingIdField = errors.New("missing id field")
-var errInvalidIdType = errors.New("id field must be of type int64")
+var errInvalidIdType = errors.New("id field must be of type int")
 var errUnannotatedIdField = errors.New("id field is missing jargo annotation")
 var errInvalidMemberName = errors.New(`member name has to adhere to the jsonapi specification and not include characters marked as "not recommended"`)
 var errInvalidTableName = errors.New("table name may only consist of [0-9,a-z,A-Z$_]")

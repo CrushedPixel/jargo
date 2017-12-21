@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"errors"
 	"github.com/go-pg/pg/orm"
+	"net/url"
+	"crushedpixel.net/jargo/internal/parser"
 )
 
 const (
@@ -21,7 +23,16 @@ func (p *Pagination) ApplyToQuery(q *orm.Query) {
 	q.Offset(p.Number * p.Size).Limit(p.Size)
 }
 
-func ParsePagination(values map[string]string, maxPageSize int) (*Pagination, error) {
+func ParsePagination(query url.Values, maxPageSize int) (*Pagination, error) {
+	parsed, err := parser.ParsePageParameters(query)
+	if err != nil {
+		return nil, err
+	}
+
+	return newPagination(parsed, maxPageSize)
+}
+
+func newPagination(values map[string]string, maxPageSize int) (*Pagination, error) {
 	p := &Pagination{
 		Number: 0,
 		Size:   maxPageSize,

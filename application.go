@@ -7,9 +7,9 @@ import (
 	"log"
 	"github.com/gin-gonic/gin"
 	"fmt"
-	"crushedpixel.net/jargo/internal/resource"
 	"crushedpixel.net/jargo/api"
 	"crushedpixel.net/jargo/internal"
+	"net/url"
 )
 
 const (
@@ -47,7 +47,7 @@ var defaultErrorHandler margo.ErrorHandlerFunc = func(c *gin.Context, r interfac
 func NewApplication(db *pg.DB) *Application {
 	server := margo.NewServer()
 	server.ErrorHandler = defaultErrorHandler
-	registry := resource.NewRegistry()
+	registry := internal.NewRegistry()
 	return &Application{
 		Server:      server,
 		registry:    registry,
@@ -70,14 +70,21 @@ func (app *Application) Run(addr ...string) error {
 		return errors.New("application can't be run multiple times")
 	}
 	app.ran = true
-
 	log.Println("starting jargo application")
-
 	app.Use(injectApplicationMiddleware(app))
+
+	err := app.registry.InitializeResources()
+	if err != nil {
+		return err
+	}
 
 	for _, c := range app.Controllers {
 		c.initialize(app)
 	}
 
 	return app.Server.Run(addr...)
+}
+
+func (app *Application) ParsePagination(query url.Values) (api.Pagination, error) {
+	return internal.ParsePagination(query, app.MaxPageSize)
 }

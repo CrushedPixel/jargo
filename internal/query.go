@@ -7,12 +7,15 @@ import (
 	"github.com/go-pg/pg"
 	"github.com/gin-gonic/gin"
 	"crushedpixel.net/jargo/api"
+	"net/http"
+	"fmt"
 )
 
 var errQueryType = errors.New("invalid query type")
 var errAlreadyExecuted = errors.New("query has already been executed")
 var errNoCollection = errors.New("query must be a collection")
 var errMismatchingResource = errors.New("resource does not match query resource")
+var errMismatchingModelType = errors.New("model type does not match resource model type")
 
 type queryType int
 
@@ -53,11 +56,43 @@ func newQuery(db *pg.DB, resource *Resource, typ queryType, collection bool) *Qu
 		model = resource.newModelInstance()
 	}
 
+	return newQueryWithModel(db, resource, typ, collection, model)
+}
+
+func newQueryWithData(db *pg.DB, resource *Resource, typ queryType, collection bool, data interface{}) *Query {
+	var model interface{}
+	if collection {
+		if reflect.TypeOf(data) != reflect.SliceOf(reflect.PtrTo(resource.modelType)) {
+			panic(errMismatchingModelType)
+		}
+		model = resource.newModelSlice()
+	} else {
+		if reflect.TypeOf(data) != reflect.PtrTo(resource.modelType) {
+			panic(errMismatchingModelType)
+		}
+		model = resource.newModelInstance()
+	}
+
+	// TODO: check if this makes sense
+	// create pg model instance and apply data values to it
+	modelValue := reflect.ValueOf(model)
+	dataValue := reflect.ValueOf(data)
+
+	allFields(resource).applyValues(&dataValue, &modelValue)
+	return newQueryWithModel(db, resource, typ, collection, modelValue.Interface())
+}
+
+func newQueryWithModel(db *pg.DB, resource *Resource, typ queryType, collection bool, model interface{}) *Query {
+	println(fmt.Sprintf("model %v", model))
+	val := reflect.ValueOf(model)
+	println(fmt.Sprintf("value %v", val))
 	return &Query{
-		Query:    db.Model(model),
-		typ:      typ,
-		resource: resource,
-		fields:   allFields(resource),
+		Query:      db.Model(model),
+		typ:        typ,
+		resource:   resource,
+		collection: collection,
+		fields:     allFields(resource),
+		value:      val,
 	}
 }
 
@@ -123,8 +158,6 @@ func (q *Query) Filters(in api.Filters) api.Query {
 	return q
 }
 
-// TODO: sort/page/filter for select many
-
 func (q *Query) GetValue() (interface{}, error) {
 	if !q.executed {
 		q.execute()
@@ -144,12 +177,17 @@ func (q *Query) Send(c *gin.Context) error {
 		return err
 	}
 
-	return q.resource.NewResponse(result, q.fields).Send(c)
+	var status int
+	if q.typ == typeInsert {
+		status = http.StatusCreated
+	} else {
+		status = http.StatusOK
+	}
+
+	return q.resource.ResponseWithStatusCode(result, q.fields, status).Send(c)
 }
 
 func (q *Query) execute() {
-	var err error
-
 	// apply query modifiers
 	q.fields.ApplyToQuery(q.Query)
 
@@ -161,50 +199,40 @@ func (q *Query) execute() {
 			q.pagination.ApplyToQuery(q.Query)
 		}
 		if q.fields != nil {
-			q.fields.ApplyToQuery(q.Query)
+			q.filters.ApplyToQuery(q.Query)
 		}
 	}
 
 	// execute query
 	switch q.typ {
 	case typeSelect:
-		err = q.Select()
+		q.executionError = q.Select()
 		break
 	case typeInsert:
-		_, err = q.Insert()
+		_, q.executionError = q.Insert()
 		break
 	case typeUpdate:
-		_, err = q.Update()
+		_, q.executionError = q.Update()
 		break
 	case typeDelete:
-		_, err = q.Delete()
+		_, q.executionError = q.Delete()
 		break
 	default:
 		panic(errQueryType)
 	}
 
-	// create resource model and populate it with query result fields
-	if q.collection {
-		results := make([]interface{}, 0)
-		for i := 0; i < q.value.Elem().Len(); i++ {
-			val := q.value.Elem().Index(i)
-			result := reflect.New(q.resource.Type)
+	q.executed = true
 
-			q.fields.applyValues(&val, &result)
-
-			results = append(results, result)
-		}
-
-		// result is slice of struct pointers
-		q.result = results
-	} else {
-		result := reflect.New(q.resource.Type)
-		q.fields.applyValues(&q.value, &result)
-
-		// result is struct pointer
-		q.result = result
+	if q.executionError != nil {
+		return
 	}
 
-	q.executed = true
-	q.executionError = err
+	// create resource model and populate it with query result fields
+	val := q.value
+	// dereference slice pointers values as expected by pgModelToResourceModel
+	if q.collection {
+		val = val.Elem()
+	}
+
+	q.result, q.executionError = q.resource.registry.pgModelToResourceModel(q.resource, val)
 }

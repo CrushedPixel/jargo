@@ -16,17 +16,21 @@ type FieldSet struct {
 
 func (fs *FieldSet) ApplyToQuery(q *orm.Query) {
 	// always select the Id field
-	q.Column(primaryFieldName)
+	column(q, fs.resource, primaryFieldColumn)
 
 	// select all columns required by the fieldSet
 	for _, f := range fs.fields {
 		switch f.definition.typ {
 		case attribute:
-			q.Column(f.definition.column)
+			column(q, fs.resource, f.definition.column)
 		case belongsTo, has, many2many:
 			q.Column(f.definition.structField.Name)
 		}
 	}
+}
+
+func column(q *orm.Query, resource *Resource, column string) {
+	q.Column(fmt.Sprintf("%s.%s", resource.definition.alias, column))
 }
 
 func (fs *FieldSet) Resource() api.Resource {
@@ -35,10 +39,21 @@ func (fs *FieldSet) Resource() api.Resource {
 
 // copy all of the FieldSet's values from source to the target struct.
 func (fs *FieldSet) applyValues(source *reflect.Value, target *reflect.Value) {
+	/* TODO: fix input instead
+	// dereference struct pointers
+	if source.Kind() == reflect.Ptr {
+		elem := source.Elem()
+		source = &elem
+	}
+	if target.Kind() == reflect.Ptr {
+		elem := target.Elem()
+		target = &elem
+	}
+	*/
+
 	// always copy the id field
 	value := source.FieldByName(primaryFieldName)
 	target.FieldByName(primaryFieldName).Set(value)
-
 	for _, field := range fs.fields {
 		fieldName := field.definition.structField.Name
 
@@ -71,6 +86,22 @@ func allFields(resource *Resource) *FieldSet {
 	return &FieldSet{
 		resource: resource,
 		fields:   resource.fields,
+	}
+}
+
+// returns a FieldSet containing all fields of a resource that are not marked readonly
+func settableFields(resource *Resource) *FieldSet {
+	fields := make([]*resourceField, 0)
+
+	for _, f := range resource.fields {
+		if !f.definition.readonly {
+			fields = append(fields, f)
+		}
+	}
+
+	return &FieldSet{
+		resource: resource,
+		fields:   fields,
 	}
 }
 

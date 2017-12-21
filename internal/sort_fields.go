@@ -26,7 +26,7 @@ func (s *SortFields) ApplyToQuery(q *orm.Query) {
 			dir = dirDescending
 		}
 
-		q.Order(fmt.Sprintf("%s %s", column, dir))
+		q.Order(fmt.Sprintf("%s.%s %s", s.resource.definition.alias, column, dir))
 	}
 }
 

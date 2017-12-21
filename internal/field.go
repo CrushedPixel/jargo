@@ -12,7 +12,7 @@ type resourceField struct {
 func newResourceField(definition *fieldDefinition, registry *Registry) *resourceField {
 	return &resourceField{
 		definition: definition,
-		jsonapiFields: generateJsonapiFields(definition),
+		jsonapiFields: generateJsonapiFields(definition, registry),
 		pgFields: generatePGFields(definition, registry),
 	}
 }

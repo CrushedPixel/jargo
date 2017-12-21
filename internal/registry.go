@@ -40,6 +40,11 @@ func (r *Registry) getResource(t reflect.Type) (*Resource, error) {
 		return res, nil
 	}
 
+	return r.registerResource(t)
+}
+
+func (r *Registry) registerResource(t reflect.Type) (*Resource, error) {
+	// TODO: proper logging
 	println(fmt.Sprintf("registering resource for type %v", t))
 
 	definition, err := parseResourceType(t)
@@ -47,18 +52,38 @@ func (r *Registry) getResource(t reflect.Type) (*Resource, error) {
 		return nil, err
 	}
 
+	staticJsonapiFields := generateStaticJsonapiFields(definition)
+	staticPGFields := generateStaticPGFields(definition)
+
+	// generate joinJsonapiModel
+	joinJsonapiModel := reflect.StructOf(staticJsonapiFields)
+
+	// generate joinPGModel
+	joinPGFields := staticPGFields
+	for _, f := range definition.fields {
+		joinPGFields = append(joinPGFields, generateJoinPGFields(f)...)
+	}
+	joinPGModel := reflect.StructOf(joinPGFields)
+
 	res := &Resource{
-		Type:        t,
+		modelType:   t,
 		initialized: false,
 		definition:  definition,
+
+		staticJsonapiFields: staticJsonapiFields,
+		staticPGFields:      staticPGFields,
+
+		joinJsonapiModel: joinJsonapiModel,
+		joinPGModel:      joinPGModel,
 	}
 
 	r.resources[t] = res
 	return res, nil
 }
 
+// connects all registered resources and prepares them for usage
 func (r *Registry) InitializeResources() error {
-	// resolve relationships
+	// register related resources
 	for _, res := range r.resources {
 		for _, field := range res.definition.fields {
 			switch field.typ {
@@ -74,11 +99,11 @@ func (r *Registry) InitializeResources() error {
 
 	// initialize resources
 	for _, res := range r.resources {
-		// generate static jsonapi fields
-		res.staticJsonapiFields = generateStaticJsonapiFields(res.definition)
+		if res.initialized {
+			panic(errors.New(fmt.Sprintf("resource %s already initialized", res.Name())))
+		}
 
-		// generate static pg fields
-		pgFields := generateStaticPGFields(res.definition)
+		pgFields := res.staticPGFields
 
 		// generate ResourceFields
 		res.fields = make([]*resourceField, 0)
@@ -93,6 +118,7 @@ func (r *Registry) InitializeResources() error {
 		// generate pg model
 		res.pgModel = reflect.StructOf(pgFields)
 
+		res.registry = r
 		res.initialized = true
 	}
 

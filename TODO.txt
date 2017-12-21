@@ -1,11 +1,14 @@
 TODO:
 - support for namespaces
 - support for included values
-
+- in the meantime, return 400 if include parameter is set
+- support filtering by belongsTo relations
+- proper logging
 - automatically create indices for sortable fields to improve pagination speed
+- more thorough unit testing
 
 Gotchas:
-- only int64 ids are supported due to go-pg restrictions
+- only int64 ids are supported
 - panicking in handler functions is allowed and handled
 - inclusion of related resources is not possible (yet)
 

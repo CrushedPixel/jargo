@@ -5,61 +5,73 @@ import (
 )
 
 var DefaultIndexResourceHandler HandlerFunc = func(c *Context) margo.Response {
-	params, err := c.GetQueryParams()
+	filters, err := c.Filters()
 	if err != nil {
 		return NewErrorResponse(err)
 	}
 
-	indexParams, err := c.GetIndexQueryParams()
+	fields, err := c.FieldSet()
 	if err != nil {
 		return NewErrorResponse(err)
 	}
 
-	return c.GetController().Resource.Select(c.GetApplication().DB).
-		ApplyQueryParams(params).
-		ApplyIndexQueryParams(indexParams)
+	sort, err := c.SortFields()
+	if err != nil {
+		return NewErrorResponse(err)
+	}
+
+	pagination, err := c.Pagination()
+	if err != nil {
+		return NewErrorResponse(err)
+	}
+
+	return c.Resource().Select(c.Application().DB).
+		Filters(filters).
+		Fields(fields).
+		Sort(sort).
+		Pagination(pagination)
 }
 
 var DefaultShowResourceHandler HandlerFunc = func(c *Context) margo.Response {
-	params, err := c.GetQueryParams()
+	fields, err := c.FieldSet()
 	if err != nil {
 		return NewErrorResponse(err)
 	}
 
-	return c.GetController().Resource.SelectById(c.GetApplication().DB, c.Param("id")).
-		ApplyQueryParams(params)
+	return c.Resource().SelectById(c.Application().DB, c.Param("id")).
+		Fields(fields)
 }
 
 var DefaultCreateResourceHandler HandlerFunc = func(c *Context) margo.Response {
-	params, err := c.GetQueryParams()
+	fields, err := c.FieldSet()
 	if err != nil {
 		return NewErrorResponse(err)
 	}
 
-	cm, err := c.GetCreateModel()
+	m, err := c.CreateModel()
 	if err != nil {
 		return NewErrorResponse(err)
 	}
 
-	return NewInsertQuery(c.GetApplication().DB, cm).
-		ApplyQueryParams(params)
+	return c.Resource().InsertOne(c.Application().DB, m).
+		Fields(fields)
 }
 
 var DefaultUpdateResourceHandler HandlerFunc = func(c *Context) margo.Response {
-	params, err := c.GetQueryParams()
+	fields, err := c.FieldSet()
 	if err != nil {
 		return NewErrorResponse(err)
 	}
 
-	um, err := c.GetUpdateModel()
+	m, err := c.UpdateModel()
 	if err != nil {
 		return NewErrorResponse(err)
 	}
 
-	return NewUpdateQuery(c.GetApplication().DB, um).
-		ApplyQueryParams(params)
+	return c.Resource().UpdateOne(c.Application().DB, m).
+		Fields(fields)
 }
 
 var DefaultDeleteResourceHandler HandlerFunc = func(c *Context) margo.Response {
-	return c.GetController().Resource.DeleteById(c.GetApplication().DB, c.Param("id"))
+	return c.Resource().DeleteById(c.Application().DB, c.Param("id"))
 }

@@ -38,7 +38,6 @@ func (c *Controller) Use(middleware HandlerFunc) {
 
 func (c *Controller) initialize(app *Application) {
 	c.Resource.CreateTable(app.DB)
-	app.RegisterResource(c.Resource)
 
 	// register actions
 	for k, v := range *c.Actions {

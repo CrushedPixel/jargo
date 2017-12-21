@@ -14,7 +14,7 @@ func errInvalidOperator(op string) error {
 	return errors.New(fmt.Sprintf(`unknown filter operator: %s`, op))
 }
 
-var filterParamRegex = regexp.MustCompile(`^filter\[([^][]+)](\[([^][]+)])?$`)
+var filterParamRegex = regexp.MustCompile(`^filter\[([^][]+)](?:\[([^][]+)])?$`)
 
 func ParseFilterParameters(query url.Values) (map[string]map[string][]string, error) {
 	// map[field]map[operator][]values
@@ -29,7 +29,7 @@ func ParseFilterParameters(query url.Values) (map[string]map[string][]string, er
 		groups := res[0]
 
 		field := groups[1]
-		op := groups[3]
+		op := groups[2]
 		if op == "" {
 			op = "EQ"
 		}
