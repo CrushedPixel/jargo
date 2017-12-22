@@ -79,10 +79,7 @@ func (r *Resource) Name() string {
 }
 
 func (r *Resource) ParseFieldSet(query url.Values) (api.FieldSet, error) {
-	parsed, err := parser.ParseFieldParameters(query)
-	if err != nil {
-		return nil, err
-	}
+	parsed := parser.ParseFieldParameters(query)
 
 	// find fields parameter with matching jsonapi name
 	// and create a FieldSet from it

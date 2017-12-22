@@ -2,18 +2,22 @@ package parser
 
 import (
 	"net/url"
-	"github.com/goji/param"
+	"regexp"
 )
 
-type pageParameters struct {
-	Page map[string]string `param:"page"`
-}
+var pageParamRegex = regexp.MustCompile(`^page\[([^][]+)]$`)
 
-func ParsePageParameters(query url.Values) (map[string]string, error) {
-	p := new(pageParameters)
-	err := param.Parse(query, p)
-	if err != nil {
-		return nil, err
+// TODO: unit test and generify code with field set parsing
+func ParsePageParameters(query url.Values) map[string]string {
+	fields := make(map[string]string)
+	for k, v := range query {
+		res := pageParamRegex.FindAllStringSubmatch(k, -1)
+		if res == nil {
+			continue
+		}
+		groups := res[0]
+		fields[groups[1]] = v[0]
 	}
-	return p.Page, nil
+
+	return fields
 }

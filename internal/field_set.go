@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"strings"
 	"errors"
 	"fmt"
 	"reflect"
@@ -99,8 +98,7 @@ func settableFields(resource *Resource) *FieldSet {
 }
 
 // parses a comma-separated list of field names into a FieldSet for a given Resource
-func newFieldSet(resource *Resource, val string) (*FieldSet, error) {
-	names := strings.Split(val, ",")
+func newFieldSet(resource *Resource, names []string) (*FieldSet, error) {
 	fields := make([]*resourceField, 0)
 
 	for _, name := range names {

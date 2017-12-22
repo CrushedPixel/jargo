@@ -1,4 +1,5 @@
 TODO:
+- fix internal server error if user filters by invalid value
 - support for namespaces
 - support for included values
 - in the meantime, return 400 if include parameter is set

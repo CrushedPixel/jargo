@@ -2,18 +2,31 @@ package parser
 
 import (
 	"net/url"
-	"github.com/goji/param"
+	"regexp"
+	"strings"
 )
 
-type fieldParameters struct {
-	Fields  map[string]string `param:"fields"`
-}
+var fieldsParamRegex = regexp.MustCompile(`^fields\[([^][]+)]$`)
 
-func ParseFieldParameters(query url.Values) (map[string]string, error) {
-	p := new(fieldParameters)
-	err := param.Parse(query, p)
-	if err != nil {
-		return nil, err
+// TODO: unit test and generify code with pagination parsing
+func ParseFieldParameters(query url.Values) map[string][]string {
+	fields := make(map[string][]string)
+	for k, v := range query {
+		res := fieldsParamRegex.FindAllStringSubmatch(k, -1)
+		if res == nil {
+			continue
+		}
+		groups := res[0]
+		field := groups[1]
+
+		// parse string-separated values
+		values := make([]string, 0)
+		for _, val := range v {
+			values = append(values, strings.Split(val, ",")...)
+		}
+
+		fields[field] = values
 	}
-	return p.Fields, nil
+
+	return fields
 }

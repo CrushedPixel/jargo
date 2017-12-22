@@ -51,16 +51,18 @@ func newFilters(resource *Resource, values map[string]map[string][]string) (*Fil
 		} else {
 			// find the resourceField with matching jsonapi name
 			for _, f := range resource.fields {
+				if field != f.definition.name {
+					continue
+				}
+
 				if f.definition.typ != attribute {
-					return nil, errors.New("sorting by relations is not supported")
+					return nil, errors.New("filtering by relations is not supported")
 				}
 				if !f.definition.sort {
 					return nil, errors.New(fmt.Sprintf(`sorting by "%s" is disabled`, field))
 				}
 
-				if field == f.definition.name {
-					column = f.definition.column
-				}
+				column = f.definition.column
 			}
 		}
 

@@ -24,11 +24,7 @@ func (p *Pagination) ApplyToQuery(q *orm.Query) {
 }
 
 func ParsePagination(query url.Values, maxPageSize int) (*Pagination, error) {
-	parsed, err := parser.ParsePageParameters(query)
-	if err != nil {
-		return nil, err
-	}
-
+	parsed := parser.ParsePageParameters(query)
 	return newPagination(parsed, maxPageSize)
 }
 
