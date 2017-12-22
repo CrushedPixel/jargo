@@ -43,6 +43,10 @@ func generateStaticJsonapiFields(d *resourceDefinition) []reflect.StructField {
 
 // generates the struct fields required to describe an attribute field via jsonapi
 func generateJsonapiFields(f *fieldDefinition, r *Registry) []reflect.StructField {
+	if f.name == unexportedFieldName {
+		return []reflect.StructField{}
+	}
+
 	sf := reflect.StructField{
 		Name: f.structField.Name,
 	}

@@ -38,27 +38,20 @@ func (fs *FieldSet) Resource() api.Resource {
 }
 
 // copy all of the FieldSet's values from source to the target struct.
-func (fs *FieldSet) applyValues(source *reflect.Value, target *reflect.Value) {
-	/* TODO: fix input instead
-	// dereference struct pointers
-	if source.Kind() == reflect.Ptr {
-		elem := source.Elem()
-		source = &elem
-	}
-	if target.Kind() == reflect.Ptr {
-		elem := target.Elem()
-		target = &elem
-	}
-	*/
-
+// takes struct pointer values.
+func (fs *FieldSet) applyValues(source reflect.Value, target reflect.Value) {
 	// always copy the id field
-	value := source.FieldByName(primaryFieldName)
-	target.FieldByName(primaryFieldName).Set(value)
+	value := source.Elem().FieldByName(primaryFieldName)
+	target.Elem().FieldByName(primaryFieldName).Set(value)
 	for _, field := range fs.fields {
 		fieldName := field.definition.structField.Name
+		sourceField := source.Elem().FieldByName(fieldName)
+		targetField := target.Elem().FieldByName(fieldName)
+		if !targetField.IsValid() {
+			continue
+		}
 
-		value := source.FieldByName(fieldName)
-		target.FieldByName(fieldName).Set(value)
+		targetField.Set(sourceField)
 	}
 }
 

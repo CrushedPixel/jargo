@@ -115,36 +115,28 @@ func (r *Resource) ParsePayload(in io.ReadCloser) (interface{}, error) {
 	fields := settableFields(r)
 	modelInstance := reflect.New(r.modelType)
 
-	err := r.parsePayload(in, modelInstance.Interface(), fields)
+	return r.parsePayload(in, modelInstance, fields)
+}
+
+func (r *Resource) ParseUpdatePayload(in io.ReadCloser, instance interface{}) (interface{}, error) {
+	fields := settableFields(r)
+	return r.parsePayload(in, reflect.ValueOf(instance), fields)
+}
+
+// instance is a struct pointer
+func (r *Resource) parsePayload(in io.ReadCloser, modelInstance reflect.Value, fields *FieldSet) (interface{}, error) {
+	jsonapiInstance, err := r.registry.resourceModelToJsonapiModel(r, modelInstance, r.jsonapiModel(fields))
 	if err != nil {
 		return nil, err
 	}
 
-	return modelInstance.Interface(), nil
-}
-
-func (r *Resource) ParseUpdatePayload(in io.ReadCloser, instance interface{}) error {
-	fields := settableFields(r)
-	return r.parsePayload(in, instance, fields)
-}
-
-func (r *Resource) parsePayload(in io.ReadCloser, instance interface{}, fields *FieldSet) error {
-	jsonapiType := r.jsonapiModel(fields)
-	jsonapiInstance := reflect.New(jsonapiType)
-
-	// copy existing values over to jsonapi instance
-	modelInstance := reflect.ValueOf(instance)
-	fields.applyValues(&modelInstance, &jsonapiInstance)
-
-	err := jsonapi.UnmarshalPayload(in, jsonapiInstance.Interface())
+	err = jsonapi.UnmarshalPayload(in, jsonapiInstance)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// copy updated values back to model instance
-	fields.applyValues(&jsonapiInstance, &modelInstance)
-
-	return nil
+	// convert jsonapi instance back to resource model
+	return r.registry.jsonapiModelToResourceModel(r, reflect.ValueOf(jsonapiInstance))
 }
 
 func (r *Resource) CreateTable(db *pg.DB) error {
@@ -167,27 +159,27 @@ func (r *Resource) SelectById(db *pg.DB, id interface{}) api.Query {
 }
 
 func (r *Resource) Insert(db *pg.DB, instances []interface{}) api.Query {
-	return newQueryWithData(db, r, typeInsert, true, instances)
+	return newQueryFromResourceModel(db, r, typeInsert, true, instances)
 }
 
 func (r *Resource) InsertOne(db *pg.DB, instance interface{}) api.Query {
-	return newQueryWithData(db, r, typeInsert, false, instance)
+	return newQueryFromResourceModel(db, r, typeInsert, false, instance)
 }
 
 func (r *Resource) Update(db *pg.DB, instances []interface{}) api.Query {
-	return newQueryWithData(db, r, typeUpdate, true, instances)
+	return newQueryFromResourceModel(db, r, typeUpdate, true, instances)
 }
 
 func (r *Resource) UpdateOne(db *pg.DB, instance interface{}) api.Query {
-	return newQueryWithData(db, r, typeUpdate, false, instance)
+	return newQueryFromResourceModel(db, r, typeUpdate, false, instance)
 }
 
 func (r *Resource) Delete(db *pg.DB, instances []interface{}) api.Query {
-	return newQueryWithData(db, r, typeDelete, true, instances)
+	return newQueryFromResourceModel(db, r, typeDelete, true, instances)
 }
 
 func (r *Resource) DeleteOne(db *pg.DB, instance interface{}) api.Query {
-	return newQueryWithData(db, r, typeDelete, false, instance)
+	return newQueryFromResourceModel(db, r, typeDelete, false, instance)
 }
 
 func (r *Resource) DeleteById(db *pg.DB, id interface{}) api.Query {

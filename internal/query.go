@@ -8,14 +8,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"crushedpixel.net/jargo/api"
 	"net/http"
-	"fmt"
 )
 
 var errQueryType = errors.New("invalid query type")
+var errNotSelecting = errors.New("query type must be select")
 var errAlreadyExecuted = errors.New("query has already been executed")
 var errNoCollection = errors.New("query must be a collection")
 var errMismatchingResource = errors.New("resource does not match query resource")
-var errMismatchingModelType = errors.New("model type does not match resource model type")
 
 type queryType int
 
@@ -45,7 +44,7 @@ type Query struct {
 	executed       bool
 	executionError error
 	result         interface{}   // the resource model
-	value          reflect.Value // reference to the orm.Query model
+	value          reflect.Value // reference to the pg model
 }
 
 func newQuery(db *pg.DB, resource *Resource, typ queryType, collection bool) *Query {
@@ -56,43 +55,27 @@ func newQuery(db *pg.DB, resource *Resource, typ queryType, collection bool) *Qu
 		model = resource.newModelInstance()
 	}
 
-	return newQueryWithModel(db, resource, typ, collection, model)
+	return newQueryWithPGModel(db, resource, typ, collection, model)
 }
 
-func newQueryWithData(db *pg.DB, resource *Resource, typ queryType, collection bool, data interface{}) *Query {
-	var model interface{}
-	if collection {
-		if reflect.TypeOf(data) != reflect.SliceOf(reflect.PtrTo(resource.modelType)) {
-			panic(errMismatchingModelType)
-		}
-		model = resource.newModelSlice()
-	} else {
-		if reflect.TypeOf(data) != reflect.PtrTo(resource.modelType) {
-			panic(errMismatchingModelType)
-		}
-		model = resource.newModelInstance()
+func newQueryFromResourceModel(db *pg.DB, resource *Resource, typ queryType, collection bool, data interface{}) *Query {
+	// convert resource model to pg model
+	pgModel, err := resource.registry.resourceModelToPGModel(resource, reflect.ValueOf(data), resource.pgModel)
+	if err != nil {
+		panic(err)
 	}
 
-	// TODO: check if this makes sense
-	// create pg model instance and apply data values to it
-	modelValue := reflect.ValueOf(model)
-	dataValue := reflect.ValueOf(data)
-
-	allFields(resource).applyValues(&dataValue, &modelValue)
-	return newQueryWithModel(db, resource, typ, collection, modelValue.Interface())
+	return newQueryWithPGModel(db, resource, typ, collection, pgModel)
 }
 
-func newQueryWithModel(db *pg.DB, resource *Resource, typ queryType, collection bool, model interface{}) *Query {
-	println(fmt.Sprintf("model %v", model))
-	val := reflect.ValueOf(model)
-	println(fmt.Sprintf("value %v", val))
+func newQueryWithPGModel(db *pg.DB, resource *Resource, typ queryType, collection bool, model interface{}) *Query {
 	return &Query{
 		Query:      db.Model(model),
 		typ:        typ,
 		resource:   resource,
 		collection: collection,
 		fields:     allFields(resource),
-		value:      val,
+		value:      reflect.ValueOf(model),
 	}
 }
 
@@ -115,6 +98,9 @@ func (q *Query) Fields(in api.FieldSet) api.Query {
 
 func (q *Query) Sort(in api.SortFields) api.Query {
 	s := in.(*SortFields)
+	if q.typ != typeSelect {
+		panic(errNotSelecting)
+	}
 	if q.executed {
 		panic(errAlreadyExecuted)
 	}
@@ -131,6 +117,9 @@ func (q *Query) Sort(in api.SortFields) api.Query {
 
 func (q *Query) Pagination(in api.Pagination) api.Query {
 	p := in.(*Pagination)
+	if q.typ != typeSelect {
+		panic(errNotSelecting)
+	}
 	if q.executed {
 		panic(errAlreadyExecuted)
 	}
@@ -144,6 +133,9 @@ func (q *Query) Pagination(in api.Pagination) api.Query {
 
 func (q *Query) Filters(in api.Filters) api.Query {
 	f := in.(*Filters)
+	if q.typ != typeSelect {
+		panic(errNotSelecting)
+	}
 	if q.executed {
 		panic(errAlreadyExecuted)
 	}
@@ -188,24 +180,24 @@ func (q *Query) Send(c *gin.Context) error {
 }
 
 func (q *Query) execute() {
-	// apply query modifiers
-	q.fields.ApplyToQuery(q.Query)
-
-	if q.collection {
-		if q.sort != nil {
-			q.sort.ApplyToQuery(q.Query)
-		}
-		if q.pagination != nil {
-			q.pagination.ApplyToQuery(q.Query)
-		}
-		if q.fields != nil {
-			q.filters.ApplyToQuery(q.Query)
-		}
-	}
-
 	// execute query
 	switch q.typ {
 	case typeSelect:
+		// apply query modifiers
+		q.fields.ApplyToQuery(q.Query)
+
+		if q.collection {
+			if q.sort != nil {
+				q.sort.ApplyToQuery(q.Query)
+			}
+			if q.pagination != nil {
+				q.pagination.ApplyToQuery(q.Query)
+			}
+			if q.filters != nil {
+				q.filters.ApplyToQuery(q.Query)
+			}
+		}
+
 		q.executionError = q.Select()
 		break
 	case typeInsert:

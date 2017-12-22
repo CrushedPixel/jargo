@@ -19,7 +19,7 @@ type Resource interface {
 	// parses a jsonapi data payload
 	ParsePayload(io.ReadCloser) (interface{}, error)
 	// parses a jsonapi data payload, applying it to an existing instance
-	ParseUpdatePayload(in io.ReadCloser, instance interface{}) error
+	ParseUpdatePayload(in io.ReadCloser, instance interface{}) (interface{}, error)
 
 	CreateTable(*pg.DB) error
 

@@ -31,6 +31,7 @@ func isPGModel(instance reflect.Value) (bool, bool) {
 	return false, false
 }
 
+// takes a slice of struct pointers or a struct value
 func isResourceModel(resource *Resource, instance reflect.Value) (bool, bool) {
 	typ := instance.Type()
 
@@ -47,8 +48,10 @@ func isResourceModel(resource *Resource, instance reflect.Value) (bool, bool) {
 	return false, false
 }
 
-func isJsonapiModel(instance interface{}) (bool, bool) {
-	typ := reflect.TypeOf(instance)
+// takes a slice of struct pointers or a struct value
+func isJsonapiModel(instance reflect.Value) (bool, bool) {
+	typ := instance.Type()
+
 	collection := false
 	if typ.Kind() == reflect.Slice {
 		typ = typ.Elem()
@@ -132,7 +135,7 @@ func (r *Registry) copyPGFieldsToResource(resource *Resource, source reflect.Val
 }
 
 // takes a slice of struct pointers or struct pointer as instance value
-func (r *Registry) resourceModelToJsonapiModel(resource *Resource, instance reflect.Value, jsonapiType reflect.Type) (interface{}, error) {
+func (r *Registry) resourceModelToJsonapiModel(resource *Resource, instance reflect.Value, jsonapiModelType reflect.Type) (interface{}, error) {
 	ok, collection := isResourceModel(resource, instance)
 	if !ok {
 		return nil, errNoResourceModel
@@ -140,10 +143,10 @@ func (r *Registry) resourceModelToJsonapiModel(resource *Resource, instance refl
 
 	if collection {
 		// data is slice of struct pointers
-		data := reflect.New(reflect.SliceOf(reflect.PtrTo(jsonapiType))).Elem()
+		data := reflect.New(reflect.SliceOf(reflect.PtrTo(jsonapiModelType))).Elem()
 		for i := 0; i < instance.Len(); i++ {
 			modelInstance := instance.Index(i)
-			jsonapiInstance := reflect.New(jsonapiType)
+			jsonapiInstance := reflect.New(jsonapiModelType)
 
 			err := r.copyResourceFieldsToJsonapi(modelInstance, jsonapiInstance)
 			if err != nil {
@@ -153,7 +156,7 @@ func (r *Registry) resourceModelToJsonapiModel(resource *Resource, instance refl
 		}
 		return data.Interface(), nil
 	} else {
-		jsonapiInstance := reflect.New(jsonapiType)
+		jsonapiInstance := reflect.New(jsonapiModelType)
 
 		err := r.copyResourceFieldsToJsonapi(instance, jsonapiInstance)
 		if err != nil {
@@ -191,6 +194,140 @@ func (r *Registry) copyResourceFieldsToJsonapi(source reflect.Value, target refl
 		} else {
 			// attributes are copied over
 			jsonapiField.Set(modelField)
+		}
+	}
+
+	return nil
+}
+
+// takes a slice of struct pointers or struct pointer as instance value
+func (r *Registry) jsonapiModelToResourceModel(resource *Resource, instance reflect.Value) (interface{}, error) {
+	ok, collection := isJsonapiModel(instance)
+	if !ok {
+		return nil, errNoPGModel
+	}
+
+	if collection {
+		// data is slice of struct pointers
+		data := reflect.New(reflect.SliceOf(reflect.PtrTo(resource.modelType))).Elem()
+		for i := 0; i < instance.Len(); i++ {
+			jsonapiInstance := instance.Index(i)
+			modelInstance := reflect.New(resource.modelType)
+
+			err := r.copyJsonapiFieldsToResource(resource, jsonapiInstance, modelInstance)
+			if err != nil {
+				return nil, err
+			}
+
+			data = reflect.Append(data, modelInstance)
+		}
+		return data.Interface(), nil
+	} else {
+		modelInstance := reflect.New(resource.modelType)
+
+		err := r.copyJsonapiFieldsToResource(resource, instance, modelInstance)
+		if err != nil {
+			return nil, err
+		}
+		return modelInstance.Interface(), nil
+	}
+}
+
+// takes struct pointer values
+func (r *Registry) copyJsonapiFieldsToResource(resource *Resource, source reflect.Value, target reflect.Value) error {
+	if source.IsNil() {
+		return nil
+	}
+
+	for j := 0; j < source.Elem().NumField(); j++ {
+		jsonapiField := source.Elem().Field(j)
+		modelField := target.Elem().FieldByName(source.Type().Elem().Field(j).Name)
+		if !modelField.IsValid() {
+			continue
+		}
+
+		if ok, _ := isJsonapiModel(jsonapiField); ok {
+			// get resource type from model relation field
+			res, err := r.getResource(getStructType(modelField.Type()))
+			if err != nil {
+				return err
+			}
+
+			// convert relation field to pg field as well
+			resourceModel, err := r.jsonapiModelToResourceModel(res, jsonapiField)
+			if err != nil {
+				return err
+			}
+			modelField.Set(reflect.ValueOf(resourceModel))
+		} else {
+			// attributes are copied over
+			modelField.Set(jsonapiField)
+		}
+	}
+
+	return nil
+}
+
+// takes a slice of struct pointers or struct pointer as instance value
+func (r *Registry) resourceModelToPGModel(resource *Resource, instance reflect.Value, pgModelType reflect.Type) (interface{}, error) {
+	ok, collection := isResourceModel(resource, instance)
+	if !ok {
+		return nil, errNoResourceModel
+	}
+
+	if collection {
+		// data is slice of struct pointers
+		data := reflect.New(reflect.SliceOf(reflect.PtrTo(pgModelType))).Elem()
+		for i := 0; i < instance.Len(); i++ {
+			modelInstance := instance.Index(i)
+			pgInstance := reflect.New(pgModelType)
+
+			err := r.copyResourceFieldsToPG(modelInstance, pgInstance)
+			if err != nil {
+				return nil, err
+			}
+			data = reflect.Append(data, pgInstance)
+		}
+		return data.Interface(), nil
+	} else {
+		pgInstance := reflect.New(pgModelType)
+
+		err := r.copyResourceFieldsToPG(instance, pgInstance)
+		if err != nil {
+			return nil, err
+		}
+		return pgInstance.Interface(), nil
+	}
+}
+
+// takes struct pointer values
+func (r *Registry) copyResourceFieldsToPG(source reflect.Value, target reflect.Value) error {
+	if source.IsNil() {
+		return nil
+	}
+
+	for j := 0; j < source.Elem().NumField(); j++ {
+		modelField := source.Elem().Field(j)
+		pgField := target.Elem().FieldByName(source.Type().Elem().Field(j).Name)
+		if !pgField.IsValid() {
+			continue
+		}
+
+		if ok, _ := isResourceModel(nil, pgField); ok {
+			// get resource type from model relation field
+			res, err := r.getResource(getStructType(modelField.Type()))
+			if err != nil {
+				return err
+			}
+			// convert relation field to pg field as well
+			resourceModel, err := r.resourceModelToPGModel(res, modelField, res.joinPGModel)
+			if err != nil {
+				return err
+			}
+			pgField.Set(reflect.ValueOf(resourceModel))
+		} else {
+			// attributes are copied over
+			pgField.Set(modelField)
 		}
 	}
 

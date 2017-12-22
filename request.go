@@ -23,12 +23,7 @@ type IndexQueryParams struct {
 }
 
 func parseCreateRequest(c *Context) (interface{}, error) {
-	instance, err := c.Resource().ParsePayload(c.Request.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	return instance, nil
+	return c.Resource().ParsePayload(c.Request.Body)
 }
 
 func parseUpdateRequest(c *Context) (interface{}, error) {
@@ -40,10 +35,5 @@ func parseUpdateRequest(c *Context) (interface{}, error) {
 		return nil, err
 	}
 
-	err = c.Resource().ParseUpdatePayload(c.Request.Body, instance)
-	if err != nil {
-		return nil, err
-	}
-
-	return instance, nil
+	return c.Resource().ParseUpdatePayload(c.Request.Body, instance)
 }
