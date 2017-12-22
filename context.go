@@ -49,7 +49,7 @@ func (c *Context) CreateModel() (interface{}, error) {
 		var err error
 		m, err = parseCreateRequest(c)
 		if err != nil {
-			return nil, ApiErrInvalidPayload(err.Error())
+			return nil, api.ErrInvalidPayload(err.Error())
 		}
 		c.Set(keyCreateModel, m)
 	}
@@ -62,7 +62,10 @@ func (c *Context) UpdateModel() (interface{}, error) {
 		var err error
 		m, err = parseUpdateRequest(c)
 		if err != nil {
-			return nil, ApiErrInvalidPayload(err.Error())
+			if _, ok := err.(*api.ApiError); ok {
+				return nil, err
+			}
+			return nil, api.ErrInvalidPayload(err.Error())
 		}
 		c.Set(keyUpdateModel, m)
 	}
@@ -75,7 +78,7 @@ func (c *Context) Filters() (api.Filters, error) {
 		var err error
 		f, err = c.Resource().ParseFilters(c.Request.URL.Query())
 		if err != nil {
-			return nil, ApiErrInvalidQueryParams(err.Error())
+			return nil, api.ErrInvalidQueryParams(err.Error())
 		}
 		c.Set(keyFilters, f)
 	}
@@ -88,7 +91,7 @@ func (c *Context) FieldSet() (api.FieldSet, error) {
 		var err error
 		f, err = c.Resource().ParseFieldSet(c.Request.URL.Query())
 		if err != nil {
-			return nil, ApiErrInvalidQueryParams(err.Error())
+			return nil, api.ErrInvalidQueryParams(err.Error())
 		}
 		c.Set(keyFieldSet, f)
 	}
@@ -101,7 +104,7 @@ func (c *Context) SortFields() (api.SortFields, error) {
 		var err error
 		f, err = c.Resource().ParseSortFields(c.Request.URL.Query())
 		if err != nil {
-			return nil, ApiErrInvalidQueryParams(err.Error())
+			return nil, api.ErrInvalidQueryParams(err.Error())
 		}
 		c.Set(keySortFields, f)
 	}
@@ -114,7 +117,7 @@ func (c *Context) Pagination() (api.Pagination, error) {
 		var err error
 		f, err = c.Application().ParsePagination(c.Request.URL.Query())
 		if err != nil {
-			return nil, ApiErrInvalidQueryParams(err.Error())
+			return nil, api.ErrInvalidQueryParams(err.Error())
 		}
 		c.Set(keyPagination, f)
 	}

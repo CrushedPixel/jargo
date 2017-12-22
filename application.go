@@ -34,10 +34,10 @@ var defaultErrorHandler margo.ErrorHandlerFunc = func(c *gin.Context, r interfac
 	err, ok = r.(error)
 	if !ok {
 		println(fmt.Sprintf("%s", r)) // TODO: proper logging
-		err = ApiErrInternalServerError
+		err = api.ErrInternalServerError
 	}
 
-	res := NewErrorResponse(err)
+	res := api.NewErrorResponse(err)
 	err = res.Send(c)
 	if err != nil {
 		panic(err)

@@ -6,6 +6,7 @@ import (
 	"github.com/google/jsonapi"
 	"net/http"
 	"strings"
+	"crushedpixel.net/jargo/api"
 )
 
 // gin middleware injecting the jargo application into the context
@@ -31,7 +32,7 @@ func contentTypeMiddleware(c *Context) margo.Response {
 	if ct != jsonapi.MediaType &&
 		c.Request.Method != http.MethodGet &&
 		c.Request.Method != http.MethodDelete {
-		return ApiErrUnsupportedMediaType
+		return api.ErrUnsupportedMediaType
 	}
 
 	var contains, exact bool
@@ -49,7 +50,7 @@ func contentTypeMiddleware(c *Context) margo.Response {
 	// if accept header contains media type but never unmodified,
 	// return 406 Not Acceptable
 	if contains && !exact {
-		return ApiErrNotAcceptable
+		return api.ErrNotAcceptable
 	}
 
 	return nil

@@ -30,7 +30,7 @@ func parseUpdateRequest(c *Context) (interface{}, error) {
 	instance, err := c.Resource().SelectById(c.Application().DB, c.Params.ByName("id")).GetValue()
 	if err != nil {
 		if err == pg.ErrNoRows {
-			return nil, ApiErrNotFound
+			return nil, api.ErrNotFound
 		}
 		return nil, err
 	}

@@ -1,4 +1,4 @@
-package jargo
+package api
 
 import (
 	"net/http"
@@ -17,37 +17,37 @@ const (
 	codeForbidden            = "FORBIDDEN"
 )
 
-var ApiErrInternalServerError = NewApiError(
+var ErrInternalServerError = NewApiError(
 	http.StatusInternalServerError,
 	codeInternalServerError,
 	"internal server error",
 )
 
-var ApiErrUnsupportedMediaType = NewApiError(
+var ErrUnsupportedMediaType = NewApiError(
 	http.StatusUnsupportedMediaType,
 	codeUnsupportedMediaType,
 	fmt.Sprintf("media type must be %s", jsonapi.MediaType),
 )
 
-var ApiErrNotAcceptable = NewApiError(
+var ErrNotAcceptable = NewApiError(
 	http.StatusNotAcceptable,
 	codeNotAcceptable,
 	fmt.Sprintf("accept header must contain %s without any media type parameters", jsonapi.MediaType),
 )
 
-var ApiErrNotFound = NewApiError(
+var ErrNotFound = NewApiError(
 	http.StatusNotFound,
 	codeNotFound,
 	"resource not found",
 )
 
-var ApiErrForbidden = NewApiError(
+var ErrForbidden = NewApiError(
 	http.StatusForbidden,
 	codeForbidden,
 	"forbidden",
 )
 
-func ApiErrUnauthorized(detail string) *ApiError {
+func ErrUnauthorized(detail string) *ApiError {
 	return NewApiError(
 		http.StatusUnauthorized,
 		codeUnauthorized,
@@ -55,14 +55,14 @@ func ApiErrUnauthorized(detail string) *ApiError {
 	)
 }
 
-func ApiErrInvalidQueryParams(detail string) *ApiError {
+func ErrInvalidQueryParams(detail string) *ApiError {
 	return NewApiError(http.StatusBadRequest,
 		codeInvalidQueryParams,
 		detail,
 	)
 }
 
-func ApiErrInvalidPayload(detail string) *ApiError {
+func ErrInvalidPayload(detail string) *ApiError {
 	return NewApiError(http.StatusBadRequest,
 		codeInvalidPayload,
 		detail,

@@ -2,27 +2,28 @@ package jargo
 
 import (
 	"crushedpixel.net/margo"
+	"crushedpixel.net/jargo/api"
 )
 
 var DefaultIndexResourceHandler HandlerFunc = func(c *Context) margo.Response {
 	filters, err := c.Filters()
 	if err != nil {
-		return NewErrorResponse(err)
+		return api.NewErrorResponse(err)
 	}
 
 	fields, err := c.FieldSet()
 	if err != nil {
-		return NewErrorResponse(err)
+		return api.NewErrorResponse(err)
 	}
 
 	sort, err := c.SortFields()
 	if err != nil {
-		return NewErrorResponse(err)
+		return api.NewErrorResponse(err)
 	}
 
 	pagination, err := c.Pagination()
 	if err != nil {
-		return NewErrorResponse(err)
+		return api.NewErrorResponse(err)
 	}
 
 	return c.Resource().Select(c.Application().DB).
@@ -35,7 +36,7 @@ var DefaultIndexResourceHandler HandlerFunc = func(c *Context) margo.Response {
 var DefaultShowResourceHandler HandlerFunc = func(c *Context) margo.Response {
 	fields, err := c.FieldSet()
 	if err != nil {
-		return NewErrorResponse(err)
+		return api.NewErrorResponse(err)
 	}
 
 	return c.Resource().SelectById(c.Application().DB, c.Param("id")).
@@ -45,12 +46,12 @@ var DefaultShowResourceHandler HandlerFunc = func(c *Context) margo.Response {
 var DefaultCreateResourceHandler HandlerFunc = func(c *Context) margo.Response {
 	fields, err := c.FieldSet()
 	if err != nil {
-		return NewErrorResponse(err)
+		return api.NewErrorResponse(err)
 	}
 
 	m, err := c.CreateModel()
 	if err != nil {
-		return NewErrorResponse(err)
+		return api.NewErrorResponse(err)
 	}
 
 	return c.Resource().InsertOne(c.Application().DB, m).
@@ -60,12 +61,12 @@ var DefaultCreateResourceHandler HandlerFunc = func(c *Context) margo.Response {
 var DefaultUpdateResourceHandler HandlerFunc = func(c *Context) margo.Response {
 	fields, err := c.FieldSet()
 	if err != nil {
-		return NewErrorResponse(err)
+		return api.NewErrorResponse(err)
 	}
 
 	m, err := c.UpdateModel()
 	if err != nil {
-		return NewErrorResponse(err)
+		return api.NewErrorResponse(err)
 	}
 
 	return c.Resource().UpdateOne(c.Application().DB, m).

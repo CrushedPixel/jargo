@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"crushedpixel.net/jargo/api"
 	"net/http"
+	"crushedpixel.net/margo"
 )
 
 var errQueryType = errors.New("invalid query type")
@@ -166,17 +167,27 @@ func (q *Query) GetValue() (interface{}, error) {
 func (q *Query) Send(c *gin.Context) error {
 	result, err := q.GetValue()
 	if err != nil {
+		if err == pg.ErrNoRows {
+			return api.ErrNotFound
+		}
 		return err
 	}
 
-	var status int
-	if q.typ == typeInsert {
-		status = http.StatusCreated
-	} else {
-		status = http.StatusOK
+	var response margo.Response
+	switch q.typ {
+	case typeSelect, typeInsert, typeUpdate:
+		var status int
+		if q.typ == typeInsert {
+			status = http.StatusCreated
+		} else {
+			status = http.StatusOK
+		}
+		response = q.resource.ResponseWithStatusCode(result, q.fields, status)
+	case typeDelete:
+		response = margo.NewEmptyResponse(http.StatusNoContent)
 	}
 
-	return q.resource.ResponseWithStatusCode(result, q.fields, status).Send(c)
+	return response.Send(c)
 }
 
 func (q *Query) execute() {
@@ -207,7 +218,11 @@ func (q *Query) execute() {
 		_, q.executionError = q.Update()
 		break
 	case typeDelete:
-		_, q.executionError = q.Delete()
+		var result orm.Result
+		result, q.executionError = q.Delete()
+		if q.executionError == nil && result.RowsAffected() == 0 {
+			q.executionError = pg.ErrNoRows
+		}
 		break
 	default:
 		panic(errQueryType)

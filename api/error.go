@@ -1,4 +1,4 @@
-package jargo
+package api
 
 import (
 	"github.com/google/jsonapi"
@@ -57,7 +57,7 @@ func (r *ErrorResponse) Send(c *gin.Context) error {
 	if !ok {
 		// if error is not an api error, return internal server error response
 		println(fmt.Sprintf("Internal server error: %s", r.Error.Error())) // TODO use a proper logging library
-		apiError = ApiErrInternalServerError
+		apiError = ErrInternalServerError
 	}
 
 	return apiError.Send(c)
