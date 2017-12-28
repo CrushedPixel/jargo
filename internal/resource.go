@@ -10,8 +10,9 @@ import (
 	"crushedpixel.net/jargo/internal/parser"
 	"net/url"
 	"fmt"
-	"io"
 	"github.com/google/jsonapi"
+	"strings"
+	"io"
 )
 
 // to be used whenever a variable that is only available
@@ -108,20 +109,32 @@ func (r *Resource) ParseFilters(query url.Values) (api.Filters, error) {
 	return newFilters(r, parsed)
 }
 
-func (r *Resource) ParsePayload(in io.ReadCloser) (interface{}, error) {
+func (r *Resource) ParsePayload(in io.Reader) (interface{}, error) {
 	fields := settableFields(r)
 	modelInstance := reflect.New(r.modelType)
 
 	return r.parsePayload(in, modelInstance, fields)
 }
 
-func (r *Resource) ParseUpdatePayload(in io.ReadCloser, instance interface{}) (interface{}, error) {
+func (r *Resource) ParsePayloadString(payload string) (interface{}, error) {
+	return r.ParsePayload(strings.NewReader(payload))
+}
+
+func (r *Resource) ParseUpdatePayload(in io.Reader, instance interface{}) (interface{}, error) {
+	if ok, _ := isResourceModel(r, reflect.ValueOf(instance)); ok {
+		return nil, errNoResourceModel
+	}
+
 	fields := settableFields(r)
 	return r.parsePayload(in, reflect.ValueOf(instance), fields)
 }
 
+func (r *Resource) ParseUpdatePayloadString(payload string, instance interface{}) (interface{}, error) {
+	return r.ParseUpdatePayload(strings.NewReader(payload), instance)
+}
+
 // instance is a struct pointer
-func (r *Resource) parsePayload(in io.ReadCloser, modelInstance reflect.Value, fields *FieldSet) (interface{}, error) {
+func (r *Resource) parsePayload(in io.Reader, modelInstance reflect.Value, fields *FieldSet) (interface{}, error) {
 	jsonapiInstance, err := r.registry.resourceModelToJsonapiModel(r, modelInstance, r.jsonapiModel(fields))
 	if err != nil {
 		return nil, err
@@ -137,49 +150,48 @@ func (r *Resource) parsePayload(in io.ReadCloser, modelInstance reflect.Value, f
 }
 
 func (r *Resource) CreateTable(db *pg.DB) error {
-	println(fmt.Sprintf("pg model: %v", r.pgModel))
 	return db.CreateTable(r.newModelInstance(), &orm.CreateTableOptions{IfNotExists: true})
 }
 
-func (r *Resource) Select(db *pg.DB) api.Query {
+func (r *Resource) Select(db orm.DB) api.Query {
 	return newQuery(db, r, typeSelect, true)
 }
 
-func (r *Resource) SelectOne(db *pg.DB) api.Query {
+func (r *Resource) SelectOne(db orm.DB) api.Query {
 	return newQuery(db, r, typeSelect, false)
 }
 
-func (r *Resource) SelectById(db *pg.DB, id interface{}) api.Query {
+func (r *Resource) SelectById(db orm.DB, id interface{}) api.Query {
 	q := r.SelectOne(db)
 	q.Raw().Where(fmt.Sprintf("%s = ?", primaryFieldColumn), id)
 	return q
 }
 
-func (r *Resource) Insert(db *pg.DB, instances []interface{}) api.Query {
+func (r *Resource) Insert(db orm.DB, instances []interface{}) api.Query {
 	return newQueryFromResourceModel(db, r, typeInsert, true, instances)
 }
 
-func (r *Resource) InsertOne(db *pg.DB, instance interface{}) api.Query {
+func (r *Resource) InsertOne(db orm.DB, instance interface{}) api.Query {
 	return newQueryFromResourceModel(db, r, typeInsert, false, instance)
 }
 
-func (r *Resource) Update(db *pg.DB, instances []interface{}) api.Query {
+func (r *Resource) Update(db orm.DB, instances []interface{}) api.Query {
 	return newQueryFromResourceModel(db, r, typeUpdate, true, instances)
 }
 
-func (r *Resource) UpdateOne(db *pg.DB, instance interface{}) api.Query {
+func (r *Resource) UpdateOne(db orm.DB, instance interface{}) api.Query {
 	return newQueryFromResourceModel(db, r, typeUpdate, false, instance)
 }
 
-func (r *Resource) Delete(db *pg.DB, instances []interface{}) api.Query {
+func (r *Resource) Delete(db orm.DB, instances []interface{}) api.Query {
 	return newQueryFromResourceModel(db, r, typeDelete, true, instances)
 }
 
-func (r *Resource) DeleteOne(db *pg.DB, instance interface{}) api.Query {
+func (r *Resource) DeleteOne(db orm.DB, instance interface{}) api.Query {
 	return newQueryFromResourceModel(db, r, typeDelete, false, instance)
 }
 
-func (r *Resource) DeleteById(db *pg.DB, id interface{}) api.Query {
+func (r *Resource) DeleteById(db orm.DB, id interface{}) api.Query {
 	q := newQuery(db, r, typeDelete, false)
 	q.Raw().Where(fmt.Sprintf("%s = ?", primaryFieldColumn), id)
 	return q

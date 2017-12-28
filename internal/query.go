@@ -45,10 +45,10 @@ type Query struct {
 	executed       bool
 	executionError error
 	result         interface{}   // the resource model
-	value          reflect.Value // reference to the pg model
+	model          reflect.Value // reference to the pg model
 }
 
-func newQuery(db *pg.DB, resource *Resource, typ queryType, collection bool) *Query {
+func newQuery(db orm.DB, resource *Resource, typ queryType, collection bool) *Query {
 	var model interface{}
 	if collection {
 		model = resource.newModelSlice()
@@ -59,7 +59,7 @@ func newQuery(db *pg.DB, resource *Resource, typ queryType, collection bool) *Qu
 	return newQueryWithPGModel(db, resource, typ, collection, model)
 }
 
-func newQueryFromResourceModel(db *pg.DB, resource *Resource, typ queryType, collection bool, data interface{}) *Query {
+func newQueryFromResourceModel(db orm.DB, resource *Resource, typ queryType, collection bool, data interface{}) *Query {
 	// convert resource model to pg model
 	pgModel, err := resource.registry.resourceModelToPGModel(resource, reflect.ValueOf(data), resource.pgModel)
 	if err != nil {
@@ -69,14 +69,14 @@ func newQueryFromResourceModel(db *pg.DB, resource *Resource, typ queryType, col
 	return newQueryWithPGModel(db, resource, typ, collection, pgModel)
 }
 
-func newQueryWithPGModel(db *pg.DB, resource *Resource, typ queryType, collection bool, model interface{}) *Query {
+func newQueryWithPGModel(db orm.DB, resource *Resource, typ queryType, collection bool, model interface{}) *Query {
 	return &Query{
 		Query:      db.Model(model),
 		typ:        typ,
 		resource:   resource,
 		collection: collection,
 		fields:     allFields(resource),
-		value:      reflect.ValueOf(model),
+		model:      reflect.ValueOf(model),
 	}
 }
 
@@ -151,7 +151,7 @@ func (q *Query) Filters(in api.Filters) api.Query {
 	return q
 }
 
-func (q *Query) GetValue() (interface{}, error) {
+func (q *Query) Result() (interface{}, error) {
 	if !q.executed {
 		q.execute()
 	}
@@ -163,9 +163,18 @@ func (q *Query) GetValue() (interface{}, error) {
 	return q.result, nil
 }
 
+func (q *Query) Execute() (interface{}, error) {
+	q.execute()
+	if q.executionError != nil {
+		return nil, q.executionError
+	}
+
+	return q.result, nil
+}
+
 // satisfies margo.Response
 func (q *Query) Send(c *gin.Context) error {
-	result, err := q.GetValue()
+	result, err := q.Result()
 	if err != nil {
 		if err == pg.ErrNoRows {
 			return api.ErrNotFound
@@ -235,11 +244,11 @@ func (q *Query) execute() {
 	}
 
 	// create resource model and populate it with query result fields
-	val := q.value
+	m := q.model
 	// dereference slice pointers values as expected by pgModelToResourceModel
 	if q.collection {
-		val = val.Elem()
+		m = m.Elem()
 	}
 
-	q.result, q.executionError = q.resource.registry.pgModelToResourceModel(q.resource, val)
+	q.result, q.executionError = q.resource.registry.pgModelToResourceModel(q.resource, m)
 }

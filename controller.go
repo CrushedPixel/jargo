@@ -3,25 +3,31 @@ package jargo
 import "crushedpixel.net/jargo/api"
 
 type Controller struct {
+	Namespace  string
 	Resource   api.Resource
 	Actions    *Actions
 	Middleware []HandlerFunc
 }
 
-func NewController(resource api.Resource) *Controller {
+func NewController(namespace string, resource api.Resource) *Controller {
 	a := make(Actions)
 	actions := &a
 
 	controller := &Controller{
-		Resource: resource,
-		Actions:  actions,
+		Namespace: namespace,
+		Resource:  resource,
+		Actions:   actions,
 	}
 
 	return controller
 }
 
+func NewRootController(resource api.Resource) *Controller {
+	return NewController("", resource)
+}
+
 func NewCRUDController(resource api.Resource) *Controller {
-	controller := NewController(resource)
+	controller := NewRootController(resource)
 
 	controller.Actions.SetShowAction(NewAction(DefaultShowResourceHandler))
 	controller.Actions.SetIndexAction(NewAction(DefaultIndexResourceHandler))

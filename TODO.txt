@@ -1,6 +1,9 @@
 TODO:
 - fix internal server error if user filters by invalid value
-- support for namespaces
+- add support for wrapped types (type X int) in resource models.
+  therefore, the converter needs to convert X to the (primitive) int type and back
+  when converting from/to jsonapi model.
+- !when converting resource to pg models, correctly set the ID field
 - support for included values
 - in the meantime, return 400 if include parameter is set
 - support filtering by belongsTo relations

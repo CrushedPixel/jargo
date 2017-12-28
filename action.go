@@ -14,14 +14,21 @@ type Route struct {
 type HandlerFunc func(context *Context) margo.Response
 
 type Action struct {
-	Enabled  bool
-	handlers []HandlerFunc
+	JsonapiMiddleware bool
+	handlers          []HandlerFunc
 }
 
 func NewAction(handlers ...HandlerFunc) *Action {
 	return &Action{
-		Enabled:  true,
-		handlers: handlers,
+		JsonapiMiddleware: false,
+		handlers:          handlers,
+	}
+}
+
+func NewJsonapiAction(handlers ...HandlerFunc) *Action {
+	return &Action{
+		JsonapiMiddleware: true,
+		handlers:          handlers,
 	}
 }
 
@@ -78,14 +85,21 @@ func (a Actions) SetAction(route *Route, action *Action) {
 }
 
 func (a *Action) toEndpoint(c *Controller, route Route) *margo.Endpoint {
-	fullPath := fmt.Sprintf("%s%s", c.Resource.Name(), route.Path)
+	namespace := c.Namespace
+	// add trailing slash to namespace if missing
+	if namespace != "" && namespace[len(namespace)-1] != '/' {
+		namespace += "/"
+	}
 
+	middleware := []HandlerFunc{injectControllerMiddleware(c)}
+	if a.JsonapiMiddleware {
+		middleware = append(middleware, contentTypeMiddleware)
+	}
+
+	fullPath := fmt.Sprintf("%s%s%s", namespace, c.Resource.Name(), route.Path)
 	endpoint := margo.NewEndpoint(route.Method, fullPath,
 		toMargoHandler(c.Middleware...),
-		toMargoHandler(
-			injectControllerMiddleware(c),
-			contentTypeMiddleware,
-		),
+		toMargoHandler(middleware...),
 		toMargoHandler(a.handlers...))
 
 	return endpoint

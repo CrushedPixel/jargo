@@ -14,5 +14,11 @@ type Query interface {
 	Pagination(Pagination) Query
 	Filters(Filters) Query
 
-	GetValue() (interface{}, error)
+	// returns the query result resource model.
+	// executes the query if it hasn't been executed yet.
+	Result() (interface{}, error)
+
+	// executes the query.
+	// returns the resulting resource model.
+	Execute() (interface{}, error)
 }
