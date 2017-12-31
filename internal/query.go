@@ -32,14 +32,14 @@ type Query struct {
 
 	// final fields
 	typ        queryType
-	resource   *Resource
+	resource   api.Resource
 	collection bool // whether the resource model is a slice
 
 	// user settable
-	fields     *FieldSet
-	sort       *SortFields
-	pagination *Pagination
-	filters    *Filters
+	fields     api.FieldSet
+	sort       api.SortFields
+	pagination api.Pagination
+	filters    api.Filters
 
 	// internal
 	executed       bool
@@ -48,35 +48,30 @@ type Query struct {
 	model          reflect.Value // reference to the pg model
 }
 
-func newQuery(db orm.DB, resource *Resource, typ queryType, collection bool) *Query {
+func newQuery(db orm.DB, resource *resource, typ queryType, collection bool) *Query {
 	var model interface{}
 	if collection {
-		model = resource.newModelSlice()
+		model = resource.NewPGModelCollection()
 	} else {
-		model = resource.newModelInstance()
+		model = resource.NewPGModelInstance()
 	}
 
-	return newQueryWithPGModel(db, resource, typ, collection, model)
+	return newQueryWithPGModelInstance(db, resource, typ, collection, model)
 }
 
-func newQueryFromResourceModel(db orm.DB, resource *Resource, typ queryType, collection bool, data interface{}) *Query {
-	// convert resource model to pg model
-	pgModel, err := resource.registry.resourceModelToPGModel(resource, reflect.ValueOf(data), resource.pgModel)
-	if err != nil {
-		panic(err)
-	}
-
-	return newQueryWithPGModel(db, resource, typ, collection, pgModel)
+func newQueryFromResourceModel(db orm.DB, resource *resource, typ queryType, collection bool, resourceModelInstance interface{}) *Query {
+	pgModel := resourceModelToPGModel(resource, resourceModelInstance)
+	return newQueryWithPGModelInstance(db, resource, typ, collection, pgModel)
 }
 
-func newQueryWithPGModel(db orm.DB, resource *Resource, typ queryType, collection bool, model interface{}) *Query {
+func newQueryWithPGModelInstance(db orm.DB, resource *resource, typ queryType, collection bool, pgModelInstance interface{}) *Query {
 	return &Query{
-		Query:      db.Model(model),
+		Query:      db.Model(pgModelInstance),
 		typ:        typ,
 		resource:   resource,
 		collection: collection,
 		fields:     allFields(resource),
-		model:      reflect.ValueOf(model),
+		model:      reflect.ValueOf(pgModelInstance),
 	}
 }
 
@@ -85,7 +80,7 @@ func (q *Query) Raw() *orm.Query {
 }
 
 func (q *Query) Fields(in api.FieldSet) api.Query {
-	fs := in.(*FieldSet)
+	fs := in.(*fieldSet)
 	if q.executed {
 		panic(errAlreadyExecuted)
 	}
@@ -98,7 +93,7 @@ func (q *Query) Fields(in api.FieldSet) api.Query {
 }
 
 func (q *Query) Sort(in api.SortFields) api.Query {
-	s := in.(*SortFields)
+	s := in.(*sortFields)
 	if q.typ != typeSelect {
 		panic(errNotSelecting)
 	}
@@ -117,7 +112,7 @@ func (q *Query) Sort(in api.SortFields) api.Query {
 }
 
 func (q *Query) Pagination(in api.Pagination) api.Query {
-	p := in.(*Pagination)
+	p := in.(*pagination)
 	if q.typ != typeSelect {
 		panic(errNotSelecting)
 	}
@@ -133,7 +128,7 @@ func (q *Query) Pagination(in api.Pagination) api.Query {
 }
 
 func (q *Query) Filters(in api.Filters) api.Query {
-	f := in.(*Filters)
+	f := in.(*filters)
 	if q.typ != typeSelect {
 		panic(errNotSelecting)
 	}
@@ -243,12 +238,17 @@ func (q *Query) execute() {
 		return
 	}
 
-	// create resource model and populate it with query result fields
 	m := q.model
-	// dereference slice pointers values as expected by pgModelToResourceModel
 	if q.collection {
-		m = m.Elem()
+		resourceInstances := make([]interface{}, 0)
+		for i := 0; i < m.Len(); i++ {
+			v := m.Index(i)
+			if !v.IsNil() {
+				resourceInstances = append(resourceInstances, pgModelToResourceModel(q.resource, v.Interface()))
+			}
+		}
+		q.result = resourceInstances
+	} else {
+		q.result = pgModelToResourceModel(q.resource, m.Interface())
 	}
-
-	q.result, q.executionError = q.resource.registry.pgModelToResourceModel(q.resource, m)
 }

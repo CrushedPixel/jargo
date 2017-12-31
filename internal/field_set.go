@@ -1,125 +1,97 @@
 package internal
 
 import (
-	"errors"
-	"fmt"
-	"reflect"
 	"github.com/go-pg/pg/orm"
 	"crushedpixel.net/jargo/api"
+	"github.com/google/jsonapi"
+	"net/url"
+	"crushedpixel.net/jargo/internal/parser"
+	"fmt"
+	"errors"
 )
 
-type FieldSet struct {
-	resource *Resource
-	fields   []*resourceField
+type fieldSet struct {
+	resource api.Resource
+	fields   []field
 }
 
-func (fs *FieldSet) ApplyToQuery(q *orm.Query) {
-	// always select the Id field
-	column(q, fs.resource, primaryFieldColumn)
+func allFields(r *resource) api.FieldSet {
+	fs := &fieldSet{
+		resource: r,
+	}
+	copy(fs.fields, r.fields)
+	return fs
+}
 
-	// select all columns required by the fieldSet
+func (fs *fieldSet) ApplyToQuery(q *orm.Query) {
 	for _, f := range fs.fields {
-		switch f.definition.typ {
-		case attribute:
-			column(q, fs.resource, f.definition.column)
-		case belongsTo, has, many2many:
-			q.Column(f.definition.structField.Name)
-		}
+		q.Column(f.pgColumn())
 	}
 }
 
-func column(q *orm.Query, resource *Resource, column string) {
-	q.Column(fmt.Sprintf("%s.%s", resource.definition.alias, column))
-}
-
-func (fs *FieldSet) Resource() api.Resource {
-	return fs.resource
-}
-
-// copy all of the FieldSet's values from source to the target struct.
-// takes struct pointer values.
-func (fs *FieldSet) applyValues(source reflect.Value, target reflect.Value) {
-	// always copy the id field
-	value := source.Elem().FieldByName(primaryFieldName)
-	target.Elem().FieldByName(primaryFieldName).Set(value)
-	for _, field := range fs.fields {
-		fieldName := field.definition.structField.Name
-		sourceField := source.Elem().FieldByName(fieldName)
-		targetField := target.Elem().FieldByName(fieldName)
-		if !targetField.IsValid() {
-			continue
-		}
-
-		targetField.Set(sourceField)
+func (fs *fieldSet) ApplyToJsonapiNode(node *jsonapi.Node) {
+	if node.Type == fs.resource.Name() {
+		fs.applyToPropertyMap(node.Attributes)
+		fs.applyToPropertyMap(node.Relationships)
 	}
 }
 
-func (fs *FieldSet) pgFields() []reflect.StructField {
-	fields := make([]reflect.StructField, 0)
+func (fs *fieldSet) applyToPropertyMap(m map[string]interface{}) {
+	for key := range m {
+		found := false
 
-	for _, f := range fs.fields {
-		fields = append(fields, f.pgFields...)
-	}
-
-	return fields
-}
-
-func (fs *FieldSet) jsonapiFields() []reflect.StructField {
-	fields := make([]reflect.StructField, 0)
-
-	for _, f := range fs.fields {
-		fields = append(fields, f.jsonapiFields...)
-	}
-
-	return fields
-}
-
-func allFields(resource *Resource) *FieldSet {
-	return &FieldSet{
-		resource: resource,
-		fields:   resource.fields,
-	}
-}
-
-// returns a FieldSet containing all fields of a resource that are not marked readonly
-func settableFields(resource *Resource) *FieldSet {
-	fields := make([]*resourceField, 0)
-
-	for _, f := range resource.fields {
-		if !f.definition.readonly {
-			fields = append(fields, f)
-		}
-	}
-
-	return &FieldSet{
-		resource: resource,
-		fields:   fields,
-	}
-}
-
-// parses a comma-separated list of field names into a FieldSet for a given Resource
-func newFieldSet(resource *Resource, names []string) (*FieldSet, error) {
-	fields := make([]*resourceField, 0)
-
-	for _, name := range names {
-		var field *resourceField
-		// find the resourceField with matching jsonapi name
-		for _, f := range resource.fields {
-			if name == f.definition.name {
-				field = f
+		for _, field := range fs.fields {
+			if field.jsonapiName() == key {
+				found = true
+				break
 			}
 		}
 
-		if field == nil {
-			return nil, errors.New(fmt.Sprintf(`unknown field parameter: "%s"`, name))
+		if !found {
+			delete(m, key)
+		}
+	}
+}
+
+func parseFieldSet(r *resource, query url.Values) (api.FieldSet, error) {
+	parsed := parser.ParseFieldParameters(query)
+
+	var resourceFields []field
+	if fields, ok := parsed[r.Name()]; ok {
+		for _, fieldName := range fields {
+			// find resource field with matching jsonapi name
+			var field field
+			for _, rf := range r.fields {
+				if rf.jsonapiName() == fieldName {
+					field = rf
+					break
+				}
+			}
+			if field == nil {
+				return nil, errors.New(fmt.Sprintf(`unknown field parameter: "%s"`, fieldName))
+			}
+			resourceFields = append(resourceFields, field)
 		}
 
-		fields = append(fields, field)
+		removeDuplicateFields(resourceFields)
+		return &fieldSet{
+			resource: r,
+			fields:   resourceFields,
+		}, nil
 	}
 
-	fieldSet := &FieldSet{
-		resource: resource,
-		fields:   fields,
+	return allFields(r), nil
+}
+
+func removeDuplicateFields(fields []field) {
+	found := make(map[field]bool)
+	j := 0
+	for i, x := range fields {
+		if !found[x] {
+			found[x] = true
+			fields[j] = fields[i]
+			j++
+		}
 	}
-	return fieldSet, nil
+	fields = fields[:j]
 }

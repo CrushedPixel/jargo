@@ -2,17 +2,39 @@ package internal
 
 import "reflect"
 
-type resourceField struct {
-	definition *fieldDefinition
+type field interface {
+	createInstance() fieldInstance
 
-	jsonapiFields []reflect.StructField
-	pgFields      []reflect.StructField
+	jsonapiName() string
+	pgColumn() string
+
+	jsonapiFields() ([]reflect.StructField, error)
+	jsonapiJoinFields() ([]reflect.StructField, error)
+
+	pgFields() ([]reflect.StructField, error)
+	pgJoinFields() ([]reflect.StructField, error)
 }
 
-func newResourceField(definition *fieldDefinition, registry *Registry) *resourceField {
-	return &resourceField{
-		definition: definition,
-		jsonapiFields: generateJsonapiFields(definition, registry),
-		pgFields: generatePGFields(definition, registry),
-	}
+type fieldInstance interface {
+	// parses a resource model instance, setting the field's value.
+	parseResourceModel(*resourceModelInstance) error
+	// parses a jsonapi model instance, setting the field's value.
+	parseJsonapiModel(*jsonapiModelInstance) error
+	// parses a resource model instance, setting the field's value.
+	parsePGModel(*pgModelInstance) error
+
+	parseJoinResourceModel(*resourceModelInstance) error
+	parseJoinJsonapiModel(*joinJsonapiModelInstance) error
+	parseJoinPGModel(*joinPGModelInstance) error
+
+	// applies the field's value to a resource model instance.
+	applyToResourceModel(*resourceModelInstance) error
+	// applies the field's value to a resource model instance.
+	applyToJsonapiModel(*jsonapiModelInstance) error
+	// applies the field's value to a resource model instance.
+	applyToPGModel(*pgModelInstance) error
+
+	applyToJoinResourceModel(*resourceModelInstance) error
+	applyToJoinJsonapiModel(*joinJsonapiModelInstance) error
+	applyToJoinPGModel(*joinPGModelInstance) error
 }

@@ -10,6 +10,7 @@ TODO:
 - proper logging
 - automatically create indices for sortable fields to improve pagination speed
 - more thorough unit testing
+- prevent has/has relations as they can't be modeled in the database
 
 Gotchas:
 - only int64 ids are supported

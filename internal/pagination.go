@@ -14,22 +14,22 @@ const (
 	keySize   = "size"
 )
 
-type Pagination struct {
+type pagination struct {
 	Number int // page[number]
 	Size   int // page[size]
 }
 
-func (p *Pagination) ApplyToQuery(q *orm.Query) {
+func (p *pagination) ApplyToQuery(q *orm.Query) {
 	q.Offset(p.Number * p.Size).Limit(p.Size)
 }
 
-func ParsePagination(query url.Values, maxPageSize int) (*Pagination, error) {
+func ParsePagination(query url.Values, maxPageSize int) (*pagination, error) {
 	parsed := parser.ParsePageParameters(query)
 	return newPagination(parsed, maxPageSize)
 }
 
-func newPagination(values map[string]string, maxPageSize int) (*Pagination, error) {
-	p := &Pagination{
+func newPagination(values map[string]string, maxPageSize int) (*pagination, error) {
+	p := &pagination{
 		Number: 0,
 		Size:   maxPageSize,
 	}

@@ -5,17 +5,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestPluralize(t *testing.T) {
-	val := pluralize("")
-	assert.Equal(t, "", val)
-
-	val = pluralize("resource")
-	assert.Equal(t, "resources", val)
-
-	val = pluralize("resources")
-	assert.Equal(t, "resources", val)
-}
-
 func TestIsValidJsonapiMemberName(t *testing.T) {
 	ok := isValidJsonapiMemberName("")
 	assert.Equal(t, false, ok)

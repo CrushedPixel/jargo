@@ -4,11 +4,16 @@ import (
 	"github.com/go-pg/pg/orm"
 	"fmt"
 	"errors"
+	"net/url"
+	"crushedpixel.net/jargo/api"
+	"crushedpixel.net/jargo/internal/parser"
 )
 
-type Filters struct {
-	resource *Resource
-	filter   map[string]map[string][]string
+var errFilteringByRelation = errors.New("filtering by relations is not supported")
+
+type filters struct {
+	resource *resource
+	filter   map[field]map[string][]string
 }
 
 type filterOptions struct {
@@ -21,59 +26,59 @@ type filterOptions struct {
 	Lte  []string
 }
 
-func (f *Filters) ApplyToQuery(q *orm.Query) {
-	for column, options := range f.filter {
-		whereOr(q, column, "=", options["EQ"])
-		whereOr(q, column, "<>", options["NE"])
-		whereOr(q, column, "LIKE", options["LIKE"])
-		whereOr(q, column, "<", options["LT"])
-		whereOr(q, column, "<=", options["LTE"])
-		whereOr(q, column, ">", options["GT"])
-		whereOr(q, column, ">=", options["GTE"])
+func (f *filters) ApplyToQuery(q *orm.Query) {
+	for field, options := range f.filter {
+		whereOr(q, field, "=", options["EQ"])
+		whereOr(q, field, "<>", options["NE"])
+		whereOr(q, field, "LIKE", options["LIKE"])
+		whereOr(q, field, "<", options["LT"])
+		whereOr(q, field, "<=", options["LTE"])
+		whereOr(q, field, ">", options["GT"])
+		whereOr(q, field, ">=", options["GTE"])
 	}
 }
 
-func whereOr(q *orm.Query, column string, op string, values []string) {
+func whereOr(q *orm.Query, field field, op string, values []string) {
 	if values != nil {
 		for _, val := range values {
-			q.WhereOr(fmt.Sprintf("%s %s ?", column, op), val)
+			q.WhereOr(fmt.Sprintf("%s %s ?", field.pgColumn(), op), val)
 		}
 	}
 }
 
-func newFilters(resource *Resource, values map[string]map[string][]string) (*Filters, error) {
-	filter := make(map[string]map[string][]string)
+func parseFilters(resource *resource, query url.Values) (api.Filters, error) {
+	parsed, err := parser.ParseFilterParameters(query)
+	if err != nil {
+		return nil, err
+	}
 
-	for field, operations := range values {
-		var column string
-		if field == primaryFieldJsonapiName {
-			column = primaryFieldColumn
-		} else {
-			// find the resourceField with matching jsonapi name
-			for _, f := range resource.fields {
-				if field != f.definition.name {
-					continue
+	filter := make(map[field]map[string][]string)
+	for fieldName, operations := range parsed {
+		// find resource field with matching jsonapi name
+		var field field
+		for _, rf := range resource.fields {
+			if rf.jsonapiName() == fieldName {
+				if _, ok := rf.(*hasField); ok {
+					return nil, errFilteringByRelation
 				}
-
-				if f.definition.typ != attribute {
-					return nil, errors.New("filtering by relations is not supported")
+				if _, ok := rf.(*belongsToField); ok {
+					return nil, errFilteringByRelation
 				}
-				if !f.definition.sort {
-					return nil, errors.New(fmt.Sprintf(`sorting by "%s" is disabled`, field))
-				}
-
-				column = f.definition.column
+				// TODO: ensure not filtering by many2many
+				field = rf
+				break
 			}
 		}
 
-		if column == "" {
-			return nil, errors.New(fmt.Sprintf(`unknown filter parameter: "%s"`, field))
+		if field == nil {
+			return nil, errors.New(fmt.Sprintf(`unknown filter parameter: "%s"`, fieldName))
 		}
 
-		filter[column] = operations
+		// TODO: implement filtering disabled
+		filter[field] = operations
 	}
 
-	filters := &Filters{
+	filters := &filters{
 		resource: resource,
 		filter:   filter,
 	}

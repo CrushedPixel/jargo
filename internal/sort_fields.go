@@ -4,6 +4,8 @@ import (
 	"github.com/go-pg/pg/orm"
 	"fmt"
 	"errors"
+	"net/url"
+	"crushedpixel.net/jargo/internal/parser"
 )
 
 const (
@@ -11,13 +13,15 @@ const (
 	dirDescending = "DESC"
 )
 
-type SortFields struct {
-	resource *Resource
-	sort     map[string]bool // column to order mapping
+var errSortingByRelation = errors.New("sorting by relations is not supported")
+
+type sortFields struct {
+	resource *resource
+	sort     map[field]bool // field to order mapping
 }
 
-func (s *SortFields) ApplyToQuery(q *orm.Query) {
-	for column, asc := range s.sort {
+func (s *sortFields) ApplyToQuery(q *orm.Query) {
+	for field, asc := range s.sort {
 		var dir string
 		if asc {
 			dir = dirAscending
@@ -25,59 +29,60 @@ func (s *SortFields) ApplyToQuery(q *orm.Query) {
 			dir = dirDescending
 		}
 
-		q.Order(fmt.Sprintf("%s.%s %s", s.resource.definition.alias, column, dir))
+		q.Order(fmt.Sprintf("%s %s", field.pgColumn(), dir))
 	}
 }
 
 // parses a comma-separated list of sort fields into a SortFields instance for a given resource
-func newSortFields(resource *Resource, fields []string) (*SortFields, error) {
-	sort := make(map[string]bool)
+func parseSortFields(resource *resource, query url.Values) (*sortFields, error) {
+	fields := parser.ParseSortParameters(query)
 
-	for _, field := range fields {
-		if len(field) < 1 {
+	sort := make(map[field]bool)
+	for _, fieldName := range fields {
+		if len(fieldName) < 1 {
 			continue
 		}
 
 		// if parameter is prefixed with '-', order is descending
 		var asc bool
-		if field[0] == '-' {
+		if fieldName[0] == '-' {
 			asc = false
-			field = field[1:]
+			fieldName = fieldName[1:]
 		} else {
 			asc = true
 		}
 
-		var column string
-		if field == primaryFieldJsonapiName {
-			column = primaryFieldColumn
-		} else {
-			// find the resourceField with matching jsonapi name
-			for _, f := range resource.fields {
-				if field != f.definition.name {
-					continue
+		// find resource field with matching jsonapi name
+		var field field
+		for _, rf := range resource.fields {
+			if rf.jsonapiName() == fieldName {
+				if _, ok := rf.(*hasField); ok {
+					return nil, errSortingByRelation
 				}
-
-				if f.definition.typ != attribute {
-					return nil, errors.New("sorting by relations is not supported")
+				if _, ok := rf.(*belongsToField); ok {
+					return nil, errSortingByRelation
 				}
-				if !f.definition.sort {
-					return nil, errors.New(fmt.Sprintf(`sorting by "%s" is disabled`, field))
-				}
-
-				column = f.definition.column
+				// TODO: ensure not sorting by many2many
+				field = rf
+				break
 			}
 		}
 
-		if column == "" {
-			return nil, errors.New(fmt.Sprintf(`unknown sort parameter: "%s"`, field))
+		if field == nil {
+			return nil, errors.New(fmt.Sprintf(`unknown sort parameter: "%s"`, fieldName))
 		}
 
-		sort[column] = asc
+		/* TODO: implement sorting disabled
+		if !rf.definition.sort {
+			return nil, errors.New(fmt.Sprintf(`sorting by "%s" is disabled`, field))
+		}
+		*/
+
+		sort[field] = asc
 	}
 
-	sortFields := &SortFields{
+	return &sortFields{
 		resource: resource,
 		sort:     sort,
-	}
-	return sortFields, nil
+	}, nil
 }
