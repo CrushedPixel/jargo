@@ -251,6 +251,8 @@ func (i *attrFieldInstance) apply(v *reflect.Value) error {
 	if v.IsNil() {
 		panic(errors.New("struct pointer must not be nil"))
 	}
-	v.Elem().FieldByName(i.field.fieldName).Set(reflect.ValueOf(i.value))
+	if i.value != nil {
+		v.Elem().FieldByName(i.field.fieldName).Set(reflect.ValueOf(i.value))
+	}
 	return nil
 }

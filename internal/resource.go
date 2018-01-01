@@ -11,6 +11,7 @@ import (
 	"crushedpixel.net/margo"
 	"net/http"
 	"net/url"
+	"reflect"
 )
 
 // implements api.Resource
@@ -34,12 +35,54 @@ func (r *resource) ParseJsonapiUpdatePayloadString(payload string, instance inte
 	return r.ParseJsonapiUpdatePayload(strings.NewReader(payload), instance)
 }
 
-func (r *resource) unmarshalJsonapiPayload(in io.Reader, jsonapiModelInstance interface{}) (interface{}, error) {
-	err := jsonapi.UnmarshalPayload(in, jsonapiModelInstance)
+func (r *resource) unmarshalJsonapiPayload(in io.Reader, targetInstance interface{}) (interface{}, error) {
+	// TODO: only create once when parsing schema
+	// dynamically create jsonapi model only containing non-readonly fields
+	writableJsonapiFields := make([]reflect.StructField, 0)
+	for _, f := range r.fields {
+		if !f.readonly() {
+			jsonapiFields, err := f.jsonapiFields()
+			if err != nil {
+				return nil, err
+			}
+			writableJsonapiFields = append(writableJsonapiFields, jsonapiFields...)
+		}
+	}
+
+	instance := reflect.New(reflect.StructOf(writableJsonapiFields)).Interface()
+	err := jsonapi.UnmarshalPayload(in, instance)
 	if err != nil {
 		return nil, err
 	}
-	return jsonapiModelToResourceModel(r, jsonapiModelInstance), nil
+
+	val := reflect.ValueOf(instance)
+	jmi := &jsonapiModelInstance{
+		schema: r.schema,
+		value:  &val,
+	}
+
+	val1 := reflect.ValueOf(targetInstance)
+	target := &jsonapiModelInstance{
+		schema: r.schema,
+		value:  &val1,
+	}
+
+	// apply parsed, writable fields to target jsonapi model instance
+	for _, f := range r.fields {
+		if !f.readonly() {
+			i := f.createInstance()
+			err := i.parseJsonapiModel(jmi)
+			if err != nil {
+				return nil, err
+			}
+			err = i.applyToJsonapiModel(target)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return jsonapiModelToResourceModel(r, target.value.Interface()), nil
 }
 
 func (r *resource) CreateTable(db *pg.DB) error {

@@ -21,7 +21,6 @@ func (r *resourceResponse) Send(c *gin.Context) error {
 		return err
 	}
 	var bytes []byte
-	// TODO: debug resource marshalling
 	if collection {
 		instances, err := r.resource.ParseResourceModelCollection(r.data)
 		if err != nil {

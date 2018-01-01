@@ -102,7 +102,7 @@ func (s *schema) NewResourceModelInstance() interface{} {
 	return reflect.New(s.resourceModelType).Interface()
 }
 
-func (s *schema) NewResourceModelCollection(entries... interface{}) interface{} {
+func (s *schema) NewResourceModelCollection(entries ... interface{}) interface{} {
 	l := len(entries)
 	val := reflect.MakeSlice(reflect.SliceOf(reflect.PtrTo(s.resourceModelType)), l, l)
 	for i := 0; i < l; i++ {
@@ -119,7 +119,7 @@ func (s *schema) NewPGModelInstance() interface{} {
 	return reflect.New(s.pgModelType).Interface()
 }
 
-func (s *schema) NewPGModelCollection(entries... interface{}) interface{} {
+func (s *schema) NewPGModelCollection(entries ... interface{}) interface{} {
 	l := len(entries)
 	val := reflect.MakeSlice(reflect.SliceOf(reflect.PtrTo(s.pgModelType)), l, l)
 	for i := 0; i < l; i++ {
