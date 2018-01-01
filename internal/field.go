@@ -8,6 +8,10 @@ type field interface {
 	jsonapiName() string
 	pgColumn() string
 
+	readonly() bool
+	sortable() bool
+	filterable() bool
+
 	jsonapiFields() ([]reflect.StructField, error)
 	jsonapiJoinFields() ([]reflect.StructField, error)
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"crushedpixel.net/jargo/internal/parser"
+	"github.com/iancoleman/strcase"
 )
 
 var (
@@ -29,9 +30,13 @@ func newAttrField(schema *schema, f *reflect.StructField) (field, error) {
 		return nil, err
 	}
 
+	column := base.name
+	if !base.jsonapiExported {
+		column = strcase.ToSnake(base.fieldName)
+	}
 	field := &attrField{
 		baseField: base,
-		column:    base.name,
+		column:    column,
 	}
 
 	// validate field type
@@ -49,7 +54,8 @@ func newAttrField(schema *schema, f *reflect.StructField) (field, error) {
 			field.column = value
 		case optionDefault:
 			field.sqlDefault = value
-		case optionOmitempty, optionNotnull, optionUnique:
+		case optionReadonly, optionSort, optionFilter,
+			optionOmitempty, optionNotnull, optionUnique:
 			// these were handled when parsing the baseField
 			// and should therefore not trigger the default handler.
 		default:

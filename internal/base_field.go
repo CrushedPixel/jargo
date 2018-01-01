@@ -12,7 +12,11 @@ type baseField struct {
 	fieldName string
 	fieldType reflect.Type
 
-	name string // jsonapi attribute name
+	name string
+
+	jargoReadonly   bool
+	jargoSortable   bool
+	jargoFilterable bool
 
 	jsonapiExported  bool
 	jsonapiOmitempty bool
@@ -26,6 +30,18 @@ type baseField struct {
 
 func (f *baseField) jsonapiName() string {
 	return f.name
+}
+
+func (f *baseField) readonly() bool {
+	return f.jargoReadonly
+}
+
+func (f *baseField) sortable() bool {
+	return f.jargoSortable
+}
+
+func (f *baseField) filterable() bool {
+	return f.jargoFilterable
 }
 
 func (f *baseField) jsonapiFields() ([]reflect.StructField, error) {
@@ -55,12 +71,33 @@ func newBaseField(schema *schema, f *reflect.StructField) (*baseField, error) {
 		fieldName:       f.Name,
 		fieldType:       f.Type,
 		name:            parsed.Name,
-		jsonapiExported: f.Name != unexportedFieldName,
+		jargoReadonly:   false,
+		jargoSortable:   true,
+		jargoFilterable: true,
+		jsonapiExported: parsed.Name != unexportedFieldName,
 	}
 
 	// parse options
 	for option, value := range parsed.Options {
 		switch option {
+		case optionReadonly:
+			b, err := parseBoolOption(value)
+			if err != nil {
+				return nil, err
+			}
+			field.jargoReadonly = b
+		case optionSort:
+			b, err := parseBoolOption(value)
+			if err != nil {
+				return nil, err
+			}
+			field.jargoSortable = b
+		case optionFilter:
+			b, err := parseBoolOption(value)
+			if err != nil {
+				return nil, err
+			}
+			field.jargoFilterable = b
 		case optionOmitempty:
 			if !field.jsonapiExported {
 				return nil, errJsonapiOptionOnUnexportedField

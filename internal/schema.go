@@ -42,14 +42,14 @@ func (s *schema) Name() string {
 }
 
 func (s *schema) IsResourceModelCollection(data interface{}) (bool, error) {
-	v := reflect.ValueOf(data)
+	typ := reflect.ValueOf(data).Type()
 	collection := false
-	if v.Kind() == reflect.Slice {
+	if typ.Kind() == reflect.Slice {
 		collection = true
-		v = v.Elem()
+		typ = typ.Elem()
 	}
 
-	if v.Type() != reflect.PtrTo(s.resourceModelType) {
+	if typ != reflect.PtrTo(s.resourceModelType) {
 		if collection {
 			return false, errInvalidResourceCollection
 		} else {
@@ -61,14 +61,14 @@ func (s *schema) IsResourceModelCollection(data interface{}) (bool, error) {
 }
 
 func (s *schema) IsJsonapiModelCollection(data interface{}) (bool, error) {
-	v := reflect.ValueOf(data)
+	typ := reflect.ValueOf(data).Type()
 	collection := false
-	if v.Kind() == reflect.Slice {
+	if typ.Kind() == reflect.Slice {
 		collection = true
-		v = v.Elem()
+		typ = typ.Elem()
 	}
 
-	if v.Type() != reflect.PtrTo(s.jsonapiModelType) {
+	if typ != reflect.PtrTo(s.jsonapiModelType) {
 		if collection {
 			return false, errInvalidJsonapiCollection
 		} else {
@@ -80,14 +80,14 @@ func (s *schema) IsJsonapiModelCollection(data interface{}) (bool, error) {
 }
 
 func (s *schema) IsPGModelCollection(data interface{}) (bool, error) {
-	v := reflect.ValueOf(data)
+	typ := reflect.ValueOf(data).Type()
 	collection := false
-	if v.Kind() == reflect.Slice {
+	if typ.Kind() == reflect.Slice {
 		collection = true
-		v = v.Elem()
+		typ = typ.Elem()
 	}
 
-	if v.Type() != reflect.PtrTo(s.pgModelType) {
+	if typ != reflect.PtrTo(s.pgModelType) {
 		if collection {
 			return false, errInvalidPGCollection
 		} else {
@@ -102,6 +102,15 @@ func (s *schema) NewResourceModelInstance() interface{} {
 	return reflect.New(s.resourceModelType).Interface()
 }
 
+func (s *schema) NewResourceModelCollection(entries... interface{}) interface{} {
+	l := len(entries)
+	val := reflect.MakeSlice(reflect.SliceOf(reflect.PtrTo(s.resourceModelType)), l, l)
+	for i := 0; i < l; i++ {
+		val.Index(i).Set(reflect.ValueOf(entries[i]))
+	}
+	return val.Interface()
+}
+
 func (s *schema) NewJsonapiModelInstance() interface{} {
 	return reflect.New(s.jsonapiModelType).Interface()
 }
@@ -110,8 +119,13 @@ func (s *schema) NewPGModelInstance() interface{} {
 	return reflect.New(s.pgModelType).Interface()
 }
 
-func (s *schema) NewPGModelCollection() interface{} {
-	return reflect.New(reflect.SliceOf(reflect.PtrTo(s.pgModelType))).Elem().Interface()
+func (s *schema) NewPGModelCollection(entries... interface{}) interface{} {
+	l := len(entries)
+	val := reflect.MakeSlice(reflect.SliceOf(reflect.PtrTo(s.pgModelType)), l, l)
+	for i := 0; i < l; i++ {
+		val.Index(i).Set(reflect.ValueOf(entries[i]))
+	}
+	return val.Interface()
 }
 
 func (s *schema) ParseResourceModelCollection(instance interface{}) ([]api.SchemaInstance, error) {

@@ -61,6 +61,18 @@ func pgIdFields(schema *schema) []reflect.StructField {
 	return []reflect.StructField{tableNameField, idField}
 }
 
+func (f *idField) readonly() bool {
+	return true
+}
+
+func (f *idField) sortable() bool {
+	return true
+}
+
+func (f *idField) filterable() bool {
+	return true
+}
+
 func (f *idField) jsonapiName() string {
 	return idFieldJsonapiName
 }

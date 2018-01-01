@@ -10,6 +10,7 @@ import (
 	"crushedpixel.net/jargo/api"
 	"crushedpixel.net/jargo/internal"
 	"net/url"
+	"reflect"
 )
 
 const (
@@ -18,7 +19,7 @@ const (
 
 type Application struct {
 	*margo.Server
-	registry *internal.Registry
+	registry internal.Registry
 
 	DB          *pg.DB
 	Controllers []*Controller
@@ -47,7 +48,7 @@ var defaultErrorHandler margo.ErrorHandlerFunc = func(c *gin.Context, r interfac
 func NewApplication(db *pg.DB) *Application {
 	server := margo.NewServer()
 	server.ErrorHandler = defaultErrorHandler
-	registry := internal.NewRegistry()
+	registry := make(internal.Registry)
 	return &Application{
 		Server:      server,
 		registry:    registry,
@@ -58,7 +59,7 @@ func NewApplication(db *pg.DB) *Application {
 }
 
 func (app *Application) RegisterResource(model interface{}) (api.Resource, error) {
-	return app.registry.RegisterResource(model)
+	return app.registry.RegisterResource(reflect.TypeOf(model))
 }
 
 func (app *Application) AddController(c *Controller) {
@@ -72,11 +73,6 @@ func (app *Application) Run(addr ...string) error {
 	app.ran = true
 	log.Println("starting jargo application")
 	app.Use(injectApplicationMiddleware(app))
-
-	err := app.registry.InitializeResources()
-	if err != nil {
-		return err
-	}
 
 	for _, c := range app.Controllers {
 		c.initialize(app)

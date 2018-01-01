@@ -20,14 +20,14 @@ func (r *resourceResponse) Send(c *gin.Context) error {
 	if err != nil {
 		return err
 	}
-
 	var bytes []byte
-
+	// TODO: debug resource marshalling
 	if collection {
 		instances, err := r.resource.ParseResourceModelCollection(r.data)
 		if err != nil {
 			return err
 		}
+
 		var jsonapiModels []interface{}
 		for _, instance := range instances {
 			jsonapiModelInstance, err := instance.ToJsonapiModel()

@@ -56,14 +56,16 @@ type Schema interface {
 	IsJsonapiModelCollection(interface{}) (bool, error)
 	IsPGModelCollection(interface{}) (bool, error)
 
-	// creates a new resource model instance
+	// returns a pointer to a new resource model instance
 	NewResourceModelInstance() interface{}
-	// creates a new jsonapi model instance
+	// returns a slice of pointers to resource model instances
+	NewResourceModelCollection(entries... interface{}) interface{}
+	// returns a pointer to a new jsonapi model instance
 	NewJsonapiModelInstance() interface{}
-	// creates a new pg model instance
+	// returns a pointer to a new pg model instance
 	NewPGModelInstance() interface{}
-	// creates an empty slice of pg model instances
-	NewPGModelCollection() interface{}
+	// returns a slice of pointers to pg model instances
+	NewPGModelCollection(entries... interface{}) interface{}
 
 	ParseResourceModelCollection(interface{}) ([]SchemaInstance, error)
 	ParseJsonapiModelCollection(interface{}) ([]SchemaInstance, error)

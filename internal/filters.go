@@ -73,8 +73,9 @@ func parseFilters(resource *resource, query url.Values) (api.Filters, error) {
 		if field == nil {
 			return nil, errors.New(fmt.Sprintf(`unknown filter parameter: "%s"`, fieldName))
 		}
-
-		// TODO: implement filtering disabled
+		if !field.filterable() {
+			return nil, errors.New(fmt.Sprintf(`filtering by "%s" is disabled`, fieldName))
+		}
 		filter[field] = operations
 	}
 

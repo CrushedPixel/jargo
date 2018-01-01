@@ -18,6 +18,7 @@ type fieldSet struct {
 func allFields(r *resource) api.FieldSet {
 	fs := &fieldSet{
 		resource: r,
+		fields: make([]field, len(r.fields)),
 	}
 	copy(fs.fields, r.fields)
 	return fs
@@ -58,6 +59,8 @@ func parseFieldSet(r *resource, query url.Values) (api.FieldSet, error) {
 
 	var resourceFields []field
 	if fields, ok := parsed[r.Name()]; ok {
+		// always add the id field, so it gets fetched from the database
+		fields = append(fields, idFieldJsonapiName)
 		for _, fieldName := range fields {
 			// find resource field with matching jsonapi name
 			var field field

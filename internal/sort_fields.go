@@ -71,13 +71,9 @@ func parseSortFields(resource *resource, query url.Values) (*sortFields, error) 
 		if field == nil {
 			return nil, errors.New(fmt.Sprintf(`unknown sort parameter: "%s"`, fieldName))
 		}
-
-		/* TODO: implement sorting disabled
-		if !rf.definition.sort {
-			return nil, errors.New(fmt.Sprintf(`sorting by "%s" is disabled`, field))
+		if !field.sortable() {
+			return nil, errors.New(fmt.Sprintf(`sorting by "%s" is disabled`, fieldName))
 		}
-		*/
-
 		sort[field] = asc
 	}
 

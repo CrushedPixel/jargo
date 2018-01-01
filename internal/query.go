@@ -51,7 +51,11 @@ type Query struct {
 func newQuery(db orm.DB, resource *resource, typ queryType, collection bool) *Query {
 	var model interface{}
 	if collection {
-		model = resource.NewPGModelCollection()
+		val := reflect.ValueOf(resource.NewPGModelCollection())
+		// get pointer to slice as expected by go-pg
+		ptr := reflect.New(val.Type())
+		ptr.Elem().Set(val)
+		model = ptr.Interface()
 	} else {
 		model = resource.NewPGModelInstance()
 	}
@@ -59,8 +63,32 @@ func newQuery(db orm.DB, resource *resource, typ queryType, collection bool) *Qu
 	return newQueryWithPGModelInstance(db, resource, typ, collection, model)
 }
 
-func newQueryFromResourceModel(db orm.DB, resource *resource, typ queryType, collection bool, resourceModelInstance interface{}) *Query {
-	pgModel := resourceModelToPGModel(resource, resourceModelInstance)
+func newQueryFromResourceModel(db orm.DB, resource *resource, typ queryType, data interface{}) *Query {
+	collection, err := resource.IsResourceModelCollection(data)
+	if err != nil {
+		panic(err)
+	}
+
+	var pgModel interface{}
+	if collection {
+		instances, err := resource.ParseResourceModelCollection(data)
+		if err != nil {
+			panic(err)
+		}
+		pgInstances := make([]interface{}, len(instances))
+		for i := 0; i < len(instances); i++ {
+			pgInstance, err := instances[i].ToPGModel()
+			if err != nil {
+				panic(err)
+			}
+			pgInstances = append(pgInstances, pgInstance)
+		}
+
+		pgModel = pgInstances
+	} else {
+		pgModel = resourceModelToPGModel(resource, data)
+	}
+
 	return newQueryWithPGModelInstance(db, resource, typ, collection, pgModel)
 }
 
@@ -240,14 +268,15 @@ func (q *Query) execute() {
 
 	m := q.model
 	if q.collection {
-		resourceInstances := make([]interface{}, 0)
-		for i := 0; i < m.Len(); i++ {
-			v := m.Index(i)
+		var entries []interface{}
+
+		for i := 0; i < m.Elem().Len(); i++ {
+			v := m.Elem().Index(i)
 			if !v.IsNil() {
-				resourceInstances = append(resourceInstances, pgModelToResourceModel(q.resource, v.Interface()))
+				entries = append(entries, pgModelToResourceModel(q.resource, v.Interface()))
 			}
 		}
-		q.result = resourceInstances
+		q.result = q.resource.NewResourceModelCollection(entries...)
 	} else {
 		q.result = pgModelToResourceModel(q.resource, m.Interface())
 	}

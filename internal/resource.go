@@ -61,27 +61,27 @@ func (r *resource) SelectById(db orm.DB, id interface{}) api.Query {
 }
 
 func (r *resource) Insert(db orm.DB, instances []interface{}) api.Query {
-	return newQueryFromResourceModel(db, r, typeInsert, true, instances)
+	return newQueryFromResourceModel(db, r, typeInsert, instances)
 }
 
 func (r *resource) InsertOne(db orm.DB, instance interface{}) api.Query {
-	return newQueryFromResourceModel(db, r, typeInsert, false, instance)
+	return newQueryFromResourceModel(db, r, typeInsert, instance)
 }
 
 func (r *resource) Update(db orm.DB, instances []interface{}) api.Query {
-	return newQueryFromResourceModel(db, r, typeUpdate, true, instances)
+	return newQueryFromResourceModel(db, r, typeUpdate, instances)
 }
 
 func (r *resource) UpdateOne(db orm.DB, instance interface{}) api.Query {
-	return newQueryFromResourceModel(db, r, typeUpdate, false, instance)
+	return newQueryFromResourceModel(db, r, typeUpdate, instance)
 }
 
 func (r *resource) Delete(db orm.DB, instances []interface{}) api.Query {
-	return newQueryFromResourceModel(db, r, typeDelete, true, instances)
+	return newQueryFromResourceModel(db, r, typeDelete, instances)
 }
 
 func (r *resource) DeleteOne(db orm.DB, instance interface{}) api.Query {
-	return newQueryFromResourceModel(db, r, typeDelete, false, instance)
+	return newQueryFromResourceModel(db, r, typeDelete, instance)
 }
 
 func (r *resource) DeleteById(db orm.DB, id interface{}) api.Query {
