@@ -109,6 +109,10 @@ type idFieldInstance struct {
 	value int64
 }
 
+func (i *idFieldInstance) parentField() field {
+	return i.field
+}
+
 func (i *idFieldInstance) parseResourceModel(instance *resourceModelInstance) error {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)

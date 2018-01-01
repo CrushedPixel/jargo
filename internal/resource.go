@@ -20,7 +20,7 @@ type resource struct {
 }
 
 func (r *resource) ParseJsonapiPayload(in io.Reader) (interface{}, error) {
-	return r.unmarshalJsonapiPayload(in, r.NewJsonapiModelInstance())
+	return r.ParseJsonapiUpdatePayload(in, r.NewResourceModelInstance())
 }
 
 func (r *resource) ParseJsonapiPayloadString(payload string) (interface{}, error) {
@@ -28,47 +28,47 @@ func (r *resource) ParseJsonapiPayloadString(payload string) (interface{}, error
 }
 
 func (r *resource) ParseJsonapiUpdatePayload(in io.Reader, instance interface{}) (interface{}, error) {
-	return r.unmarshalJsonapiPayload(in, resourceModelToJsonapiModel(r, instance))
+	return r.unmarshalJsonapiPayload(in, instance)
 }
 
 func (r *resource) ParseJsonapiUpdatePayloadString(payload string, instance interface{}) (interface{}, error) {
 	return r.ParseJsonapiUpdatePayload(strings.NewReader(payload), instance)
 }
 
-func (r *resource) unmarshalJsonapiPayload(in io.Reader, targetInstance interface{}) (interface{}, error) {
-	instance := r.newJsonapiModelInstance().value.Interface()
-	// parse payload into new jsonapi instance
-	err := jsonapi.UnmarshalPayload(in, instance)
+// unmarshals a jsonapi payload, applying it to a resource model instance
+func (r *resource) unmarshalJsonapiPayload(in io.Reader, resourceModelInstance interface{}) (interface{}, error) {
+	si, err := r.ParseResourceModel(resourceModelInstance)
 	if err != nil {
 		return nil, err
 	}
 
-	// apply writable fields to target jsonapi model instance
-	val := reflect.ValueOf(instance)
+	// parse payload into new jsonapi instance
+	jsonapiTargetInstance := r.NewJsonapiModelInstance()
+	err = jsonapi.UnmarshalPayload(in, jsonapiTargetInstance)
+	if err != nil {
+		return nil, err
+	}
+
+	val := reflect.ValueOf(jsonapiTargetInstance)
 	jmi := &jsonapiModelInstance{
 		schema: r.schema,
 		value:  &val,
 	}
-	val1 := reflect.ValueOf(targetInstance)
-	target := &jsonapiModelInstance{
-		schema: r.schema,
-		value:  &val1,
-	}
-	for _, f := range r.fields {
-		if f.writable() {
-			i := f.createInstance()
-			err := i.parseJsonapiModel(jmi)
-			if err != nil {
-				return nil, err
-			}
-			err = i.applyToJsonapiModel(target)
+
+	// copy original resource model fields to a new target resource model,
+	// applying writable fields from parsed jsonapi model
+	target := r.newResourceModelInstance()
+	for _, fieldInstance := range si.(*schemaInstance).fields {
+		if fieldInstance.parentField().writable() {
+			err := fieldInstance.parseJsonapiModel(jmi)
 			if err != nil {
 				return nil, err
 			}
 		}
+		fieldInstance.applyToResourceModel(target)
 	}
 
-	return jsonapiModelToResourceModel(r, target.value.Interface()), nil
+	return target.value.Interface(), nil
 }
 
 func (r *resource) CreateTable(db *pg.DB) error {

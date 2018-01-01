@@ -147,6 +147,10 @@ type attrFieldInstance struct {
 	value interface{}
 }
 
+func (i *attrFieldInstance) parentField() field {
+	return i.field
+}
+
 func (i *attrFieldInstance) parseResourceModel(instance *resourceModelInstance) error {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)

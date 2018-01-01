@@ -54,10 +54,16 @@ func pgHasFields(f *hasField) []reflect.StructField {
 
 func (f *hasField) createInstance() fieldInstance {
 	return &hasFieldInstance{
-		f.relationField.createInstance(),
+		relationFieldInstance: f.relationField.createInstance(),
+		field:                 f,
 	}
 }
 
 type hasFieldInstance struct {
 	*relationFieldInstance
+	field *hasField
+}
+
+func (i *hasFieldInstance) parentField() field {
+	return i.field
 }

@@ -98,6 +98,10 @@ type belongsToFieldInstance struct {
 	field *belongsToField
 }
 
+func (i *belongsToFieldInstance) parentField() field {
+	return i.field
+}
+
 func (i *belongsToFieldInstance) parsePGModel(instance *pgModelInstance) error {
 	println("ParsePGModel")
 	return nil // TODO

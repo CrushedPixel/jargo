@@ -20,6 +20,8 @@ type field interface {
 }
 
 type fieldInstance interface {
+	parentField() field
+
 	// parses a resource model instance, setting the field's value.
 	parseResourceModel(*resourceModelInstance) error
 	// parses a jsonapi model instance, setting the field's value.
