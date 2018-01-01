@@ -5,13 +5,12 @@ import "crushedpixel.net/jargo/api"
 type Controller struct {
 	Namespace  string
 	Resource   api.Resource
-	Actions    *Actions
+	Actions    Actions
 	Middleware []HandlerFunc
 }
 
 func NewController(namespace string, resource api.Resource) *Controller {
-	a := make(Actions)
-	actions := &a
+	actions := make(Actions)
 
 	controller := &Controller{
 		Namespace: namespace,
@@ -46,7 +45,7 @@ func (c *Controller) initialize(app *Application) {
 	c.Resource.CreateTable(app.DB)
 
 	// register actions
-	for k, v := range *c.Actions {
+	for k, v := range c.Actions {
 		app.Register(v.toEndpoint(c, k))
 	}
 }
