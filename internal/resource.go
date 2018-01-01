@@ -136,9 +136,12 @@ func (r *resource) Response(data interface{}, fieldSet api.FieldSet) margo.Respo
 }
 
 func (r *resource) ResponseAllFields(data interface{}) margo.Response {
-	return r.Response(data, allFields(r))
+	return r.Response(data, nil)
 }
 
 func (r *resource) ResponseWithStatusCode(data interface{}, fieldSet api.FieldSet, status int) margo.Response {
+	if fieldSet == nil {
+		fieldSet = allFields(r)
+	}
 	return newResourceResponse(r, data, fieldSet, status)
 }

@@ -5,7 +5,10 @@ import (
 	"github.com/google/jsonapi"
 	"crushedpixel.net/jargo/api"
 	"encoding/json"
+	"errors"
 )
+
+var errDataNil = errors.New("resource response data is nil")
 
 type resourceResponse struct {
 	data interface{} // resource model data
@@ -16,10 +19,14 @@ type resourceResponse struct {
 }
 
 func (r *resourceResponse) Send(c *gin.Context) error {
+	if r.data == nil {
+		return errDataNil
+	}
 	collection, err := r.resource.IsResourceModelCollection(r.data)
 	if err != nil {
 		return err
 	}
+
 	var bytes []byte
 	if collection {
 		instances, err := r.resource.ParseResourceModelCollection(r.data)

@@ -166,7 +166,6 @@ func (i *relationFieldInstance) parseResourceModel(instance *resourceModelInstan
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-
 	// do not parse nil models
 	if instance.value.IsNil() {
 		return nil
@@ -185,8 +184,7 @@ func (i *relationFieldInstance) parseResourceModel(instance *resourceModelInstan
 			i.values = append(i.values, r)
 		}
 	} else {
-		v := val
-		r, err := i.relationSchema.ParseJoinResourceModel(v.Interface())
+		r, err := i.relationSchema.ParseJoinResourceModel(val.Interface())
 		if err != nil {
 			return err
 		}
