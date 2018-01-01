@@ -32,10 +32,6 @@ type schema struct {
 	jsonapiModelType  reflect.Type
 	pgModelType       reflect.Type
 
-	// jsonapi model type only containing
-	// writable fields
-	writableJsonapiModelType reflect.Type
-
 	// model types to be referenced in relations
 	// from other jsonapi/pg models,
 	// avoiding infinite recursion
@@ -506,8 +502,4 @@ func (s *schema) newPGModelInstance() *pgModelInstance {
 		schema: s,
 		value:  &v,
 	}
-}
-
-func (s *schema) newWritableJsonapiModelInstance() interface{} {
-	return reflect.New(s.writableJsonapiModelType).Interface()
 }

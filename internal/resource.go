@@ -36,15 +36,14 @@ func (r *resource) ParseJsonapiUpdatePayloadString(payload string, instance inte
 }
 
 func (r *resource) unmarshalJsonapiPayload(in io.Reader, targetInstance interface{}) (interface{}, error) {
-	// create jsonapi model containing only writable fields
-	instance := r.newWritableJsonapiModelInstance()
-	// parse payload into model
+	instance := r.newJsonapiModelInstance().value.Interface()
+	// parse payload into new jsonapi instance
 	err := jsonapi.UnmarshalPayload(in, instance)
 	if err != nil {
 		return nil, err
 	}
 
-	// apply parsed, writable fields to target jsonapi model instance
+	// apply writable fields to target jsonapi model instance
 	val := reflect.ValueOf(instance)
 	jmi := &jsonapiModelInstance{
 		schema: r.schema,
