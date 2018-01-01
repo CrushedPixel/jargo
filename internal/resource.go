@@ -36,40 +36,27 @@ func (r *resource) ParseJsonapiUpdatePayloadString(payload string, instance inte
 }
 
 func (r *resource) unmarshalJsonapiPayload(in io.Reader, targetInstance interface{}) (interface{}, error) {
-	// TODO: only create once when parsing schema
-	// dynamically create jsonapi model only containing non-readonly fields
-	writableJsonapiFields := make([]reflect.StructField, 0)
-	for _, f := range r.fields {
-		if !f.readonly() {
-			jsonapiFields, err := f.jsonapiFields()
-			if err != nil {
-				return nil, err
-			}
-			writableJsonapiFields = append(writableJsonapiFields, jsonapiFields...)
-		}
-	}
-
-	instance := reflect.New(reflect.StructOf(writableJsonapiFields)).Interface()
+	// create jsonapi model containing only writable fields
+	instance := r.newWritableJsonapiModelInstance()
+	// parse payload into model
 	err := jsonapi.UnmarshalPayload(in, instance)
 	if err != nil {
 		return nil, err
 	}
 
+	// apply parsed, writable fields to target jsonapi model instance
 	val := reflect.ValueOf(instance)
 	jmi := &jsonapiModelInstance{
 		schema: r.schema,
 		value:  &val,
 	}
-
 	val1 := reflect.ValueOf(targetInstance)
 	target := &jsonapiModelInstance{
 		schema: r.schema,
 		value:  &val1,
 	}
-
-	// apply parsed, writable fields to target jsonapi model instance
 	for _, f := range r.fields {
-		if !f.readonly() {
+		if f.writable() {
 			i := f.createInstance()
 			err := i.parseJsonapiModel(jmi)
 			if err != nil {

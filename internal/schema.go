@@ -9,14 +9,16 @@ import (
 // resource model -> resource schema
 // resource schema instance <-> jsonapi model, pg model, resource model instances
 
-var errInvalidResourceInstance = errors.New("instance must be pointer to resource model")
-var errInvalidResourceCollection = errors.New("collection must be slice of pointers to resource model")
-var errInvalidJsonapiInstance = errors.New("instance must be pointer to jsonapi model")
-var errInvalidJsonapiCollection = errors.New("collection must be slice of pointers to jsonapi model")
-var errInvalidJoinJsonapiInstance = errors.New("instance must be pointer to join jsonapi model")
-var errInvalidPGInstance = errors.New("instance must be pointer to pg model")
-var errInvalidPGCollection = errors.New("collection must be slice of pointers to pg model")
-var errInvalidJoinPGInstance = errors.New("instance must be pointer to join pg model")
+var (
+	errInvalidResourceInstance    = errors.New("instance must be pointer to resource model")
+	errInvalidResourceCollection  = errors.New("collection must be slice of pointers to resource model")
+	errInvalidJsonapiInstance     = errors.New("instance must be pointer to jsonapi model")
+	errInvalidJsonapiCollection   = errors.New("collection must be slice of pointers to jsonapi model")
+	errInvalidJoinJsonapiInstance = errors.New("instance must be pointer to join jsonapi model")
+	errInvalidPGInstance          = errors.New("instance must be pointer to pg model")
+	errInvalidPGCollection        = errors.New("collection must be slice of pointers to pg model")
+	errInvalidJoinPGInstance      = errors.New("instance must be pointer to join pg model")
+)
 
 // implements api.Schema
 type schema struct {
@@ -29,6 +31,10 @@ type schema struct {
 	resourceModelType reflect.Type
 	jsonapiModelType  reflect.Type
 	pgModelType       reflect.Type
+
+	// jsonapi model type only containing
+	// writable fields
+	writableJsonapiModelType reflect.Type
 
 	// model types to be referenced in relations
 	// from other jsonapi/pg models,
@@ -500,4 +506,8 @@ func (s *schema) newPGModelInstance() *pgModelInstance {
 		schema: s,
 		value:  &v,
 	}
+}
+
+func (s *schema) newWritableJsonapiModelInstance() interface{} {
+	return reflect.New(s.writableJsonapiModelType).Interface()
 }

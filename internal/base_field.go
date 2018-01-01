@@ -14,7 +14,7 @@ type baseField struct {
 
 	name string
 
-	jargoReadonly   bool
+	jargoWritable   bool
 	jargoSortable   bool
 	jargoFilterable bool
 
@@ -32,8 +32,8 @@ func (f *baseField) jsonapiName() string {
 	return f.name
 }
 
-func (f *baseField) readonly() bool {
-	return f.jargoReadonly
+func (f *baseField) writable() bool {
+	return f.jargoWritable
 }
 
 func (f *baseField) sortable() bool {
@@ -71,7 +71,7 @@ func newBaseField(schema *schema, f *reflect.StructField) (*baseField, error) {
 		fieldName:       f.Name,
 		fieldType:       f.Type,
 		name:            parsed.Name,
-		jargoReadonly:   false,
+		jargoWritable:   true,
 		jargoSortable:   true,
 		jargoFilterable: true,
 		jsonapiExported: parsed.Name != unexportedFieldName,
@@ -85,7 +85,7 @@ func newBaseField(schema *schema, f *reflect.StructField) (*baseField, error) {
 			if err != nil {
 				return nil, err
 			}
-			field.jargoReadonly = b
+			field.jargoWritable = !b
 		case optionSort:
 			b, err := parseBoolOption(value)
 			if err != nil {

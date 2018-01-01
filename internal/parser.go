@@ -101,6 +101,7 @@ func (r Registry) newSchemaDefinition(t reflect.Type) (*schema, error) {
 
 func (r Registry) generateSchemaModels(schema *schema) error {
 	var jsonapiFields []reflect.StructField
+	var writableJsonapiFields []reflect.StructField
 	var pgFields []reflect.StructField
 	for _, f := range schema.fields {
 		jf, err := f.jsonapiFields()
@@ -108,6 +109,9 @@ func (r Registry) generateSchemaModels(schema *schema) error {
 			return err
 		}
 		jsonapiFields = append(jsonapiFields, jf...)
+		if f.writable() {
+			writableJsonapiFields = append(writableJsonapiFields, jf...)
+		}
 
 		pf, err := f.pgFields()
 		if err != nil {
@@ -117,6 +121,7 @@ func (r Registry) generateSchemaModels(schema *schema) error {
 	}
 
 	schema.jsonapiModelType = reflect.StructOf(jsonapiFields)
+	schema.writableJsonapiModelType = reflect.StructOf(writableJsonapiFields)
 	schema.pgModelType = reflect.StructOf(pgFields)
 	return nil
 }

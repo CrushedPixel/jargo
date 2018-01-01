@@ -61,8 +61,8 @@ func pgIdFields(schema *schema) []reflect.StructField {
 	return []reflect.StructField{tableNameField, idField}
 }
 
-func (f *idField) readonly() bool {
-	return true
+func (f *idField) writable() bool {
+	return false
 }
 
 func (f *idField) sortable() bool {

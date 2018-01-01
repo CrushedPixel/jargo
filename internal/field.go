@@ -8,7 +8,7 @@ type field interface {
 	jsonapiName() string
 	pgColumn() string
 
-	readonly() bool
+	writable() bool
 	sortable() bool
 	filterable() bool
 
