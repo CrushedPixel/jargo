@@ -163,9 +163,6 @@ func (q *Query) Filters(in api.Filters) api.Query {
 	if q.executed {
 		panic(errAlreadyExecuted)
 	}
-	if !q.collection {
-		panic(errNoCollection)
-	}
 	if f.resource != q.resource {
 		panic(errMismatchingResource)
 	}
@@ -229,15 +226,16 @@ func (q *Query) execute() {
 		// apply query modifiers
 		q.fields.ApplyToQuery(q.Query)
 
+		if q.filters != nil {
+			q.filters.ApplyToQuery(q.Query)
+		}
+
 		if q.collection {
 			if q.sort != nil {
 				q.sort.ApplyToQuery(q.Query)
 			}
 			if q.pagination != nil {
 				q.pagination.ApplyToQuery(q.Query)
-			}
-			if q.filters != nil {
-				q.filters.ApplyToQuery(q.Query)
 			}
 		}
 

@@ -1,16 +1,12 @@
 TODO:
 - fix internal server error if user filters by invalid value
-- add support for wrapped types (type X int) in resource models.
-  therefore, the converter needs to convert X to the (primitive) int type and back
-  when converting from/to jsonapi model.
-- !when converting resource to pg models, correctly set the ID field
 - support for included values
 - in the meantime, return 400 if include parameter is set
-- support filtering by belongsTo relations
 - proper logging
 - automatically create indices for sortable fields to improve pagination speed
 - more thorough unit testing
 - prevent has/has relations as they can't be modeled in the database
+- add support for many2many relations
 
 Gotchas:
 - only int64 ids are supported
@@ -20,4 +16,3 @@ Gotchas:
 Ideas:
 - add websocket support, mirroring all REST endpoints and adding PubSub capabilities
 - add authentication system to avoid having to write one for every new app
-- support for non-int64 ids

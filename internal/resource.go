@@ -7,7 +7,6 @@ import (
 	"github.com/go-pg/pg/orm"
 	"github.com/google/jsonapi"
 	"crushedpixel.net/jargo/api"
-	"fmt"
 	"crushedpixel.net/margo"
 	"net/http"
 	"net/url"
@@ -83,9 +82,9 @@ func (r *resource) SelectOne(db orm.DB) api.Query {
 	return newQuery(db, r, typeSelect, false)
 }
 
-func (r *resource) SelectById(db orm.DB, id interface{}) api.Query {
+func (r *resource) SelectById(db orm.DB, id int64) api.Query {
 	q := r.SelectOne(db)
-	q.Raw().Where(fmt.Sprintf("%s = ?", idFieldColumn), id)
+	q.Filters(idFilter(r, id))
 	return q
 }
 
@@ -113,9 +112,9 @@ func (r *resource) DeleteOne(db orm.DB, instance interface{}) api.Query {
 	return newQueryFromResourceModel(db, r, typeDelete, instance)
 }
 
-func (r *resource) DeleteById(db orm.DB, id interface{}) api.Query {
+func (r *resource) DeleteById(db orm.DB, id int64) api.Query {
 	q := newQuery(db, r, typeDelete, false)
-	q.Raw().Where(fmt.Sprintf("%s = ?", idFieldColumn), id)
+	q.Filters(idFilter(r, id))
 	return q
 }
 

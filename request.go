@@ -27,7 +27,12 @@ func parseCreateRequest(c *Context) (interface{}, error) {
 }
 
 func parseUpdateRequest(c *Context) (interface{}, error) {
-	instance, err := c.Resource().SelectById(c.Application().DB, c.Params.ByName("id")).Result()
+	id, err := c.ResourceId()
+	if err != nil {
+		return nil, err
+	}
+
+	instance, err := c.Resource().SelectById(c.Application().DB, id).Result()
 	if err != nil {
 		if err == pg.ErrNoRows {
 			return nil, api.ErrNotFound

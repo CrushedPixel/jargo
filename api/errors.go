@@ -13,6 +13,7 @@ const (
 	codeNotFound             = "RESOURCE_NOT_FOUND"
 	codeInvalidQueryParams   = "INVALID_QUERY_PARAMS"
 	codeInvalidPayload       = "INVALID_PAYLOAD"
+	codeInvalidId            = "INVALID_ID"
 	codeUnauthorized         = "UNAUTHORIZED"
 	codeForbidden            = "FORBIDDEN"
 )
@@ -45,6 +46,12 @@ var ErrForbidden = NewApiError(
 	http.StatusForbidden,
 	codeForbidden,
 	"forbidden",
+)
+
+var ErrInvalidId = NewApiError(
+	http.StatusBadRequest,
+	codeInvalidId,
+	"invalid id parameter",
 )
 
 func ErrUnauthorized(detail string) *ApiError {

@@ -124,6 +124,8 @@ func (i *belongsToFieldInstance) parentField() field {
 	return i.field
 }
 
+// parses the value of the pg relation struct field (e.g. *User) and stores it
+// in i.values[0]
 func (i *belongsToFieldInstance) parsePGModel(instance *pgModelInstance) error {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
@@ -134,26 +136,18 @@ func (i *belongsToFieldInstance) parsePGModel(instance *pgModelInstance) error {
 		return nil
 	}
 
-	id := instance.value.Elem().FieldByName(i.field.relationIdFieldName()).Int()
 	pgModelInstance := instance.value.Elem().FieldByName(i.field.fieldName).Interface()
-
 	v, err := i.relationSchema.ParseJoinPGModel(pgModelInstance)
 	if err != nil {
 		return err
-	}
-
-	// set id field of schema instance to ensure it matches
-	// the pg id field
-	for _, f := range v.(*schemaInstance).fields {
-		if idField, ok := f.(*idFieldInstance); ok {
-			idField.value = id
-		}
 	}
 
 	i.values = []api.SchemaInstance{v}
 	return nil
 }
 
+// sets the value of the pg relation id field (e.g. UserId) to the id value
+// of the schema instance stored in i.values[0]
 func (i *belongsToFieldInstance) applyToPGModel(instance *pgModelInstance) error {
 	if len(i.values) == 0 {
 		return nil

@@ -24,7 +24,7 @@ type Resource interface {
 
 	Select(orm.DB) Query
 	SelectOne(orm.DB) Query
-	SelectById(db orm.DB, id interface{}) Query
+	SelectById(db orm.DB, id int64) Query
 
 	Insert(db orm.DB, instances []interface{}) Query
 	InsertOne(db orm.DB, instance interface{}) Query
@@ -34,7 +34,7 @@ type Resource interface {
 
 	Delete(db orm.DB, instances []interface{}) Query
 	DeleteOne(db orm.DB, instance interface{}) Query
-	DeleteById(db orm.DB, id interface{}) Query
+	DeleteById(db orm.DB, id int64) Query
 
 	// parses a FieldSet for this Resource from fields query parameters
 	ParseFieldSet(query url.Values) (FieldSet, error)

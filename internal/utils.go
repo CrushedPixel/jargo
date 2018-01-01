@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strconv"
 	"crushedpixel.net/jargo/api"
+	"github.com/go-pg/pg/types"
 )
 
 var sqlNameRegex = regexp.MustCompile(`^[0-9a-zA-Z$_]+$`)
@@ -100,4 +101,12 @@ func jsonapiModelToResourceModel(schema api.Schema, pgModelInstance interface{})
 		panic(err)
 	}
 	return resourceModelInstance
+}
+
+// escapes a go-pg column string according to postgres rules.
+// example: user.id => "user"."id"
+func escapePGField(field string) string {
+	var b []byte
+	b = types.AppendField(b, field, 1)
+	return string(b)
 }

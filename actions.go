@@ -39,7 +39,12 @@ var DefaultShowResourceHandler HandlerFunc = func(c *Context) margo.Response {
 		return api.NewErrorResponse(err)
 	}
 
-	return c.Resource().SelectById(c.Application().DB, c.Param("id")).
+	id, err := c.ResourceId()
+	if err != nil {
+		return api.NewErrorResponse(err)
+	}
+
+	return c.Resource().SelectById(c.Application().DB, id).
 		Fields(fields)
 }
 
@@ -74,5 +79,10 @@ var DefaultUpdateResourceHandler HandlerFunc = func(c *Context) margo.Response {
 }
 
 var DefaultDeleteResourceHandler HandlerFunc = func(c *Context) margo.Response {
-	return c.Resource().DeleteById(c.Application().DB, c.Param("id"))
+	id, err := c.ResourceId()
+	if err != nil {
+		return api.NewErrorResponse(err)
+	}
+
+	return c.Resource().DeleteById(c.Application().DB, id)
 }

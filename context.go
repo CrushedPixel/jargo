@@ -3,6 +3,7 @@ package jargo
 import (
 	"github.com/gin-gonic/gin"
 	"crushedpixel.net/jargo/api"
+	"strconv"
 )
 
 const (
@@ -15,6 +16,8 @@ const (
 	keyFieldSet   = "__fields"
 	keySortFields = "__sort"
 	keyPagination = "__pagination"
+
+	keyResourceId = "__resourceId"
 )
 
 type Context struct {
@@ -41,6 +44,19 @@ func (c *Context) setController(cont *Controller) {
 
 func (c *Context) Resource() api.Resource {
 	return c.Controller().Resource
+}
+
+func (c *Context) ResourceId() (int64, error) {
+	id, ok := c.Get(keyResourceId)
+	if !ok {
+		var err error
+		id, err = strconv.ParseInt(c.Param("id"), 10, 0)
+		if err != nil {
+			return 0, api.ErrInvalidId
+		}
+		c.Set(keyResourceId, id)
+	}
+	return id.(int64), nil
 }
 
 func (c *Context) CreateModel() (interface{}, error) {
