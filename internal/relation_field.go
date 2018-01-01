@@ -62,8 +62,12 @@ func getRelationType(typ reflect.Type) (reflect.Type, bool) {
 	return typ, collection
 }
 
-func (f *relationField) pgColumn() string {
+func (f *relationField) pgSelectColumn() string {
 	return f.fieldName
+}
+
+func (f *relationField) pgFilterColumn() string {
+	panic("unsupported operation")
 }
 
 // override this function to calculate topLevel jsonapi fields on demand,

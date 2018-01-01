@@ -13,7 +13,10 @@ const (
 	dirDescending = "DESC"
 )
 
-var errSortingByRelation = errors.New("sorting by relations is not supported")
+var (
+	errSortingByHasRelation       = errors.New("sorting by has relations is not supported")
+	errSortingByMany2ManyRelation = errors.New("sorting by many2many relations is not supported")
+)
 
 type sortFields struct {
 	resource *resource
@@ -29,7 +32,7 @@ func (s *sortFields) ApplyToQuery(q *orm.Query) {
 			dir = dirDescending
 		}
 
-		q.Order(fmt.Sprintf("%s %s", field.pgColumn(), dir))
+		q.Order(fmt.Sprintf("%s %s", field.pgFilterColumn(), dir))
 	}
 }
 
@@ -57,10 +60,7 @@ func parseSortFields(resource *resource, query url.Values) (*sortFields, error) 
 		for _, rf := range resource.fields {
 			if rf.jsonapiName() == fieldName {
 				if _, ok := rf.(*hasField); ok {
-					return nil, errSortingByRelation
-				}
-				if _, ok := rf.(*belongsToField); ok {
-					return nil, errSortingByRelation
+					return nil, errSortingByHasRelation
 				}
 				// TODO: ensure not sorting by many2many
 				field = rf

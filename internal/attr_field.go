@@ -75,8 +75,12 @@ func newAttrField(schema *schema, f *reflect.StructField) (field, error) {
 	return field, nil
 }
 
-func (f *attrField) pgColumn() string {
+func (f *attrField) pgSelectColumn() string {
 	return fmt.Sprintf("%s.%s", f.schema.alias, f.column)
+}
+
+func (f *attrField) pgFilterColumn() string {
+	return f.pgSelectColumn()
 }
 
 func (f *attrField) jsonapiJoinFields() ([]reflect.StructField, error) {

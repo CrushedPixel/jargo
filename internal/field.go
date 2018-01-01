@@ -6,7 +6,11 @@ type field interface {
 	createInstance() fieldInstance
 
 	jsonapiName() string
-	pgColumn() string
+
+	// pg column to use when selecting this field from the database
+	pgSelectColumn() string
+	// pg column to use when filtering by this field from the database
+	pgFilterColumn() string
 
 	writable() bool
 	sortable() bool

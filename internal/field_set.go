@@ -26,7 +26,7 @@ func allFields(r *resource) api.FieldSet {
 
 func (fs *fieldSet) ApplyToQuery(q *orm.Query) {
 	for _, f := range fs.fields {
-		q.Column(f.pgColumn())
+		q.Column(f.pgSelectColumn())
 	}
 }
 

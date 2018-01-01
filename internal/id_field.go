@@ -77,8 +77,12 @@ func (f *idField) jsonapiName() string {
 	return idFieldJsonapiName
 }
 
-func (f *idField) pgColumn() string {
+func (f *idField) pgSelectColumn() string {
 	return fmt.Sprintf("%s.%s", f.schema.alias, idFieldColumn)
+}
+
+func (f *idField) pgFilterColumn() string {
+	return f.pgSelectColumn()
 }
 
 func (f *idField) createInstance() fieldInstance {

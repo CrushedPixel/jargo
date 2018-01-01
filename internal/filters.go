@@ -9,7 +9,7 @@ import (
 	"crushedpixel.net/jargo/internal/parser"
 )
 
-var errFilteringByRelation = errors.New("filtering by relations is not supported")
+var errFilteringByHasRelation = errors.New("filtering by has relations is not supported")
 
 type filters struct {
 	resource *resource
@@ -41,7 +41,7 @@ func (f *filters) ApplyToQuery(q *orm.Query) {
 func whereOr(q *orm.Query, field field, op string, values []string) {
 	if values != nil {
 		for _, val := range values {
-			q.WhereOr(fmt.Sprintf("%s %s ?", field.pgColumn(), op), val)
+			q.WhereOr(fmt.Sprintf("%s %s ?", field.pgFilterColumn(), op), val)
 		}
 	}
 }
@@ -59,10 +59,7 @@ func parseFilters(resource *resource, query url.Values) (api.Filters, error) {
 		for _, rf := range resource.fields {
 			if rf.jsonapiName() == fieldName {
 				if _, ok := rf.(*hasField); ok {
-					return nil, errFilteringByRelation
-				}
-				if _, ok := rf.(*belongsToField); ok {
-					return nil, errFilteringByRelation
+					return nil, errFilteringByHasRelation
 				}
 				// TODO: ensure not filtering by many2many
 				field = rf
