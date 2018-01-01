@@ -17,7 +17,7 @@ type belongsToField struct {
 	joinPGFields      []reflect.StructField
 }
 
-func newBelongsToField(r Registry, schema *schema, f *reflect.StructField, fk string) (field, error) {
+func newBelongsToField(r Registry, schema *schema, f *reflect.StructField) (field, error) {
 	base, err := newRelationField(r, schema, f)
 	if err != nil {
 		return nil, err

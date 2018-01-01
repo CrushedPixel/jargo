@@ -18,6 +18,15 @@ func newHasField(r Registry, schema *schema, f *reflect.StructField, fk string) 
 		return nil, err
 	}
 
+	if fk == "" {
+		// the internal pg model struct types are unnamed,
+		// because they are generated at runtime.
+		// therefore, we need to provide go-pg with a foreign key
+		// as it can't fall back to the type name.
+		// we use the original resource model type name
+		// as default foreign key on has relations.
+		fk = schema.resourceModelType.Name()
+	}
 	field := &hasField{
 		relationField: base,
 		fk:            fk,

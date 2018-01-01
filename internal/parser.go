@@ -93,7 +93,6 @@ func (r Registry) newSchemaDefinition(t reflect.Type) (*schema, error) {
 		pgJoinFields = append(pgJoinFields, pf...)
 	}
 
-	schema.resourceModelType = t
 	schema.joinJsonapiModelType = reflect.StructOf(jsonapiJoinFields)
 	schema.joinPGModelType = reflect.StructOf(pgJoinFields)
 	return schema, nil
@@ -149,9 +148,10 @@ func parseSchema(t reflect.Type) (*schema, error) {
 	parsed := parser.ParseJargoTagDefaultName(tag, defaultName)
 
 	schema := &schema{
-		name:  parsed.Name,
-		table: parsed.Name,
-		alias: singleName,
+		name:              parsed.Name,
+		table:             parsed.Name,
+		alias:             singleName,
+		resourceModelType: t,
 	}
 
 	// parse options defined in struct tag.
@@ -209,12 +209,12 @@ func (r Registry) parseField(schema *schema, f *reflect.StructField) (field, err
 				return nil, errMultipleRelationTypes
 			}
 			typ = has
+			val = value
 		case optionBelongsTo:
 			if typ != attribute {
 				return nil, errMultipleRelationTypes
 			}
 			typ = belongsTo
-			val = value
 		case optionMany2Many:
 			if typ != attribute {
 				return nil, errMultipleRelationTypes
@@ -228,7 +228,7 @@ func (r Registry) parseField(schema *schema, f *reflect.StructField) (field, err
 	case has:
 		return newHasField(r, schema, f, val)
 	case belongsTo:
-		return newBelongsToField(r, schema, f, val)
+		return newBelongsToField(r, schema, f)
 	case many2many:
 		return nil, nil // TODO
 	default:
