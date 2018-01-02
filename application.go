@@ -28,7 +28,7 @@ type Application struct {
 	ran bool
 }
 
-var defaultErrorHandler margo.ErrorHandlerFunc = func(c *gin.Context, r interface{}) {
+func defaultErrorHandler(c *gin.Context, r interface{}) {
 	var err error
 	var ok bool
 

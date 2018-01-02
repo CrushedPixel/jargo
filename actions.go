@@ -5,7 +5,7 @@ import (
 	"crushedpixel.net/jargo/api"
 )
 
-var DefaultIndexResourceHandler HandlerFunc = func(c *Context) margo.Response {
+func DefaultIndexResourceHandler(c *Context) margo.Response {
 	filters, err := c.Filters()
 	if err != nil {
 		return api.NewErrorResponse(err)
@@ -33,7 +33,7 @@ var DefaultIndexResourceHandler HandlerFunc = func(c *Context) margo.Response {
 		Pagination(pagination)
 }
 
-var DefaultShowResourceHandler HandlerFunc = func(c *Context) margo.Response {
+func DefaultShowResourceHandler(c *Context) margo.Response {
 	fields, err := c.FieldSet()
 	if err != nil {
 		return api.NewErrorResponse(err)
@@ -48,7 +48,7 @@ var DefaultShowResourceHandler HandlerFunc = func(c *Context) margo.Response {
 		Fields(fields)
 }
 
-var DefaultCreateResourceHandler HandlerFunc = func(c *Context) margo.Response {
+func DefaultCreateResourceHandler(c *Context) margo.Response {
 	fields, err := c.FieldSet()
 	if err != nil {
 		return api.NewErrorResponse(err)
@@ -63,7 +63,7 @@ var DefaultCreateResourceHandler HandlerFunc = func(c *Context) margo.Response {
 		Fields(fields)
 }
 
-var DefaultUpdateResourceHandler HandlerFunc = func(c *Context) margo.Response {
+func DefaultUpdateResourceHandler(c *Context) margo.Response {
 	fields, err := c.FieldSet()
 	if err != nil {
 		return api.NewErrorResponse(err)
@@ -78,7 +78,7 @@ var DefaultUpdateResourceHandler HandlerFunc = func(c *Context) margo.Response {
 		Fields(fields)
 }
 
-var DefaultDeleteResourceHandler HandlerFunc = func(c *Context) margo.Response {
+func DefaultDeleteResourceHandler(c *Context) margo.Response {
 	id, err := c.ResourceId()
 	if err != nil {
 		return api.NewErrorResponse(err)

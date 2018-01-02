@@ -34,11 +34,13 @@ func NewJsonapiAction(handlers ...HandlerFunc) *Action {
 
 type Actions map[Route]*Action
 
-var showRoute = Route{Method: http.MethodGet, Path: "/:id"}
-var indexRoute = Route{Method: http.MethodGet, Path: "/"}
-var createRoute = Route{Method: http.MethodPost, Path: "/"}
-var updateRoute = Route{Method: http.MethodPatch, Path: "/:id"}
-var deleteRoute = Route{Method: http.MethodDelete, Path: "/:id"}
+var (
+	showRoute   = Route{Method: http.MethodGet, Path: "/:id"}
+	indexRoute  = Route{Method: http.MethodGet, Path: "/"}
+	createRoute = Route{Method: http.MethodPost, Path: "/"}
+	updateRoute = Route{Method: http.MethodPatch, Path: "/:id"}
+	deleteRoute = Route{Method: http.MethodDelete, Path: "/:id"}
+)
 
 func (a Actions) GetShowAction() *Action {
 	return a[showRoute]

@@ -9,15 +9,17 @@ import (
 const (
 	keyApplication = "__jargoApplication"
 	keyController  = "__jargoController"
-	keyCreateModel = "__createdModel"
-	keyUpdateModel = "__updateModel"
+	keyCreateModel = "__jargoCreatedModel"
+	keyUpdateModel = "__jargoUpdateModel"
 
-	keyFilters    = "__filters"
-	keyFieldSet   = "__fields"
-	keySortFields = "__sort"
-	keyPagination = "__pagination"
+	keyFilters    = "__jargoFilters"
+	keyFieldSet   = "__jargoFields"
+	keySortFields = "__jargoSort"
+	keyPagination = "__jargoPagination"
 
-	keyResourceId = "__resourceId"
+	keyResourceId = "__jargoResourceId"
+
+	idParam = "id"
 )
 
 type Context struct {
@@ -50,7 +52,7 @@ func (c *Context) ResourceId() (int64, error) {
 	id, ok := c.Get(keyResourceId)
 	if !ok {
 		var err error
-		id, err = strconv.ParseInt(c.Param("id"), 10, 0)
+		id, err = strconv.ParseInt(c.Param(idParam), 10, 0)
 		if err != nil {
 			return 0, api.ErrInvalidId
 		}
