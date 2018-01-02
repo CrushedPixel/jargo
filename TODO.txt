@@ -1,12 +1,15 @@
 TODO:
-- support for namespaces
-- change filter operator system from filter[attr:op] to filter[attr][op] for easier encoding on the client
+- fix internal server error if user filters by invalid value
 - support for included values
-
+- in the meantime, return 400 if include parameter is set
+- proper logging
 - automatically create indices for sortable fields to improve pagination speed
+- more thorough unit testing
+- prevent has/has relations as they can't be modeled in the database
+- add support for many2many relations
 
 Gotchas:
-- only int64 ids are supported due to go-pg restrictions
+- only int64 ids are supported
 - panicking in handler functions is allowed and handled
 - inclusion of related resources is not possible (yet)
 

@@ -1,33 +1,32 @@
 package jargo
 
+import "crushedpixel.net/jargo/api"
+
 type Controller struct {
-	Resource   *Resource
-	Actions    *Actions
+	Namespace  string
+	Resource   api.Resource
+	Actions    Actions
 	Middleware []HandlerFunc
 }
 
-func NewController(model interface{}) (*Controller, error) {
-	r, err := NewResource(model)
-	if err != nil {
-		return nil, err
-	}
-
-	a := make(Actions)
-	actions := &a
+func NewController(namespace string, resource api.Resource) *Controller {
+	actions := make(Actions)
 
 	controller := &Controller{
-		Resource: r,
-		Actions:  actions,
+		Namespace: namespace,
+		Resource:  resource,
+		Actions:   actions,
 	}
 
-	return controller, nil
+	return controller
 }
 
-func NewCRUDController(model interface{}) (*Controller, error) {
-	controller, err := NewController(model)
-	if err != nil {
-		return nil, err
-	}
+func NewRootController(resource api.Resource) *Controller {
+	return NewController("", resource)
+}
+
+func NewCRUDController(resource api.Resource) *Controller {
+	controller := NewRootController(resource)
 
 	controller.Actions.SetShowAction(NewAction(DefaultShowResourceHandler))
 	controller.Actions.SetIndexAction(NewAction(DefaultIndexResourceHandler))
@@ -35,7 +34,7 @@ func NewCRUDController(model interface{}) (*Controller, error) {
 	controller.Actions.SetUpdateAction(NewAction(DefaultUpdateResourceHandler))
 	controller.Actions.SetDeleteAction(NewAction(DefaultDeleteResourceHandler))
 
-	return controller, nil
+	return controller
 }
 
 func (c *Controller) Use(middleware HandlerFunc) {
@@ -46,7 +45,7 @@ func (c *Controller) initialize(app *Application) {
 	c.Resource.CreateTable(app.DB)
 
 	// register actions
-	for k, v := range *c.Actions {
+	for k, v := range c.Actions {
 		app.Register(v.toEndpoint(c, k))
 	}
 }

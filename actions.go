@@ -2,64 +2,87 @@ package jargo
 
 import (
 	"crushedpixel.net/margo"
+	"crushedpixel.net/jargo/api"
 )
 
-var DefaultIndexResourceHandler HandlerFunc = func(c *Context) margo.Response {
-	params, err := c.GetQueryParams()
+func DefaultIndexResourceHandler(c *Context) margo.Response {
+	filters, err := c.Filters()
 	if err != nil {
-		return NewErrorResponse(err)
+		return api.NewErrorResponse(err)
 	}
 
-	indexParams, err := c.GetIndexQueryParams()
+	fields, err := c.FieldSet()
 	if err != nil {
-		return NewErrorResponse(err)
+		return api.NewErrorResponse(err)
 	}
 
-	return c.GetController().Resource.Select(c.GetApplication().DB).
-		ApplyQueryParams(params).
-		ApplyIndexQueryParams(indexParams)
+	sort, err := c.SortFields()
+	if err != nil {
+		return api.NewErrorResponse(err)
+	}
+
+	pagination, err := c.Pagination()
+	if err != nil {
+		return api.NewErrorResponse(err)
+	}
+
+	return c.Resource().Select(c.Application().DB).
+		Filters(filters).
+		Fields(fields).
+		Sort(sort).
+		Pagination(pagination)
 }
 
-var DefaultShowResourceHandler HandlerFunc = func(c *Context) margo.Response {
-	params, err := c.GetQueryParams()
+func DefaultShowResourceHandler(c *Context) margo.Response {
+	fields, err := c.FieldSet()
 	if err != nil {
-		return NewErrorResponse(err)
+		return api.NewErrorResponse(err)
 	}
 
-	return c.GetController().Resource.SelectById(c.GetApplication().DB, c.Param("id")).
-		ApplyQueryParams(params)
+	id, err := c.ResourceId()
+	if err != nil {
+		return api.NewErrorResponse(err)
+	}
+
+	return c.Resource().SelectById(c.Application().DB, id).
+		Fields(fields)
 }
 
-var DefaultCreateResourceHandler HandlerFunc = func(c *Context) margo.Response {
-	params, err := c.GetQueryParams()
+func DefaultCreateResourceHandler(c *Context) margo.Response {
+	fields, err := c.FieldSet()
 	if err != nil {
-		return NewErrorResponse(err)
+		return api.NewErrorResponse(err)
 	}
 
-	cm, err := c.GetCreateModel()
+	m, err := c.CreateModel()
 	if err != nil {
-		return NewErrorResponse(err)
+		return api.NewErrorResponse(err)
 	}
 
-	return NewInsertQuery(c.GetApplication().DB, cm).
-		ApplyQueryParams(params)
+	return c.Resource().InsertOne(c.Application().DB, m).
+		Fields(fields)
 }
 
-var DefaultUpdateResourceHandler HandlerFunc = func(c *Context) margo.Response {
-	params, err := c.GetQueryParams()
+func DefaultUpdateResourceHandler(c *Context) margo.Response {
+	fields, err := c.FieldSet()
 	if err != nil {
-		return NewErrorResponse(err)
+		return api.NewErrorResponse(err)
 	}
 
-	um, err := c.GetUpdateModel()
+	m, err := c.UpdateModel()
 	if err != nil {
-		return NewErrorResponse(err)
+		return api.NewErrorResponse(err)
 	}
 
-	return NewUpdateQuery(c.GetApplication().DB, um).
-		ApplyQueryParams(params)
+	return c.Resource().UpdateOne(c.Application().DB, m).
+		Fields(fields)
 }
 
-var DefaultDeleteResourceHandler HandlerFunc = func(c *Context) margo.Response {
-	return c.GetController().Resource.DeleteById(c.GetApplication().DB, c.Param("id"))
+func DefaultDeleteResourceHandler(c *Context) margo.Response {
+	id, err := c.ResourceId()
+	if err != nil {
+		return api.NewErrorResponse(err)
+	}
+
+	return c.Resource().DeleteById(c.Application().DB, id)
 }

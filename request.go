@@ -1,121 +1,44 @@
 package jargo
 
 import (
-	"github.com/goji/param"
 	"errors"
 	"github.com/go-pg/pg"
+	"crushedpixel.net/jargo/api"
 )
 
 var ErrIncludeNotSupported = errors.New("include parameter not supported")
 
-// JSON API query parameters for fetching data
+// jsonapi query parameters for fetching data
 // (see http://jsonapi.org/format/#fetching)
 type QueryParams struct {
-	// Include params.Include
-	Fields ResultFields
-	Sort   ResultSorting
-	Page   ResultPagination
-}
-
-// used internally to parse jsonapi query parameters
-type parserQueryParams struct {
-	Include string            `param:"include"`
-	Fields  map[string]string `param:"fields"`
-	Page    map[string]string `param:"page"`
-	Sort    string            `param:"sort"`
+	Fields api.FieldSet
+	Sort   api.SortFields
+	Page   api.Pagination
 }
 
 // jsonapi query parameters specific to index actions
 // (see http://jsonapi.org/format/#fetching)
 type IndexQueryParams struct {
-	Filter Filters
-}
-
-// used internally to parse index action specific query parameters
-type parserIndexQueryParams struct {
-	Filter map[string]string `param:"filter"`
-}
-
-func parseQueryParams(c *Context) (*QueryParams, error) {
-	parsed := &parserQueryParams{}
-	param.Parse(c.Request.URL.Query(), parsed)
-
-	// parse include settings
-	if parsed.Include != "" {
-		return nil, ErrIncludeNotSupported
-	}
-
-	// parse fields settings
-	fields, err := parseFieldParameters(parsed.Fields)
-
-	// parse sort settings
-	sorting, err := parseSortParameters(c.GetController().Resource, parsed.Sort)
-	if err != nil {
-		return nil, err
-	}
-
-	// parse pagination settings
-	pagination, err := parsePageParameters(c.GetApplication(), parsed.Page)
-	if err != nil {
-		return nil, err
-	}
-
-	params := &QueryParams{
-		Sort:   *sorting,
-		Page:   *pagination,
-		Fields: fields,
-	}
-
-	return params, nil
-}
-
-func parseIndexQueryParams(c *Context) (*IndexQueryParams, error) {
-	// TODO: change filter query parameter format
-	parsed := &parserIndexQueryParams{}
-	param.Parse(c.Request.URL.Query(), parsed)
-
-	// parse filter settings
-	filters, err := parseFilterParameters(c.GetController().Resource, parsed.Filter)
-	if err != nil {
-		return nil, err
-	}
-
-	params := &IndexQueryParams{
-		Filter: *filters,
-	}
-
-	return params, nil
+	Filter api.Filters
 }
 
 func parseCreateRequest(c *Context) (interface{}, error) {
-	resource := c.GetController().Resource
-	instance, err := resource.UnmarshalCreate(c.Request.Body)
+	return c.Resource().ParseJsonapiPayload(c.Request.Body)
+}
+
+func parseUpdateRequest(c *Context) (interface{}, error) {
+	id, err := c.ResourceId()
 	if err != nil {
 		return nil, err
 	}
 
-	return instance, nil
-}
-
-func parseUpdateRequest(c *Context) (interface{}, error) {
-	res := c.GetController().Resource
-
-	id := c.Params.ByName("id")
-
-	q := res.SelectOne(c.GetApplication().DB)
-	q.Where("id = ?", id)
-	val, err := q.GetValue()
+	instance, err := c.Resource().SelectById(c.Application().DB, id).Result()
 	if err != nil {
 		if err == pg.ErrNoRows {
-			return nil, ApiErrNotFound
+			return nil, api.ErrNotFound
 		}
 		return nil, err
 	}
 
-	instance, err := res.UnmarshalUpdate(c.Request.Body, val, id)
-	if err != nil {
-		return nil, err
-	}
-
-	return instance, nil
+	return c.Resource().ParseJsonapiUpdatePayload(c.Request.Body, instance)
 }

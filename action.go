@@ -14,24 +14,33 @@ type Route struct {
 type HandlerFunc func(context *Context) margo.Response
 
 type Action struct {
-	Enabled  bool
-	handlers []HandlerFunc
+	JsonapiMiddleware bool
+	handlers          []HandlerFunc
 }
 
 func NewAction(handlers ...HandlerFunc) *Action {
 	return &Action{
-		Enabled:  true,
-		handlers: handlers,
+		JsonapiMiddleware: false,
+		handlers:          handlers,
+	}
+}
+
+func NewJsonapiAction(handlers ...HandlerFunc) *Action {
+	return &Action{
+		JsonapiMiddleware: true,
+		handlers:          handlers,
 	}
 }
 
 type Actions map[Route]*Action
 
-var showRoute = Route{Method: http.MethodGet, Path: "/:id"}
-var indexRoute = Route{Method: http.MethodGet, Path: "/"}
-var createRoute = Route{Method: http.MethodPost, Path: "/"}
-var updateRoute = Route{Method: http.MethodPatch, Path: "/:id"}
-var deleteRoute = Route{Method: http.MethodDelete, Path: "/:id"}
+var (
+	showRoute   = Route{Method: http.MethodGet, Path: "/:id"}
+	indexRoute  = Route{Method: http.MethodGet, Path: "/"}
+	createRoute = Route{Method: http.MethodPost, Path: "/"}
+	updateRoute = Route{Method: http.MethodPatch, Path: "/:id"}
+	deleteRoute = Route{Method: http.MethodDelete, Path: "/:id"}
+)
 
 func (a Actions) GetShowAction() *Action {
 	return a[showRoute]
@@ -78,14 +87,21 @@ func (a Actions) SetAction(route *Route, action *Action) {
 }
 
 func (a *Action) toEndpoint(c *Controller, route Route) *margo.Endpoint {
-	fullPath := fmt.Sprintf("%s%s", c.Resource.Name, route.Path)
+	namespace := c.Namespace
+	// add trailing slash to namespace if missing
+	if namespace != "" && namespace[len(namespace)-1] != '/' {
+		namespace += "/"
+	}
 
+	middleware := []HandlerFunc{injectControllerMiddleware(c)}
+	if a.JsonapiMiddleware {
+		middleware = append(middleware, contentTypeMiddleware)
+	}
+
+	fullPath := fmt.Sprintf("%s%s%s", namespace, c.Resource.Name(), route.Path)
 	endpoint := margo.NewEndpoint(route.Method, fullPath,
 		toMargoHandler(c.Middleware...),
-		toMargoHandler(
-			injectControllerMiddleware(c),
-			contentTypeMiddleware,
-		),
+		toMargoHandler(middleware...),
 		toMargoHandler(a.handlers...))
 
 	return endpoint
@@ -93,7 +109,7 @@ func (a *Action) toEndpoint(c *Controller, route Route) *margo.Endpoint {
 
 func toMargoHandler(handlers ...HandlerFunc) margo.HandlerFunc {
 	return func(c *margo.Context) margo.Response {
-		context := &Context{c}
+		context := &Context{c.Context}
 
 		for _, h := range handlers {
 			if res := h(context); res != nil {

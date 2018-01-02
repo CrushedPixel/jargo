@@ -7,6 +7,10 @@ import (
 	"log"
 	"github.com/gin-gonic/gin"
 	"fmt"
+	"crushedpixel.net/jargo/api"
+	"crushedpixel.net/jargo/internal"
+	"net/url"
+	"reflect"
 )
 
 const (
@@ -15,6 +19,7 @@ const (
 
 type Application struct {
 	*margo.Server
+	registry internal.Registry
 
 	DB          *pg.DB
 	Controllers []*Controller
@@ -23,17 +28,17 @@ type Application struct {
 	ran bool
 }
 
-var defaultErrorHandler margo.ErrorHandlerFunc = func(c *gin.Context, r interface{}) {
+func defaultErrorHandler(c *gin.Context, r interface{}) {
 	var err error
 	var ok bool
 
 	err, ok = r.(error)
 	if !ok {
 		println(fmt.Sprintf("%s", r)) // TODO: proper logging
-		err = ApiErrInternalServerError
+		err = api.ErrInternalServerError
 	}
 
-	res := NewErrorResponse(err)
+	res := api.NewErrorResponse(err)
 	err = res.Send(c)
 	if err != nil {
 		panic(err)
@@ -43,7 +48,18 @@ var defaultErrorHandler margo.ErrorHandlerFunc = func(c *gin.Context, r interfac
 func NewApplication(db *pg.DB) *Application {
 	server := margo.NewServer()
 	server.ErrorHandler = defaultErrorHandler
-	return &Application{server, db, []*Controller{}, defaultPageSize, false}
+	registry := make(internal.Registry)
+	return &Application{
+		Server:      server,
+		registry:    registry,
+		DB:          db,
+		Controllers: []*Controller{},
+		MaxPageSize: defaultPageSize,
+	}
+}
+
+func (app *Application) RegisterResource(model interface{}) (api.Resource, error) {
+	return app.registry.RegisterResource(reflect.TypeOf(model))
 }
 
 func (app *Application) AddController(c *Controller) {
@@ -55,9 +71,7 @@ func (app *Application) Run(addr ...string) error {
 		return errors.New("application can't be run multiple times")
 	}
 	app.ran = true
-
 	log.Println("starting jargo application")
-
 	app.Use(injectApplicationMiddleware(app))
 
 	for _, c := range app.Controllers {
@@ -65,4 +79,8 @@ func (app *Application) Run(addr ...string) error {
 	}
 
 	return app.Server.Run(addr...)
+}
+
+func (app *Application) ParsePagination(query url.Values) (api.Pagination, error) {
+	return internal.ParsePagination(query, app.MaxPageSize)
 }
