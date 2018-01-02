@@ -2,8 +2,8 @@ package internal
 
 import (
 	"reflect"
-	"github.com/iancoleman/strcase"
 	"crushedpixel.net/jargo/internal/parser"
+	"github.com/c9s/inflect"
 )
 
 type baseField struct {
@@ -61,9 +61,9 @@ func (f *baseField) pgJoinFields() ([]reflect.StructField, error) {
 }
 
 func newBaseField(schema *schema, f *reflect.StructField) (*baseField, error) {
-	// determine jsonapi member name,
-	// defaulting to snake_cased field name
-	defaultName := strcase.ToSnake(f.Name)
+	// determine default jsonapi member name.
+	// defaults to dasherized struct field name.
+	defaultName := inflect.Dasherize(f.Name)
 	parsed := parser.ParseJargoTagDefaultName(f.Tag.Get(jargoFieldTag), defaultName)
 
 	field := &baseField{

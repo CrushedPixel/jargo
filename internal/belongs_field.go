@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"fmt"
 	"errors"
-	"github.com/iancoleman/strcase"
 	"crushedpixel.net/jargo/api"
+	"github.com/c9s/inflect"
 )
 
 var errInvalidBelongsToType = errors.New("invalid belongsTo field type. for a belongsToMany relation, use many2many")
@@ -105,7 +105,7 @@ func (f *belongsToField) relationIdFieldName() string {
 }
 
 func (f *belongsToField) relationIdFieldColumn() string {
-	return strcase.ToSnake(f.relationIdFieldName())
+	return inflect.Underscore(f.relationIdFieldName())
 }
 
 func (f *belongsToField) createInstance() fieldInstance {

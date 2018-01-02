@@ -5,12 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"crushedpixel.net/jargo/internal/parser"
-	"github.com/iancoleman/strcase"
+	"github.com/c9s/inflect"
+	"time"
 )
 
 var (
 	errJsonapiOptionOnUnexportedField = errors.New("jsonapi-related option on unexported field")
 	errInvalidColumnName              = errors.New("column name may only consist of [0-9,a-z,A-Z$_]")
+	timeType                          = reflect.TypeOf(time.Time{})
 )
 
 func errInvalidAttrFieldType(p reflect.Type) error {
@@ -30,10 +32,17 @@ func newAttrField(schema *schema, f *reflect.StructField) (field, error) {
 		return nil, err
 	}
 
-	column := base.name
-	if !base.jsonapiExported {
-		column = strcase.ToSnake(base.fieldName)
+	// determine default column name.
+	// defaults to underscored jsonapi member name.
+	// if jsonapi member name is "-" (unexported field),
+	// defaults to underscored struct field name.
+	var column string
+	if base.jsonapiExported {
+		column = inflect.Underscore(base.name)
+	} else {
+		column = inflect.Underscore(base.fieldName)
 	}
+
 	field := &attrField{
 		baseField: base,
 		column:    column,
@@ -97,6 +106,11 @@ func jsonapiAttrFields(f *attrField) []reflect.StructField {
 	if f.jsonapiOmitempty {
 		tag += `,omitempty`
 	}
+	if f.fieldType == timeType {
+		// the jsonapi spec recommends using ISO8601 for date/time formatting.
+		// see http://jsonapi.org/recommendations/#date-and-time-fields
+		tag += `,iso8601`
+	}
 	tag += `"`
 
 	field := reflect.StructField{
@@ -139,7 +153,7 @@ func (f *attrField) createInstance() fieldInstance {
 func isValidAttrType(typ reflect.Type) bool {
 	switch reflect.New(typ).Elem().Interface().(type) {
 	case bool, int, int8, int16, int32, int64, uint, uint8,
-	uint16, uint32, uint64, float32, float64, string:
+	uint16, uint32, uint64, float32, float64, string, time.Time:
 		return true
 	default:
 		return false

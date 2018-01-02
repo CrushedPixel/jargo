@@ -3,9 +3,9 @@ package internal
 import (
 	"reflect"
 	"errors"
-	"github.com/iancoleman/strcase"
 	"crushedpixel.net/jargo/internal/parser"
 	"fmt"
+	"github.com/c9s/inflect"
 )
 
 const (
@@ -143,8 +143,8 @@ func parseSchema(t reflect.Type) (*schema, error) {
 	// default name and sql table is the pluralized version
 	// of the alias.
 	// "UserProfile" => "user_profile", "user_profiles"
-	singleName := strcase.ToSnake(t.Name())
-	defaultName := pluralize(singleName)
+	singleName := inflect.Underscore(t.Name())
+	defaultName := inflect.Pluralize(singleName)
 	parsed := parser.ParseJargoTagDefaultName(tag, defaultName)
 
 	schema := &schema{
