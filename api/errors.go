@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"fmt"
 	"github.com/google/jsonapi"
+	"gopkg.in/go-playground/validator.v9"
+	"strings"
 )
 
 const (
@@ -16,6 +18,7 @@ const (
 	codeInvalidId            = "INVALID_ID"
 	codeUnauthorized         = "UNAUTHORIZED"
 	codeForbidden            = "FORBIDDEN"
+	codeValidationFailed     = "VALIDATION_FAILED"
 )
 
 var ErrInternalServerError = NewApiError(
@@ -73,5 +76,17 @@ func ErrInvalidPayload(detail string) *ApiError {
 	return NewApiError(http.StatusBadRequest,
 		codeInvalidPayload,
 		detail,
+	)
+}
+
+func ErrValidationFailed(errors validator.ValidationErrors) *ApiError {
+	var failed []string
+	for _, v := range errors {
+		failed = append(failed, v.Tag())
+	}
+
+	return NewApiError(http.StatusBadRequest,
+		codeValidationFailed,
+		strings.Join(failed, ", "),
 	)
 }

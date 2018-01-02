@@ -107,6 +107,11 @@ func (f *idField) pgJoinFields() ([]reflect.StructField, error) {
 	return f.pgF, nil
 }
 
+// id fields are always valid
+func (i *idFieldInstance) validate() error {
+	return nil
+}
+
 // implements fieldInstance
 type idFieldInstance struct {
 	field *idField

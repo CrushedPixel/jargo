@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+const validationTag = "validate"
+
 var (
 	errJsonapiOptionOnUnexportedField = errors.New("jsonapi-related option on unexported field")
 	errInvalidColumnName              = errors.New("column name may only consist of [0-9,a-z,A-Z$_]")
@@ -24,6 +26,8 @@ type attrField struct {
 
 	column     string // sql column name
 	sqlDefault string
+
+	validation string
 }
 
 func newAttrField(schema *schema, f *reflect.StructField) (field, error) {
@@ -76,6 +80,9 @@ func newAttrField(schema *schema, f *reflect.StructField) (field, error) {
 	if !isValidSQLName(field.column) {
 		return nil, errInvalidColumnName
 	}
+
+	// store "validate" struct tag
+	field.validation = f.Tag.Get(validationTag)
 
 	// finally, generate jsonapi and pg attribute fields
 	field.jsonapiF = jsonapiAttrFields(field)
@@ -277,4 +284,8 @@ func (i *attrFieldInstance) apply(v *reflect.Value) error {
 		v.Elem().FieldByName(i.field.fieldName).Set(reflect.ValueOf(i.value))
 	}
 	return nil
+}
+
+func (i *attrFieldInstance) validate() error {
+	return validate().Var(i.value, i.field.validation)
 }

@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"errors"
 	"crushedpixel.net/jargo/api"
+	"gopkg.in/go-playground/validator.v9"
 )
 
 // resource model -> resource schema
@@ -37,6 +38,9 @@ type schema struct {
 	// avoiding infinite recursion
 	joinJsonapiModelType reflect.Type
 	joinPGModelType      reflect.Type
+
+	// validator to be used
+	validator validator.Validate
 }
 
 func (s *schema) Name() string {
@@ -462,6 +466,16 @@ func (i *schemaInstance) ToJoinPGModel() (interface{}, error) {
 		}
 	}
 	return instance.value.Interface(), nil
+}
+
+func (i *schemaInstance) Validate() error {
+	for _, f := range i.fields {
+		err := f.validate()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *schema) newResourceModelInstance() *resourceModelInstance {

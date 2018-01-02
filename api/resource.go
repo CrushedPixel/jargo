@@ -12,13 +12,17 @@ type Resource interface {
 	Schema
 
 	// parses a jsonapi data payload from a reader into a resource model instance
-	ParseJsonapiPayload(reader io.Reader) (interface{}, error)
+	ParseJsonapiPayload(reader io.Reader, validate bool) (interface{}, error)
 	// parses a jsonapi data payload from a string into a resource model instance
-	ParseJsonapiPayloadString(payload string) (interface{}, error)
+	ParseJsonapiPayloadString(payload string, validate bool) (interface{}, error)
 	// parses a jsonapi data payload from a reader, applying it to an existing resource model instance
-	ParseJsonapiUpdatePayload(reader io.Reader, instance interface{}) (interface{}, error)
+	ParseJsonapiUpdatePayload(reader io.Reader, instance interface{}, validate bool) (interface{}, error)
 	// parses a jsonapi data payload from a string, applying it to an existing resource model instance
-	ParseJsonapiUpdatePayloadString(payload string, instance interface{}) (interface{}, error)
+	ParseJsonapiUpdatePayloadString(payload string, instance interface{}, validate bool) (interface{}, error)
+
+	// validates a resource model instance according to validate struct tag,
+	// returning the first validation error encountered if any
+	Validate(interface{}) error
 
 	CreateTable(*pg.DB) error
 
@@ -94,4 +98,7 @@ type SchemaInstance interface {
 	ToJoinResourceModel() (interface{}, error)
 	ToJoinJsonapiModel() (interface{}, error)
 	ToJoinPGModel() (interface{}, error)
+
+	// validates a schema instance according to validator rules
+	Validate() error
 }

@@ -47,4 +47,6 @@ type fieldInstance interface {
 	applyToJoinResourceModel(*resourceModelInstance) error
 	applyToJoinJsonapiModel(*joinJsonapiModelInstance) error
 	applyToJoinPGModel(*joinPGModelInstance) error
+
+	validate() error
 }

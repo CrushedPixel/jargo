@@ -413,3 +413,8 @@ func (i *relationFieldInstance) applyToJoinPGModel(instance *joinPGModelInstance
 	// join pg models do not have relation fields.
 	return nil
 }
+
+func (i *relationFieldInstance) validate() error {
+	// relations are not validated
+	return nil
+}

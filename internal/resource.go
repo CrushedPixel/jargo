@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
+	"gopkg.in/go-playground/validator.v9"
 )
 
 // implements api.Resource
@@ -18,24 +19,25 @@ type resource struct {
 	*schema
 }
 
-func (r *resource) ParseJsonapiPayload(in io.Reader) (interface{}, error) {
-	return r.ParseJsonapiUpdatePayload(in, r.NewResourceModelInstance())
+func (r *resource) ParseJsonapiPayload(in io.Reader, validate bool) (interface{}, error) {
+	return r.ParseJsonapiUpdatePayload(in, r.NewResourceModelInstance(), validate)
 }
 
-func (r *resource) ParseJsonapiPayloadString(payload string) (interface{}, error) {
-	return r.ParseJsonapiPayload(strings.NewReader(payload))
+func (r *resource) ParseJsonapiPayloadString(payload string, validate bool) (interface{}, error) {
+	return r.ParseJsonapiPayload(strings.NewReader(payload), validate)
 }
 
-func (r *resource) ParseJsonapiUpdatePayload(in io.Reader, instance interface{}) (interface{}, error) {
-	return r.unmarshalJsonapiPayload(in, instance)
+func (r *resource) ParseJsonapiUpdatePayload(in io.Reader, instance interface{}, validate bool) (interface{}, error) {
+	return r.unmarshalJsonapiPayload(in, instance, validate)
 }
 
-func (r *resource) ParseJsonapiUpdatePayloadString(payload string, instance interface{}) (interface{}, error) {
-	return r.ParseJsonapiUpdatePayload(strings.NewReader(payload), instance)
+func (r *resource) ParseJsonapiUpdatePayloadString(payload string, instance interface{}, validate bool) (interface{}, error) {
+	return r.ParseJsonapiUpdatePayload(strings.NewReader(payload), instance, validate)
 }
 
-// unmarshals a jsonapi payload, applying it to a resource model instance
-func (r *resource) unmarshalJsonapiPayload(in io.Reader, resourceModelInstance interface{}) (interface{}, error) {
+// unmarshals a jsonapi payload, applying it to a resource model instance.
+// if validate is true, it also validates all fields set by the user.
+func (r *resource) unmarshalJsonapiPayload(in io.Reader, resourceModelInstance interface{}, validate bool) (interface{}, error) {
 	si, err := r.ParseResourceModel(resourceModelInstance)
 	if err != nil {
 		return nil, err
@@ -63,11 +65,32 @@ func (r *resource) unmarshalJsonapiPayload(in io.Reader, resourceModelInstance i
 			if err != nil {
 				return nil, err
 			}
+
+			// NOTE: this validates any writable field,
+			// regardless if it has actually been set by the user
+			if validate {
+				err = fieldInstance.validate()
+				if err != nil {
+					if e, ok := err.(validator.ValidationErrors); ok {
+						return nil, api.ErrValidationFailed(e)
+					}
+					return nil, err
+				}
+			}
 		}
 		fieldInstance.applyToResourceModel(target)
 	}
 
 	return target.value.Interface(), nil
+}
+
+func (r *resource) Validate(instance interface{}) error {
+	si, err := r.ParseResourceModel(instance)
+	if err != nil {
+		return err
+	}
+
+	return si.Validate()
 }
 
 func (r *resource) CreateTable(db *pg.DB) error {
