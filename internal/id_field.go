@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"fmt"
 	"errors"
+	"gopkg.in/go-playground/validator.v9"
 )
 
 var (
@@ -109,7 +110,7 @@ func (f *idField) pgJoinFields() []reflect.StructField {
 }
 
 // id fields are always valid
-func (i *idFieldInstance) validate() error {
+func (i *idFieldInstance) validate(*validator.Validate) error {
 	return nil
 }
 

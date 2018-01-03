@@ -7,6 +7,7 @@ import (
 	"crushedpixel.net/jargo/internal/parser"
 	"github.com/c9s/inflect"
 	"time"
+	"gopkg.in/go-playground/validator.v9"
 )
 
 const validationTag = "validate"
@@ -328,6 +329,6 @@ func (i *attrFieldInstance) apply(v *reflect.Value) {
 	}
 }
 
-func (i *attrFieldInstance) validate() error {
-	return validate().Var(i.value, i.field.validation)
+func (i *attrFieldInstance) validate(validate *validator.Validate) error {
+	return validate.Var(i.value, i.field.validation)
 }

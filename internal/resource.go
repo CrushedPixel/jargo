@@ -19,25 +19,25 @@ type resource struct {
 	*schema
 }
 
-func (r *resource) ParseJsonapiPayload(in io.Reader, validate bool) (interface{}, error) {
+func (r *resource) ParseJsonapiPayload(in io.Reader, validate *validator.Validate) (interface{}, error) {
 	return r.ParseJsonapiUpdatePayload(in, r.NewResourceModelInstance(), validate)
 }
 
-func (r *resource) ParseJsonapiPayloadString(payload string, validate bool) (interface{}, error) {
+func (r *resource) ParseJsonapiPayloadString(payload string, validate *validator.Validate) (interface{}, error) {
 	return r.ParseJsonapiPayload(strings.NewReader(payload), validate)
 }
 
-func (r *resource) ParseJsonapiUpdatePayload(in io.Reader, instance interface{}, validate bool) (interface{}, error) {
+func (r *resource) ParseJsonapiUpdatePayload(in io.Reader, instance interface{}, validate *validator.Validate) (interface{}, error) {
 	return r.unmarshalJsonapiPayload(in, instance, validate)
 }
 
-func (r *resource) ParseJsonapiUpdatePayloadString(payload string, instance interface{}, validate bool) (interface{}, error) {
+func (r *resource) ParseJsonapiUpdatePayloadString(payload string, instance interface{}, validate *validator.Validate) (interface{}, error) {
 	return r.ParseJsonapiUpdatePayload(strings.NewReader(payload), instance, validate)
 }
 
 // unmarshals a jsonapi payload, applying it to a resource model instance.
 // if validate is true, it also validates all fields set by the user.
-func (r *resource) unmarshalJsonapiPayload(in io.Reader, resourceModelInstance interface{}, validate bool) (interface{}, error) {
+func (r *resource) unmarshalJsonapiPayload(in io.Reader, resourceModelInstance interface{}, validate *validator.Validate) (interface{}, error) {
 	si := r.ParseResourceModel(resourceModelInstance).(*schemaInstance)
 
 	// parse payload into new jsonapi instance
@@ -62,8 +62,8 @@ func (r *resource) unmarshalJsonapiPayload(in io.Reader, resourceModelInstance i
 
 			// NOTE: this validates any writable field,
 			// regardless if it has actually been set by the user
-			if validate {
-				err = fieldInstance.validate()
+			if validate != nil {
+				err = fieldInstance.validate(validate)
 				if err != nil {
 					if e, ok := err.(validator.ValidationErrors); ok {
 						return nil, api.ErrValidationFailed(e)
@@ -78,8 +78,8 @@ func (r *resource) unmarshalJsonapiPayload(in io.Reader, resourceModelInstance i
 	return target.value.Interface(), nil
 }
 
-func (r *resource) Validate(instance interface{}) error {
-	return r.ParseResourceModel(instance).Validate()
+func (r *resource) Validate(validate *validator.Validate, instance interface{}) error {
+	return r.ParseResourceModel(instance).Validate(validate)
 }
 
 func (r *resource) CreateTable(db *pg.DB) error {

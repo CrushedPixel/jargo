@@ -405,9 +405,9 @@ func (i *schemaInstance) ToJoinPGModel() interface{} {
 	return instance.value.Interface()
 }
 
-func (i *schemaInstance) Validate() error {
+func (i *schemaInstance) Validate(validate *validator.Validate) error {
 	for _, f := range i.fields {
-		err := f.validate()
+		err := f.validate(validate)
 		if err != nil {
 			return err
 		}

@@ -23,7 +23,7 @@ type IndexQueryParams struct {
 }
 
 func parseCreateRequest(c *Context) (interface{}, error) {
-	return c.Resource().ParseJsonapiPayload(c.Request.Body, true)
+	return c.Resource().ParseJsonapiPayload(c.Request.Body, c.Application().Validate)
 }
 
 func parseUpdateRequest(c *Context) (interface{}, error) {
@@ -40,5 +40,5 @@ func parseUpdateRequest(c *Context) (interface{}, error) {
 		return nil, err
 	}
 
-	return c.Resource().ParseJsonapiUpdatePayload(c.Request.Body, instance, true)
+	return c.Resource().ParseJsonapiUpdatePayload(c.Request.Body, instance, c.Application().Validate)
 }

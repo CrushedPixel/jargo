@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"errors"
 	"crushedpixel.net/jargo/api"
+	"gopkg.in/go-playground/validator.v9"
 )
 
 func errInvalidRelationFieldType(p reflect.Type) error {
@@ -325,7 +326,7 @@ func (i *relationFieldInstance) applyToJoinPGModel(instance *joinPGModelInstance
 	// join pg models do not have relation fields
 }
 
-func (i *relationFieldInstance) validate() error {
+func (i *relationFieldInstance) validate(*validator.Validate) error {
 	// relations are not validated
 	return nil
 }

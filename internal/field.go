@@ -3,6 +3,7 @@ package internal
 import (
 	"reflect"
 	"github.com/go-pg/pg"
+	"gopkg.in/go-playground/validator.v9"
 )
 
 type field interface {
@@ -51,7 +52,7 @@ type fieldInstance interface {
 	applyToJoinJsonapiModel(*joinJsonapiModelInstance)
 	applyToJoinPGModel(*joinPGModelInstance)
 
-	validate() error
+	validate(*validator.Validate) error
 }
 
 type afterCreateTableHook interface {

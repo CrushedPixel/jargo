@@ -11,11 +11,10 @@ import (
 	"crushedpixel.net/jargo/internal"
 	"net/url"
 	"reflect"
+	"gopkg.in/go-playground/validator.v9"
 )
 
-const (
-	defaultPageSize = 25
-)
+const defaultPageSize = 25
 
 type Application struct {
 	*margo.Server
@@ -23,38 +22,27 @@ type Application struct {
 
 	DB          *pg.DB
 	Controllers []*Controller
+
+	// maximum page size for pagination
 	MaxPageSize int
 
+	// Validate instance used by default create
+	// and update handlers to validate user payloads
+	Validate *validator.Validate
+
 	ran bool
-}
-
-func defaultErrorHandler(c *gin.Context, r interface{}) {
-	var err error
-	var ok bool
-
-	err, ok = r.(error)
-	if !ok {
-		println(fmt.Sprintf("%s", r)) // TODO: proper logging
-		err = api.ErrInternalServerError
-	}
-
-	res := api.NewErrorResponse(err)
-	err = res.Send(c)
-	if err != nil {
-		panic(err)
-	}
 }
 
 func NewApplication(db *pg.DB) *Application {
 	server := margo.NewServer()
 	server.ErrorHandler = defaultErrorHandler
-	registry := make(internal.Registry)
 	return &Application{
 		Server:      server,
-		registry:    registry,
+		registry:    make(internal.Registry),
 		DB:          db,
 		Controllers: []*Controller{},
 		MaxPageSize: defaultPageSize,
+		Validate:    validator.New(),
 	}
 }
 
@@ -107,4 +95,21 @@ func (app *Application) Run(addr ...string) error {
 
 func (app *Application) ParsePagination(query url.Values) (api.Pagination, error) {
 	return internal.ParsePagination(query, app.MaxPageSize)
+}
+
+func defaultErrorHandler(c *gin.Context, r interface{}) {
+	var err error
+	var ok bool
+
+	err, ok = r.(error)
+	if !ok {
+		log.Println(fmt.Sprintf("%s", r))
+		err = api.ErrInternalServerError
+	}
+
+	res := api.NewErrorResponse(err)
+	err = res.Send(c)
+	if err != nil {
+		panic(err)
+	}
 }

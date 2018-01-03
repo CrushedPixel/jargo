@@ -6,23 +6,29 @@ import (
 	"net/url"
 	"io"
 	"github.com/go-pg/pg/orm"
+	"gopkg.in/go-playground/validator.v9"
 )
 
 type Resource interface {
 	Schema
 
 	// parses a jsonapi data payload from a reader into a resource model instance
-	ParseJsonapiPayload(reader io.Reader, validate bool) (interface{}, error)
+	// if validate is not nil, validates all writable fields
+	ParseJsonapiPayload(reader io.Reader, validate *validator.Validate) (interface{}, error)
 	// parses a jsonapi data payload from a string into a resource model instance
-	ParseJsonapiPayloadString(payload string, validate bool) (interface{}, error)
+	// if validate is not nil, validates all writable fields
+	ParseJsonapiPayloadString(payload string, validate *validator.Validate) (interface{}, error)
 	// parses a jsonapi data payload from a reader, applying it to an existing resource model instance
-	ParseJsonapiUpdatePayload(reader io.Reader, instance interface{}, validate bool) (interface{}, error)
+	// if validate is not nil, validates all writable fields
+	ParseJsonapiUpdatePayload(reader io.Reader, instance interface{}, validate *validator.Validate) (interface{}, error)
 	// parses a jsonapi data payload from a string, applying it to an existing resource model instance
-	ParseJsonapiUpdatePayloadString(payload string, instance interface{}, validate bool) (interface{}, error)
+	// if validate is not nil, validates all writable fields
+	ParseJsonapiUpdatePayloadString(payload string, instance interface{}, validate *validator.Validate) (interface{}, error)
 
 	// validates a resource model instance according to validate struct tag,
-	// returning the first validation errors encountered if any
-	Validate(interface{}) error
+	// using the validator.Validate provided.
+	// returns the first validation errors encountered if any
+	Validate(*validator.Validate, interface{}) error
 
 	CreateTable(*pg.DB) error
 
@@ -100,5 +106,5 @@ type SchemaInstance interface {
 	ToJoinPGModel() interface{}
 
 	// validates a schema instance according to validator rules
-	Validate() error
+	Validate(*validator.Validate) error
 }
