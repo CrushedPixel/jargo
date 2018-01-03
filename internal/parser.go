@@ -26,6 +26,8 @@ const (
 	optionNotnull   = "notnull"
 	optionUnique    = "unique"
 	optionDefault   = "default"
+	optionCreatedAt = "createdAt"
+	optionUpdatedAt = "updatedAt"
 )
 
 type fieldType int

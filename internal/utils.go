@@ -58,7 +58,7 @@ type (
 
 // escapes a go-pg column string according to postgres rules.
 // example: user.id => "user"."id"
-func escapePGField(field string) string {
+func escapePGColumn(field string) string {
 	var b []byte
 	b = types.AppendField(b, field, 1)
 	return string(b)

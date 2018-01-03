@@ -46,7 +46,7 @@ func andWhereOr(q *orm.Query, field field, op string, values []string) {
 			for _, val := range values {
 				// go-pg does not escape the fields in where clauses,
 				// so we need to do it ourselves
-				f := escapePGField(field.pgFilterColumn())
+				f := escapePGColumn(field.pgFilterColumn())
 				q = q.WhereOr(fmt.Sprintf("%s %s ?", f, op), val)
 			}
 			return q, nil

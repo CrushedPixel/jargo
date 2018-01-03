@@ -132,16 +132,9 @@ func (f *relationField) relationJoinPGFieldType() reflect.Type {
 }
 
 func (f *relationField) createInstance() *relationFieldInstance {
-	relation, err := f.registry.RegisterResource(f.relationType)
-	// relation has already been registered when creating the
-	// schema field, so no error should be thrown here
-	if err != nil {
-		panic(err)
-	}
-
 	return &relationFieldInstance{
 		field:          f,
-		relationSchema: relation,
+		relationSchema: f.registry.RegisterResource(f.relationType),
 	}
 }
 

@@ -8,13 +8,13 @@ import (
 // resource registry
 type Registry map[reflect.Type]*resource
 
-func (r Registry) RegisterResource(resourceModelType reflect.Type) (api.Resource, error) {
+func (r Registry) RegisterResource(resourceModelType reflect.Type) api.Resource {
 	if resource, ok := r[resourceModelType]; ok {
-		return resource, nil
+		return resource
 	}
 
 	r.registerResource(resourceModelType)
-	return r[resourceModelType], nil
+	return r[resourceModelType]
 }
 
 func (r Registry) registerResource(resourceModelType reflect.Type) {
