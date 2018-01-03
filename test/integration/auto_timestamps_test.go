@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type Model struct {
-	Id int64 `jargo:"models"`
+type AutoTimestamps struct {
+	Id int64 `jargo:"auto_timestamps,alias:auto_timestamp"`
 
 	CreatedAt time.Time `jargo:",createdAt"`
 	UpdatedAt time.Time `jargo:",updatedAt"`
@@ -19,27 +19,38 @@ type Model struct {
 }
 
 func TestAutoTimestamps(t *testing.T) {
-	modelResource, err := app.RegisterResource(Model{})
+	resource, err := app.RegisterResource(AutoTimestamps{})
 	require.Nil(t, err)
 
-	r, err := modelResource.InsertOne(app.DB, &Model{Name: "A"}).Result()
+	// note: although the db.OnQueryProcessed logger prints a query
+	// indicating the createdAt timestamp is set on the client,
+	// it actually executes a different query, containing DEFAULT values
+	// for createdAt and updatedAt.
+	r, err := resource.InsertOne(app.DB, &AutoTimestamps{Name: "A"}).Result()
 	require.Nil(t, err)
-	instance := r.(*Model)
+	instance := r.(*AutoTimestamps)
+	assert.Equal(t, "A", instance.Name)
 	// instance.CreatedAt and instance.UpdatedAt should have been populated by the server
 	assert.NotEmpty(t, instance.CreatedAt)
 	assert.NotEmpty(t, instance.UpdatedAt)
-	updatedBefore := instance.UpdatedAt
+	assert.Equal(t, instance.CreatedAt, instance.UpdatedAt)
 
 	// wait a short amount of time to ensure
 	// the timestamp of the update is going to be different
 	time.Sleep(time.Millisecond * 10)
 
+	// update resource
 	instance.Name = "B"
-	r, err = modelResource.UpdateOne(app.DB, instance).Result()
+	r, err = resource.UpdateOne(app.DB, instance).Result()
 	require.Nil(t, err)
-	instance = r.(*Model)
-	// instance.UpdatedAt should be timestamp of the update as set by the server
-	assert.NotEmpty(t, instance.CreatedAt)
-	assert.NotEmpty(t, instance.UpdatedAt)
-	assert.NotEqual(t, updatedBefore, instance.UpdatedAt)
+	updated := r.(*AutoTimestamps)
+	assert.Equal(t, "B", updated.Name)
+
+	// instance.CreatedAt should not have changed
+	assert.NotEmpty(t, updated.CreatedAt)
+	assert.Equal(t, instance.CreatedAt, updated.CreatedAt)
+
+	// instance.UpdatedAt should be updated timestamp
+	assert.NotEmpty(t, updated.UpdatedAt)
+	assert.NotEqual(t, instance.UpdatedAt, updated.UpdatedAt)
 }

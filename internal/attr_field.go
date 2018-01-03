@@ -17,6 +17,7 @@ var (
 	errCreatedAtDefaultForbidden      = errors.New(`"default" option may not be used in conjunction with "createdAt""`)
 	errUpdatedAtDefaultForbidden      = errors.New(`"default" option may not be used in conjunction with "updatedAt""`)
 	errCreatedAtUpdatedAtExclusive    = errors.New(`"createdAt" and "updatedAt" options are mutually exclusive`)
+	errCreatedAtUpdatedAtNotnull      = errors.New(`"createdAt" and "updatedAt" options are only allowed on nullable fields`)
 	errCreatedAtUpdatedAtType         = errors.New(`"createdAt" and "updatedAt" options are only allowed on fields of type time.Time`)
 
 	timeType = reflect.TypeOf(time.Time{})
@@ -96,6 +97,10 @@ func newAttrField(schema *schema, f *reflect.StructField) field {
 	}
 
 	if createdAt || updatedAt {
+		if field.sqlNotnull {
+			panic(errCreatedAtUpdatedAtNotnull)
+		}
+
 		if field.fieldType != timeType {
 			panic(errCreatedAtUpdatedAtType)
 		}
