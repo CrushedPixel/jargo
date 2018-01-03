@@ -19,6 +19,7 @@ var (
 	errCreatedAtUpdatedAtExclusive    = errors.New(`"createdAt" and "updatedAt" options are mutually exclusive`)
 	errCreatedAtUpdatedAtNotnull      = errors.New(`"createdAt" and "updatedAt" options are only allowed on nullable fields`)
 	errCreatedAtUpdatedAtType         = errors.New(`"createdAt" and "updatedAt" options are only allowed on fields of type time.Time`)
+	errCreatedAtUpdatedAtWritable     = errors.New(`"createdAt" and "updatedAt" options are only allowed on writable (non-readonly) fields`)
 
 	timeType = reflect.TypeOf(time.Time{})
 )
@@ -104,6 +105,13 @@ func newAttrField(schema *schema, f *reflect.StructField) field {
 		if field.fieldType != timeType {
 			panic(errCreatedAtUpdatedAtType)
 		}
+
+		// disallow explicit writable (readonly:false) option
+		if _, ok := parsed.Options[optionReadonly]; ok && field.jargoWritable {
+			panic(errCreatedAtUpdatedAtWritable)
+		}
+		// auto timestamps may not be changed by api users
+		field.jargoWritable = false
 
 		// set default to "NOW()" for createdAt and updatedAt columns
 		field.sqlDefault = "NOW()"
