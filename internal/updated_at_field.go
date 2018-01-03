@@ -9,10 +9,6 @@ type updatedAtField struct {
 	*attrField
 }
 
-const enableHstoreQuery = `
-CREATE EXTENSION IF NOT EXISTS hstore;
-`
-
 const triggerFunctionQuery = `
 CREATE OR REPLACE FUNCTION jargo_updated_at_trigger_%s_func()
 RETURNS TRIGGER AS
@@ -36,12 +32,7 @@ FOR EACH ROW EXECUTE PROCEDURE jargo_updated_at_trigger_%s_func();
 
 func (f *updatedAtField) afterCreateTable(db *pg.DB) error {
 	return db.RunInTransaction(func(tx *pg.Tx) error {
-		_, err := tx.Exec(enableHstoreQuery)
-		if err != nil {
-			return err
-		}
-
-		_, err = tx.Exec(fmt.Sprintf(triggerFunctionQuery, f.column, f.column))
+		_, err := tx.Exec(fmt.Sprintf(triggerFunctionQuery, f.column, f.column))
 		if err != nil {
 			return err
 		}
