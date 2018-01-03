@@ -58,8 +58,25 @@ func NewApplication(db *pg.DB) *Application {
 	}
 }
 
-func (app *Application) RegisterResource(model interface{}) (api.Resource, error) {
-	return app.registry.RegisterResource(reflect.TypeOf(model))
+func (app *Application) RegisterResource(model interface{}) (resource api.Resource, err error) {
+	// internally, jargo panics when parsing an invalid resource.
+	// to be a little bit more gracious to the user, we recover from those
+	// and return them as an error value.
+	defer func() {
+		if r := recover(); r != nil {
+			resource = nil
+
+			switch x := r.(type) {
+			case error:
+				err = x
+			default:
+				panic(r)
+			}
+		}
+	}()
+
+	resource = app.registry.RegisterResource(reflect.TypeOf(model))
+	return
 }
 
 func (app *Application) AddController(c *Controller) {
