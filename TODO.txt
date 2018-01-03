@@ -1,5 +1,4 @@
 TODO:
-- resource/schema functions: panic instead of error on wrong instance format
 - fix internal server error if user filters by invalid value
 - support for included values
 - in the meantime, return 400 if include parameter is set

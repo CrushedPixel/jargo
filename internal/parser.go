@@ -48,8 +48,6 @@ var (
 	errInvalidTableName          = errors.New("table name may only consist of [0-9,a-z,A-Z$_]")
 	errInvalidTableAlias         = errors.New("alias may only consist of [0-9,a-z,A-Z$_]")
 	errAliasEqualsTableName      = errors.New("alias may not be equal to table name")
-	errInvalidHasType            = errors.New("has relation field has to be a struct pointer or slice of struct pointers")
-	errInvalidMany2ManyType      = errors.New("many2many field has to be a slice of struct pointers")
 	errMissingMany2ManyJoinTable = errors.New("missing many2many join table definition")
 	errMultipleRelationTypes     = errors.New("multiple relation type options are not allowed")
 
@@ -59,82 +57,57 @@ var (
 )
 
 // parses a schema definition from a resource model type.
-func (r Registry) newSchemaDefinition(t reflect.Type) (*schema, error) {
+func (r Registry) newSchemaDefinition(t reflect.Type) *schema {
 	if t.Kind() != reflect.Struct {
-		return nil, errInvalidModelType
+		panic(errInvalidModelType)
 	}
 
-	schema, err := parseSchema(t)
-	if err != nil {
-		return nil, err
-	}
+	schema := parseSchema(t)
 
 	// parse struct fields
 	var jsonapiJoinFields []reflect.StructField
 	var pgJoinFields []reflect.StructField
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
-		field, err := r.parseField(schema, &f)
-		if err != nil {
-			return nil, err
-		}
+		field := r.parseField(schema, &f)
+
 		schema.fields = append(schema.fields, field)
-
-		jf, err := field.jsonapiJoinFields()
-		if err != nil {
-			return nil, err
-		}
-		jsonapiJoinFields = append(jsonapiJoinFields, jf...)
-
-		pf, err := field.pgJoinFields()
-		if err != nil {
-			return nil, err
-		}
-		pgJoinFields = append(pgJoinFields, pf...)
+		jsonapiJoinFields = append(jsonapiJoinFields, field.jsonapiJoinFields()...)
+		pgJoinFields = append(pgJoinFields, field.pgJoinFields()...)
 	}
 
 	schema.joinJsonapiModelType = reflect.StructOf(jsonapiJoinFields)
 	schema.joinPGModelType = reflect.StructOf(pgJoinFields)
-	return schema, nil
+	return schema
 }
 
-func (r Registry) generateSchemaModels(schema *schema) error {
+func (r Registry) generateSchemaModels(schema *schema) {
 	var jsonapiFields []reflect.StructField
 	var pgFields []reflect.StructField
 	for _, f := range schema.fields {
-		jf, err := f.jsonapiFields()
-		if err != nil {
-			return err
-		}
-		jsonapiFields = append(jsonapiFields, jf...)
-
-		pf, err := f.pgFields()
-		if err != nil {
-			return err
-		}
-		pgFields = append(pgFields, pf...)
+		jsonapiFields = append(jsonapiFields, f.jsonapiFields()...)
+		pgFields = append(pgFields, f.pgFields()...)
 	}
 
 	schema.jsonapiModelType = reflect.StructOf(jsonapiFields)
 	schema.pgModelType = reflect.StructOf(pgFields)
-	return nil
 }
 
 // parses a struct's id field, retrieving
 // general schema information from the jargo struct tag.
-func parseSchema(t reflect.Type) (*schema, error) {
+func parseSchema(t reflect.Type) *schema {
 	f, ok := t.FieldByName(idFieldName)
 	if !ok {
-		return nil, errMissingIdField
+		panic(errMissingIdField)
 	}
 	if f.Type != idFieldType {
-		return nil, errInvalidIdType
+		panic(errInvalidIdType)
 	}
 
 	// parse jargo struct tag
 	tag, ok := f.Tag.Lookup(jargoFieldTag)
 	if !ok {
-		return nil, errUnannotatedIdField
+		panic(errUnannotatedIdField)
 	}
 
 	// parse schema name, sql table and sql alias
@@ -163,36 +136,36 @@ func parseSchema(t reflect.Type) (*schema, error) {
 		case optionAlias:
 			schema.alias = value
 		default:
-			return nil, errDisallowedOption(option)
+			panic(errDisallowedOption(option))
 		}
 	}
 
 	// validate member name
 	if !isValidJsonapiMemberName(schema.name) {
-		return nil, errInvalidMemberName
+		panic(errInvalidMemberName)
 	}
 
 	// validate table name
 	if !isValidSQLName(schema.table) {
-		return nil, errInvalidTableName
+		panic(errInvalidTableName)
 	}
 
 	// validate alias
 	if !isValidSQLName(schema.alias) {
-		return nil, errInvalidTableAlias
+		panic(errInvalidTableAlias)
 	}
 
 	// ensure alias is not the same as table name
 	if schema.alias == schema.table {
-		return nil, errAliasEqualsTableName
+		panic(errAliasEqualsTableName)
 	}
 
-	return schema, nil
+	return schema
 }
 
 // parses a struct field into a schema field.
 // returns nil, nil for non-attribute fields.
-func (r Registry) parseField(schema *schema, f *reflect.StructField) (field, error) {
+func (r Registry) parseField(schema *schema, f *reflect.StructField) field {
 	if f.Name == idFieldName {
 		return newIdField(schema)
 	}
@@ -206,18 +179,18 @@ func (r Registry) parseField(schema *schema, f *reflect.StructField) (field, err
 		switch option {
 		case optionHas:
 			if typ != attribute {
-				return nil, errMultipleRelationTypes
+				panic(errMultipleRelationTypes)
 			}
 			typ = has
 			val = value
 		case optionBelongsTo:
 			if typ != attribute {
-				return nil, errMultipleRelationTypes
+				panic(errMultipleRelationTypes)
 			}
 			typ = belongsTo
 		case optionMany2Many:
 			if typ != attribute {
-				return nil, errMultipleRelationTypes
+				panic(errMultipleRelationTypes)
 			}
 			typ = many2many
 			val = value
@@ -230,7 +203,8 @@ func (r Registry) parseField(schema *schema, f *reflect.StructField) (field, err
 	case belongsTo:
 		return newBelongsToField(r, schema, f)
 	case many2many:
-		return nil, nil // TODO
+		// TODO: implement many2many relations
+		panic(errors.New("many2many relations are not yet implemented"))
 	default:
 		return newAttrField(schema, f)
 	}

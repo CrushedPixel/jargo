@@ -1,6 +1,8 @@
 package internal
 
-import "reflect"
+import (
+	"reflect"
+)
 
 type field interface {
 	createInstance() fieldInstance
@@ -16,37 +18,37 @@ type field interface {
 	sortable() bool
 	filterable() bool
 
-	jsonapiFields() ([]reflect.StructField, error)
-	jsonapiJoinFields() ([]reflect.StructField, error)
+	jsonapiFields() []reflect.StructField
+	jsonapiJoinFields() []reflect.StructField
 
-	pgFields() ([]reflect.StructField, error)
-	pgJoinFields() ([]reflect.StructField, error)
+	pgFields() []reflect.StructField
+	pgJoinFields() []reflect.StructField
 }
 
 type fieldInstance interface {
 	parentField() field
 
 	// parses a resource model instance, setting the field's value.
-	parseResourceModel(*resourceModelInstance) error
+	parseResourceModel(*resourceModelInstance)
 	// parses a jsonapi model instance, setting the field's value.
-	parseJsonapiModel(*jsonapiModelInstance) error
+	parseJsonapiModel(*jsonapiModelInstance)
 	// parses a resource model instance, setting the field's value.
-	parsePGModel(*pgModelInstance) error
+	parsePGModel(*pgModelInstance)
 
-	parseJoinResourceModel(*resourceModelInstance) error
-	parseJoinJsonapiModel(*joinJsonapiModelInstance) error
-	parseJoinPGModel(*joinPGModelInstance) error
+	parseJoinResourceModel(*resourceModelInstance)
+	parseJoinJsonapiModel(*joinJsonapiModelInstance)
+	parseJoinPGModel(*joinPGModelInstance)
 
 	// applies the field's value to a resource model instance.
-	applyToResourceModel(*resourceModelInstance) error
+	applyToResourceModel(*resourceModelInstance)
 	// applies the field's value to a resource model instance.
-	applyToJsonapiModel(*jsonapiModelInstance) error
+	applyToJsonapiModel(*jsonapiModelInstance)
 	// applies the field's value to a resource model instance.
-	applyToPGModel(*pgModelInstance) error
+	applyToPGModel(*pgModelInstance)
 
-	applyToJoinResourceModel(*resourceModelInstance) error
-	applyToJoinJsonapiModel(*joinJsonapiModelInstance) error
-	applyToJoinPGModel(*joinPGModelInstance) error
+	applyToJoinResourceModel(*resourceModelInstance)
+	applyToJoinJsonapiModel(*joinJsonapiModelInstance)
+	applyToJoinPGModel(*joinPGModelInstance)
 
 	validate() error
 }

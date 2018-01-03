@@ -44,23 +44,23 @@ func (f *baseField) filterable() bool {
 	return f.jargoFilterable
 }
 
-func (f *baseField) jsonapiFields() ([]reflect.StructField, error) {
-	return f.jsonapiF, nil
+func (f *baseField) jsonapiFields() []reflect.StructField {
+	return f.jsonapiF
 }
 
-func (f *baseField) jsonapiJoinFields() ([]reflect.StructField, error) {
-	return f.jsonapiF, nil
+func (f *baseField) jsonapiJoinFields() []reflect.StructField {
+	return f.jsonapiF
 }
 
-func (f *baseField) pgFields() ([]reflect.StructField, error) {
-	return f.pgF, nil
+func (f *baseField) pgFields() []reflect.StructField {
+	return f.pgF
 }
 
-func (f *baseField) pgJoinFields() ([]reflect.StructField, error) {
-	return f.pgF, nil
+func (f *baseField) pgJoinFields() []reflect.StructField {
+	return f.pgF
 }
 
-func newBaseField(schema *schema, f *reflect.StructField) (*baseField, error) {
+func newBaseField(schema *schema, f *reflect.StructField) *baseField {
 	// determine default jsonapi member name.
 	// defaults to dasherized struct field name.
 	defaultName := inflect.Dasherize(f.Name)
@@ -81,46 +81,22 @@ func newBaseField(schema *schema, f *reflect.StructField) (*baseField, error) {
 	for option, value := range parsed.Options {
 		switch option {
 		case optionReadonly:
-			b, err := parseBoolOption(value)
-			if err != nil {
-				return nil, err
-			}
-			field.jargoWritable = !b
+			field.jargoWritable = !parseBoolOption(value)
 		case optionSort:
-			b, err := parseBoolOption(value)
-			if err != nil {
-				return nil, err
-			}
-			field.jargoSortable = b
+			field.jargoSortable = parseBoolOption(value)
 		case optionFilter:
-			b, err := parseBoolOption(value)
-			if err != nil {
-				return nil, err
-			}
-			field.jargoFilterable = b
+			field.jargoFilterable = parseBoolOption(value)
 		case optionOmitempty:
 			if !field.jsonapiExported {
-				return nil, errJsonapiOptionOnUnexportedField
+				panic(errJsonapiOptionOnUnexportedField)
 			}
-			b, err := parseBoolOption(value)
-			if err != nil {
-				return nil, err
-			}
-			field.jsonapiOmitempty = b
+			field.jsonapiOmitempty = parseBoolOption(value)
 		case optionNotnull:
-			b, err := parseBoolOption(value)
-			if err != nil {
-				return nil, err
-			}
-			field.sqlNotnull = b
+			field.sqlNotnull = parseBoolOption(value)
 		case optionUnique:
-			b, err := parseBoolOption(value)
-			if err != nil {
-				return nil, err
-			}
-			field.sqlUnique = b
+			field.sqlUnique = parseBoolOption(value)
 		}
 	}
 
-	return field, nil
+	return field
 }

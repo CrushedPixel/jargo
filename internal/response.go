@@ -22,25 +22,15 @@ func (r *resourceResponse) Send(c *gin.Context) error {
 	if r.data == nil {
 		return errDataNil
 	}
-	collection, err := r.resource.IsResourceModelCollection(r.data)
-	if err != nil {
-		return err
-	}
+	collection := r.resource.IsResourceModelCollection(r.data)
 
 	var bytes []byte
 	if collection {
-		instances, err := r.resource.ParseResourceModelCollection(r.data)
-		if err != nil {
-			return err
-		}
+		instances := r.resource.ParseResourceModelCollection(r.data)
 
 		var jsonapiModels []interface{}
 		for _, instance := range instances {
-			jsonapiModelInstance, err := instance.ToJsonapiModel()
-			if err != nil {
-				return err
-			}
-			jsonapiModels = append(jsonapiModels, jsonapiModelInstance)
+			jsonapiModels = append(jsonapiModels, instance.ToJsonapiModel())
 		}
 
 		p, err := jsonapi.Marshal(jsonapiModels)
@@ -59,14 +49,8 @@ func (r *resourceResponse) Send(c *gin.Context) error {
 			return err
 		}
 	} else {
-		instance, err := r.resource.ParseResourceModel(r.data)
-		if err != nil {
-			return err
-		}
-		jsonapiModelInstance, err := instance.ToJsonapiModel()
-		if err != nil {
-			return err
-		}
+		instance := r.resource.ParseResourceModel(r.data)
+		jsonapiModelInstance := instance.ToJsonapiModel()
 
 		p, err := jsonapi.Marshal(jsonapiModelInstance)
 		if err != nil {
@@ -85,7 +69,7 @@ func (r *resourceResponse) Send(c *gin.Context) error {
 
 	c.Status(r.status)
 	c.Header("Content-Type", jsonapi.MediaType)
-	_, err = c.Writer.Write(bytes)
+	_, err := c.Writer.Write(bytes)
 	return err
 }
 

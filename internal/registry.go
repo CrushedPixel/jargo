@@ -13,31 +13,25 @@ func (r Registry) RegisterResource(resourceModelType reflect.Type) (api.Resource
 		return resource, nil
 	}
 
-	err := r.registerResource(resourceModelType)
-	if err != nil {
-		return nil, err
-	}
-
+	r.registerResource(resourceModelType)
 	return r[resourceModelType], nil
 }
 
-func (r Registry) registerResource(resourceModelType reflect.Type) error {
+func (r Registry) registerResource(resourceModelType reflect.Type) {
 	// check if schema is already registered
 	// or currently being registered
 	if _, ok := r[resourceModelType]; ok {
-		return nil
+		return
 	}
 
 	// first, create schema definition including
 	// joinJsonapiModel and joinPGModel
-	schema, err := r.newSchemaDefinition(resourceModelType)
-	if err != nil {
-		return err
-	}
+	schema := r.newSchemaDefinition(resourceModelType)
+
 	// set value so the jsonapi and pg join models
 	// can be accessed in r.generateSchemaModels
 	r[resourceModelType] = &resource{schema}
 
 	// create full schema definition including relations
-	return r.generateSchemaModels(schema)
+	r.generateSchemaModels(schema)
 }

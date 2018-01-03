@@ -24,13 +24,13 @@ type idField struct {
 	pgF      []reflect.StructField
 }
 
-func newIdField(schema *schema) (field, error) {
+func newIdField(schema *schema) field {
 	f := &idField{
 		schema:   schema,
 		jsonapiF: jsonapiIdFields(schema),
 		pgF:      pgIdFields(schema),
 	}
-	return f, nil
+	return f
 }
 
 func jsonapiIdFields(schema *schema) []reflect.StructField {
@@ -91,20 +91,20 @@ func (f *idField) createInstance() fieldInstance {
 	}
 }
 
-func (f *idField) jsonapiFields() ([]reflect.StructField, error) {
-	return f.jsonapiF, nil
+func (f *idField) jsonapiFields() []reflect.StructField {
+	return f.jsonapiF
 }
 
-func (f *idField) pgFields() ([]reflect.StructField, error) {
-	return f.pgF, nil
+func (f *idField) pgFields() []reflect.StructField {
+	return f.pgF
 }
 
-func (f *idField) jsonapiJoinFields() ([]reflect.StructField, error) {
-	return f.jsonapiF, nil
+func (f *idField) jsonapiJoinFields() []reflect.StructField {
+	return f.jsonapiF
 }
 
-func (f *idField) pgJoinFields() ([]reflect.StructField, error) {
-	return f.pgF, nil
+func (f *idField) pgJoinFields() []reflect.StructField {
+	return f.pgF
 }
 
 // id fields are always valid
@@ -122,104 +122,101 @@ func (i *idFieldInstance) parentField() field {
 	return i.field
 }
 
-func (i *idFieldInstance) parseResourceModel(instance *resourceModelInstance) error {
+func (i *idFieldInstance) parseResourceModel(instance *resourceModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	return i.parse(instance.value)
+	i.parse(instance.value)
 }
 
-func (i *idFieldInstance) applyToResourceModel(instance *resourceModelInstance) error {
+func (i *idFieldInstance) applyToResourceModel(instance *resourceModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	return i.apply(instance.value)
+	i.apply(instance.value)
 }
 
-func (i *idFieldInstance) parseJoinResourceModel(instance *resourceModelInstance) error {
+func (i *idFieldInstance) parseJoinResourceModel(instance *resourceModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	return i.parse(instance.value)
+	i.parse(instance.value)
 }
 
-func (i *idFieldInstance) applyToJoinResourceModel(instance *resourceModelInstance) error {
+func (i *idFieldInstance) applyToJoinResourceModel(instance *resourceModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	return i.apply(instance.value)
+	i.apply(instance.value)
 }
 
-func (i *idFieldInstance) parseJsonapiModel(instance *jsonapiModelInstance) error {
+func (i *idFieldInstance) parseJsonapiModel(instance *jsonapiModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	return i.parse(instance.value)
+	i.parse(instance.value)
 }
 
-func (i *idFieldInstance) applyToJsonapiModel(instance *jsonapiModelInstance) error {
+func (i *idFieldInstance) applyToJsonapiModel(instance *jsonapiModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	return i.apply(instance.value)
+	i.apply(instance.value)
 }
 
-func (i *idFieldInstance) parseJoinJsonapiModel(instance *joinJsonapiModelInstance) error {
+func (i *idFieldInstance) parseJoinJsonapiModel(instance *joinJsonapiModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	return i.parse(instance.value)
+	i.parse(instance.value)
 }
 
-func (i *idFieldInstance) applyToJoinJsonapiModel(instance *joinJsonapiModelInstance) error {
+func (i *idFieldInstance) applyToJoinJsonapiModel(instance *joinJsonapiModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	return i.apply(instance.value)
+	i.apply(instance.value)
 }
 
-func (i *idFieldInstance) parsePGModel(instance *pgModelInstance) error {
+func (i *idFieldInstance) parsePGModel(instance *pgModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	return i.parse(instance.value)
+	i.parse(instance.value)
 }
 
-func (i *idFieldInstance) applyToPGModel(instance *pgModelInstance) error {
+func (i *idFieldInstance) applyToPGModel(instance *pgModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	return i.apply(instance.value)
+	i.apply(instance.value)
 }
 
-func (i *idFieldInstance) parseJoinPGModel(instance *joinPGModelInstance) error {
+func (i *idFieldInstance) parseJoinPGModel(instance *joinPGModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	return i.parse(instance.value)
+	i.parse(instance.value)
 }
 
-func (i *idFieldInstance) applyToJoinPGModel(instance *joinPGModelInstance) error {
+func (i *idFieldInstance) applyToJoinPGModel(instance *joinPGModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	return i.apply(instance.value)
+	i.apply(instance.value)
 }
 
 // the id field is named "Id" in every representation,
 // so the value of that field can be copied in any case.
-func (i *idFieldInstance) parse(v *reflect.Value) error {
-	if v.IsNil() {
-		return nil
+func (i *idFieldInstance) parse(v *reflect.Value) {
+	if !v.IsNil() {
+		i.value = v.Elem().FieldByName(idFieldName).Int()
 	}
-	i.value = v.Elem().FieldByName(idFieldName).Int()
-	return nil
 }
 
-func (i *idFieldInstance) apply(v *reflect.Value) error {
+func (i *idFieldInstance) apply(v *reflect.Value) {
 	if v.IsNil() {
 		panic(errors.New("struct pointer must not be nil"))
 	}
 	v.Elem().FieldByName(idFieldName).SetInt(i.value)
-	return nil
 }

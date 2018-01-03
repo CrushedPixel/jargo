@@ -64,29 +64,18 @@ func newQuery(db orm.DB, resource *resource, typ queryType, collection bool) *Qu
 }
 
 func newQueryFromResourceModel(db orm.DB, resource *resource, typ queryType, data interface{}) *Query {
-	collection, err := resource.IsResourceModelCollection(data)
-	if err != nil {
-		panic(err)
-	}
-
+	collection := resource.IsResourceModelCollection(data)
 	var pgModel interface{}
 	if collection {
-		instances, err := resource.ParseResourceModelCollection(data)
-		if err != nil {
-			panic(err)
-		}
+		instances := resource.ParseResourceModelCollection(data)
 		pgInstances := make([]interface{}, len(instances))
 		for i := 0; i < len(instances); i++ {
-			pgInstance, err := instances[i].ToPGModel()
-			if err != nil {
-				panic(err)
-			}
-			pgInstances = append(pgInstances, pgInstance)
+			pgInstances = append(pgInstances, instances[i].ToPGModel())
 		}
 
 		pgModel = pgInstances
 	} else {
-		pgModel = resourceModelToPGModel(resource, data)
+		pgModel = resource.ParseResourceModel(data).ToPGModel()
 	}
 
 	return newQueryWithPGModelInstance(db, resource, typ, collection, pgModel)
@@ -271,11 +260,11 @@ func (q *Query) execute() {
 		for i := 0; i < m.Elem().Len(); i++ {
 			v := m.Elem().Index(i)
 			if !v.IsNil() {
-				entries = append(entries, pgModelToResourceModel(q.resource, v.Interface()))
+				entries = append(entries, q.resource.ParsePGModel(v.Interface()).ToResourceModel())
 			}
 		}
 		q.result = q.resource.NewResourceModelCollection(entries...)
 	} else {
-		q.result = pgModelToResourceModel(q.resource, m.Interface())
+		q.result = q.resource.ParsePGModel(m.Interface()).ToResourceModel()
 	}
 }

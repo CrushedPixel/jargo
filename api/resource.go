@@ -21,7 +21,7 @@ type Resource interface {
 	ParseJsonapiUpdatePayloadString(payload string, instance interface{}, validate bool) (interface{}, error)
 
 	// validates a resource model instance according to validate struct tag,
-	// returning the first validation error encountered if any
+	// returning the first validation errors encountered if any
 	Validate(interface{}) error
 
 	CreateTable(*pg.DB) error
@@ -56,48 +56,48 @@ type Schema interface {
 	// jsonapi type name
 	Name() string
 
-	IsResourceModelCollection(interface{}) (bool, error)
-	IsJsonapiModelCollection(interface{}) (bool, error)
-	IsPGModelCollection(interface{}) (bool, error)
+	IsResourceModelCollection(interface{}) bool
+	IsJsonapiModelCollection(interface{}) bool
+	IsPGModelCollection(interface{}) bool
 
 	// returns a pointer to a new resource model instance
 	NewResourceModelInstance() interface{}
 	// returns a slice of pointers to resource model instances
-	NewResourceModelCollection(entries... interface{}) interface{}
+	NewResourceModelCollection(entries ... interface{}) interface{}
 	// returns a pointer to a new jsonapi model instance
 	NewJsonapiModelInstance() interface{}
 	// returns a pointer to a new pg model instance
 	NewPGModelInstance() interface{}
 	// returns a slice of pointers to pg model instances
-	NewPGModelCollection(entries... interface{}) interface{}
+	NewPGModelCollection(entries ... interface{}) interface{}
 
-	ParseResourceModelCollection(interface{}) ([]SchemaInstance, error)
-	ParseJsonapiModelCollection(interface{}) ([]SchemaInstance, error)
-	ParsePGModelCollection(interface{}) ([]SchemaInstance, error)
+	ParseResourceModelCollection(interface{}) []SchemaInstance
+	ParseJsonapiModelCollection(interface{}) []SchemaInstance
+	ParsePGModelCollection(interface{}) []SchemaInstance
 
 	// creates a new schema instance from a resource model instance
-	ParseResourceModel(interface{}) (SchemaInstance, error)
+	ParseResourceModel(interface{}) SchemaInstance
 	// creates a new schema instance from a jsonapi model instance
-	ParseJsonapiModel(interface{}) (SchemaInstance, error)
+	ParseJsonapiModel(interface{}) SchemaInstance
 	// creates a new schema instance from a pg model instance
-	ParsePGModel(interface{}) (SchemaInstance, error)
+	ParsePGModel(interface{}) SchemaInstance
 
-	ParseJoinResourceModel(interface{}) (SchemaInstance, error)
-	ParseJoinJsonapiModel(interface{}) (SchemaInstance, error)
-	ParseJoinPGModel(interface{}) (SchemaInstance, error)
+	ParseJoinResourceModel(interface{}) SchemaInstance
+	ParseJoinJsonapiModel(interface{}) SchemaInstance
+	ParseJoinPGModel(interface{}) SchemaInstance
 }
 
 type SchemaInstance interface {
 	// creates a new resource model instance from this schema instance.
-	ToResourceModel() (interface{}, error)
+	ToResourceModel() interface{}
 	// creates a new jsonapi model instance from this schema instance.
-	ToJsonapiModel() (interface{}, error)
+	ToJsonapiModel() interface{}
 	// creates a new pg model instance from this schema instance.
-	ToPGModel() (interface{}, error)
+	ToPGModel() interface{}
 
-	ToJoinResourceModel() (interface{}, error)
-	ToJoinJsonapiModel() (interface{}, error)
-	ToJoinPGModel() (interface{}, error)
+	ToJoinResourceModel() interface{}
+	ToJoinJsonapiModel() interface{}
+	ToJoinPGModel() interface{}
 
 	// validates a schema instance according to validator rules
 	Validate() error

@@ -47,7 +47,7 @@ func (s *schema) Name() string {
 	return s.name
 }
 
-func (s *schema) IsResourceModelCollection(data interface{}) (bool, error) {
+func (s *schema) IsResourceModelCollection(data interface{}) bool {
 	typ := reflect.ValueOf(data).Type()
 	collection := false
 	if typ.Kind() == reflect.Slice {
@@ -57,16 +57,16 @@ func (s *schema) IsResourceModelCollection(data interface{}) (bool, error) {
 
 	if typ != reflect.PtrTo(s.resourceModelType) {
 		if collection {
-			return false, errInvalidResourceCollection
+			panic(errInvalidResourceCollection)
 		} else {
-			return false, errInvalidResourceInstance
+			panic(errInvalidResourceInstance)
 		}
 	}
 
-	return collection, nil
+	return collection
 }
 
-func (s *schema) IsJsonapiModelCollection(data interface{}) (bool, error) {
+func (s *schema) IsJsonapiModelCollection(data interface{}) bool {
 	typ := reflect.ValueOf(data).Type()
 	collection := false
 	if typ.Kind() == reflect.Slice {
@@ -76,16 +76,16 @@ func (s *schema) IsJsonapiModelCollection(data interface{}) (bool, error) {
 
 	if typ != reflect.PtrTo(s.jsonapiModelType) {
 		if collection {
-			return false, errInvalidJsonapiCollection
+			panic(errInvalidJsonapiCollection)
 		} else {
-			return false, errInvalidJsonapiInstance
+			panic(errInvalidJsonapiInstance)
 		}
 	}
 
-	return collection, nil
+	return collection
 }
 
-func (s *schema) IsPGModelCollection(data interface{}) (bool, error) {
+func (s *schema) IsPGModelCollection(data interface{}) bool {
 	typ := reflect.ValueOf(data).Type()
 	collection := false
 	if typ.Kind() == reflect.Slice {
@@ -95,13 +95,13 @@ func (s *schema) IsPGModelCollection(data interface{}) (bool, error) {
 
 	if typ != reflect.PtrTo(s.pgModelType) {
 		if collection {
-			return false, errInvalidPGCollection
+			panic(errInvalidPGCollection)
 		} else {
-			return false, errInvalidPGInstance
+			panic(errInvalidPGInstance)
 		}
 	}
 
-	return collection, nil
+	return collection
 }
 
 func (s *schema) NewResourceModelInstance() interface{} {
@@ -134,47 +134,38 @@ func (s *schema) NewPGModelCollection(entries ... interface{}) interface{} {
 	return val.Interface()
 }
 
-func (s *schema) ParseResourceModelCollection(instance interface{}) ([]api.SchemaInstance, error) {
-	collection, err := s.IsResourceModelCollection(instance)
-	if err != nil {
-		return nil, err
-	}
+func (s *schema) ParseResourceModelCollection(instance interface{}) []api.SchemaInstance {
+	collection := s.IsResourceModelCollection(instance)
 	if !collection {
-		return nil, errInvalidResourceCollection
+		panic(errInvalidResourceCollection)
 	}
 
 	v := reflect.ValueOf(instance)
 	if v.IsNil() {
-		return nil, nil
+		return nil
 	}
 
 	var schemaInstances []api.SchemaInstance
 	for i := 0; i < v.Len(); i++ {
 		child := v.Index(i)
-		schemaInstance, err := s.ParseResourceModel(child.Interface())
-		if err != nil {
-			return nil, err
-		}
+		schemaInstance := s.ParseResourceModel(child.Interface())
 		if schemaInstance != nil {
 			schemaInstances = append(schemaInstances, schemaInstance)
 		}
 	}
 
-	return schemaInstances, nil
+	return schemaInstances
 }
 
-func (s *schema) ParseResourceModel(instance interface{}) (api.SchemaInstance, error) {
-	collection, err := s.IsResourceModelCollection(instance)
-	if err != nil {
-		return nil, err
-	}
+func (s *schema) ParseResourceModel(instance interface{}) api.SchemaInstance {
+	collection := s.IsResourceModelCollection(instance)
 	if collection {
-		return nil, errInvalidResourceInstance
+		panic(errInvalidResourceInstance)
 	}
 
 	v := reflect.ValueOf(instance)
 	if v.IsNil() {
-		return nil, nil
+		return nil
 	}
 
 	m := &resourceModelInstance{
@@ -184,21 +175,18 @@ func (s *schema) ParseResourceModel(instance interface{}) (api.SchemaInstance, e
 
 	i := s.createInstance()
 	for _, f := range i.fields {
-		err := f.parseResourceModel(m)
-		if err != nil {
-			return nil, err
-		}
+		f.parseResourceModel(m)
 	}
-	return i, nil
+	return i
 }
 
-func (s *schema) ParseJoinResourceModel(instance interface{}) (api.SchemaInstance, error) {
+func (s *schema) ParseJoinResourceModel(instance interface{}) api.SchemaInstance {
 	v := reflect.ValueOf(instance)
 	if v.Type() != reflect.PtrTo(s.resourceModelType) {
-		return nil, errInvalidResourceInstance
+		panic(errInvalidResourceInstance)
 	}
 	if v.IsNil() {
-		return nil, nil
+		return nil
 	}
 
 	m := &resourceModelInstance{
@@ -208,58 +196,46 @@ func (s *schema) ParseJoinResourceModel(instance interface{}) (api.SchemaInstanc
 
 	i := s.createInstance()
 	for _, f := range i.fields {
-		err := f.parseJoinResourceModel(m)
-		if err != nil {
-			return nil, err
-		}
+		f.parseJoinResourceModel(m)
 	}
-	return i, nil
+	return i
 }
 
-func (s *schema) ParseJsonapiModelCollection(instance interface{}) ([]api.SchemaInstance, error) {
-	collection, err := s.IsJsonapiModelCollection(instance)
-	if err != nil {
-		return nil, err
-	}
+func (s *schema) ParseJsonapiModelCollection(instance interface{}) []api.SchemaInstance {
+	collection := s.IsJsonapiModelCollection(instance)
 	if !collection {
-		return nil, errInvalidJsonapiCollection
+		panic(errInvalidJsonapiCollection)
 	}
 
 	v := reflect.ValueOf(instance)
 	if v.IsNil() {
-		return nil, nil
+		return nil
 	}
 
 	var schemaInstances []api.SchemaInstance
 	for i := 0; i < v.Len(); i++ {
 		child := v.Index(i)
-		schemaInstance, err := s.ParseJsonapiModel(child.Interface())
-		if err != nil {
-			return nil, err
-		}
+		schemaInstance := s.ParseJsonapiModel(child.Interface())
 		if schemaInstance != nil {
 			schemaInstances = append(schemaInstances, schemaInstance)
 		}
 	}
 
-	return schemaInstances, nil
+	return schemaInstances
 }
 
-func (s *schema) ParseJsonapiModel(instance interface{}) (api.SchemaInstance, error) {
-	collection, err := s.IsJsonapiModelCollection(instance)
-	if err != nil {
-		return nil, err
-	}
+func (s *schema) ParseJsonapiModel(instance interface{}) api.SchemaInstance {
+	collection := s.IsJsonapiModelCollection(instance)
 	if collection {
-		return nil, errInvalidJsonapiInstance
+		panic(errInvalidJsonapiInstance)
 	}
 
 	v := reflect.ValueOf(instance)
 	if v.Type() != reflect.PtrTo(s.jsonapiModelType) {
-		return nil, errInvalidJsonapiInstance
+		panic(errInvalidJsonapiInstance)
 	}
 	if v.IsNil() {
-		return nil, nil
+		return nil
 	}
 
 	m := &jsonapiModelInstance{
@@ -269,21 +245,18 @@ func (s *schema) ParseJsonapiModel(instance interface{}) (api.SchemaInstance, er
 
 	i := s.createInstance()
 	for _, f := range i.fields {
-		err := f.parseJsonapiModel(m)
-		if err != nil {
-			return nil, err
-		}
+		f.parseJsonapiModel(m)
 	}
-	return i, nil
+	return i
 }
 
-func (s *schema) ParseJoinJsonapiModel(instance interface{}) (api.SchemaInstance, error) {
+func (s *schema) ParseJoinJsonapiModel(instance interface{}) api.SchemaInstance {
 	v := reflect.ValueOf(instance)
 	if v.Type() != reflect.PtrTo(s.joinJsonapiModelType) {
-		return nil, errInvalidJoinJsonapiInstance
+		panic(errInvalidJoinJsonapiInstance)
 	}
 	if v.IsNil() {
-		return nil, nil
+		return nil
 	}
 
 	m := &joinJsonapiModelInstance{
@@ -293,58 +266,46 @@ func (s *schema) ParseJoinJsonapiModel(instance interface{}) (api.SchemaInstance
 
 	i := s.createInstance()
 	for _, f := range i.fields {
-		err := f.parseJoinJsonapiModel(m)
-		if err != nil {
-			return nil, err
-		}
+		f.parseJoinJsonapiModel(m)
 	}
-	return i, nil
+	return i
 }
 
-func (s *schema) ParsePGModelCollection(instance interface{}) ([]api.SchemaInstance, error) {
-	collection, err := s.IsPGModelCollection(instance)
-	if err != nil {
-		return nil, err
-	}
+func (s *schema) ParsePGModelCollection(instance interface{}) []api.SchemaInstance {
+	collection := s.IsPGModelCollection(instance)
 	if !collection {
-		return nil, errInvalidPGCollection
+		panic(errInvalidPGCollection)
 	}
 
 	v := reflect.ValueOf(instance)
 	if v.IsNil() {
-		return nil, nil
+		return nil
 	}
 
 	var schemaInstances []api.SchemaInstance
 	for i := 0; i < v.Len(); i++ {
 		child := v.Index(i)
-		schemaInstance, err := s.ParsePGModel(child.Interface())
-		if err != nil {
-			return nil, err
-		}
+		schemaInstance := s.ParsePGModel(child.Interface())
 		if schemaInstance != nil {
 			schemaInstances = append(schemaInstances, schemaInstance)
 		}
 	}
 
-	return schemaInstances, nil
+	return schemaInstances
 }
 
-func (s *schema) ParsePGModel(instance interface{}) (api.SchemaInstance, error) {
-	collection, err := s.IsPGModelCollection(instance)
-	if err != nil {
-		return nil, err
-	}
+func (s *schema) ParsePGModel(instance interface{}) api.SchemaInstance {
+	collection := s.IsPGModelCollection(instance)
 	if collection {
-		return nil, errInvalidJsonapiInstance
+		panic(errInvalidJsonapiInstance)
 	}
 
 	v := reflect.ValueOf(instance)
 	if v.Type() != reflect.PtrTo(s.pgModelType) {
-		return nil, errInvalidPGInstance
+		panic(errInvalidPGInstance)
 	}
 	if v.IsNil() {
-		return nil, nil
+		return nil
 	}
 
 	m := &pgModelInstance{
@@ -354,21 +315,18 @@ func (s *schema) ParsePGModel(instance interface{}) (api.SchemaInstance, error) 
 
 	i := s.createInstance()
 	for _, f := range i.fields {
-		err := f.parsePGModel(m)
-		if err != nil {
-			return nil, err
-		}
+		f.parsePGModel(m)
 	}
-	return i, nil
+	return i
 }
 
-func (s *schema) ParseJoinPGModel(instance interface{}) (api.SchemaInstance, error) {
+func (s *schema) ParseJoinPGModel(instance interface{}) api.SchemaInstance {
 	v := reflect.ValueOf(instance)
 	if v.Type() != reflect.PtrTo(s.joinPGModelType) {
-		return nil, errInvalidJoinPGInstance
+		panic(errInvalidJoinPGInstance)
 	}
 	if v.IsNil() {
-		return nil, nil
+		return nil
 	}
 
 	m := &joinPGModelInstance{
@@ -378,12 +336,9 @@ func (s *schema) ParseJoinPGModel(instance interface{}) (api.SchemaInstance, err
 
 	i := s.createInstance()
 	for _, f := range i.fields {
-		err := f.parseJoinPGModel(m)
-		if err != nil {
-			return nil, err
-		}
+		f.parseJoinPGModel(m)
 	}
-	return i, nil
+	return i
 }
 
 func (s *schema) createInstance() *schemaInstance {
@@ -402,70 +357,52 @@ type schemaInstance struct {
 	fields []fieldInstance
 }
 
-func (i *schemaInstance) ToResourceModel() (interface{}, error) {
+func (i *schemaInstance) ToResourceModel() interface{} {
 	instance := i.schema.newResourceModelInstance()
 	for _, f := range i.fields {
-		err := f.applyToResourceModel(instance)
-		if err != nil {
-			return nil, err
-		}
+		f.applyToResourceModel(instance)
 	}
-	return instance.value.Interface(), nil
+	return instance.value.Interface()
 }
 
-func (i *schemaInstance) ToJoinResourceModel() (interface{}, error) {
+func (i *schemaInstance) ToJoinResourceModel() interface{} {
 	instance := i.schema.newResourceModelInstance()
 	for _, f := range i.fields {
-		err := f.applyToJoinResourceModel(instance)
-		if err != nil {
-			return nil, err
-		}
+		f.applyToJoinResourceModel(instance)
 	}
-	return instance.value.Interface(), nil
+	return instance.value.Interface()
 }
 
-func (i *schemaInstance) ToJsonapiModel() (interface{}, error) {
+func (i *schemaInstance) ToJsonapiModel() interface{} {
 	instance := i.schema.newJsonapiModelInstance()
 	for _, f := range i.fields {
-		err := f.applyToJsonapiModel(instance)
-		if err != nil {
-			return nil, err
-		}
+		f.applyToJsonapiModel(instance)
 	}
-	return instance.value.Interface(), nil
+	return instance.value.Interface()
 }
 
-func (i *schemaInstance) ToJoinJsonapiModel() (interface{}, error) {
+func (i *schemaInstance) ToJoinJsonapiModel() interface{} {
 	instance := i.schema.newJoinJsonapiModelInstance()
 	for _, f := range i.fields {
-		err := f.applyToJoinJsonapiModel(instance)
-		if err != nil {
-			return nil, err
-		}
+		f.applyToJoinJsonapiModel(instance)
 	}
-	return instance.value.Interface(), nil
+	return instance.value.Interface()
 }
 
-func (i *schemaInstance) ToPGModel() (interface{}, error) {
+func (i *schemaInstance) ToPGModel() interface{} {
 	instance := i.schema.newPGModelInstance()
 	for _, f := range i.fields {
-		err := f.applyToPGModel(instance)
-		if err != nil {
-			return nil, err
-		}
+		f.applyToPGModel(instance)
 	}
-	return instance.value.Interface(), nil
+	return instance.value.Interface()
 }
 
-func (i *schemaInstance) ToJoinPGModel() (interface{}, error) {
+func (i *schemaInstance) ToJoinPGModel() interface{} {
 	instance := i.schema.newJoinPGModelInstance()
 	for _, f := range i.fields {
-		err := f.applyToJoinPGModel(instance)
-		if err != nil {
-			return nil, err
-		}
+		f.applyToJoinPGModel(instance)
 	}
-	return instance.value.Interface(), nil
+	return instance.value.Interface()
 }
 
 func (i *schemaInstance) Validate() error {

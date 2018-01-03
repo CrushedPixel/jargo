@@ -17,14 +17,11 @@ type belongsToField struct {
 	joinPGFields      []reflect.StructField
 }
 
-func newBelongsToField(r Registry, schema *schema, f *reflect.StructField) (field, error) {
-	base, err := newRelationField(r, schema, f)
-	if err != nil {
-		return nil, err
-	}
+func newBelongsToField(r Registry, schema *schema, f *reflect.StructField) field {
+	base := newRelationField(r, schema, f)
 
 	if base.collection {
-		return nil, errInvalidBelongsToType
+		panic(errInvalidBelongsToType)
 	}
 
 	field := &belongsToField{
@@ -33,7 +30,7 @@ func newBelongsToField(r Registry, schema *schema, f *reflect.StructField) (fiel
 
 	// TODO: fail if there are invalid struct tag options
 
-	return field, nil
+	return field
 }
 
 func (f *belongsToField) pgFilterColumn() string {
@@ -44,22 +41,22 @@ func (f *belongsToField) pgFilterColumn() string {
 
 // override this function to calculate topLevel pg fields on demand,
 // i.e. after non-top-level pg fields were calculated for reference.
-func (f *belongsToField) pgFields() ([]reflect.StructField, error) {
+func (f *belongsToField) pgFields() []reflect.StructField {
 	if f.pgF != nil {
-		return f.pgF, nil
+		return f.pgF
 	}
 
 	f.pgF = pgBelongsToFields(f, false)
-	return f.pgF, nil
+	return f.pgF
 }
 
-func (f *belongsToField) pgJoinFields() ([]reflect.StructField, error) {
+func (f *belongsToField) pgJoinFields() []reflect.StructField {
 	if f.joinPGFields != nil {
-		return f.joinPGFields, nil
+		return f.joinPGFields
 	}
 
 	f.joinPGFields = pgBelongsToFields(f, true)
-	return f.joinPGFields, nil
+	return f.joinPGFields
 }
 
 // generates the pg fields for a belongsTo relation. Example:
@@ -126,31 +123,25 @@ func (i *belongsToFieldInstance) parentField() field {
 
 // parses the value of the pg relation struct field (e.g. *User) and stores it
 // in i.values[0]
-func (i *belongsToFieldInstance) parsePGModel(instance *pgModelInstance) error {
+func (i *belongsToFieldInstance) parsePGModel(instance *pgModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
 	i.values = nil
 	// do not parse nil models
 	if instance.value.IsNil() {
-		return nil
+		return
 	}
 
 	pgModelInstance := instance.value.Elem().FieldByName(i.field.fieldName).Interface()
-	v, err := i.relationSchema.ParseJoinPGModel(pgModelInstance)
-	if err != nil {
-		return err
-	}
-
-	i.values = []api.SchemaInstance{v}
-	return nil
+	i.values = []api.SchemaInstance{i.relationSchema.ParseJoinPGModel(pgModelInstance)}
 }
 
 // sets the value of the pg relation id field (e.g. UserId) to the id value
 // of the schema instance stored in i.values[0]
-func (i *belongsToFieldInstance) applyToPGModel(instance *pgModelInstance) error {
+func (i *belongsToFieldInstance) applyToPGModel(instance *pgModelInstance) {
 	if len(i.values) == 0 {
-		return nil
+		return
 	}
 
 	// extract id field from relation and apply value
@@ -168,10 +159,5 @@ func (i *belongsToFieldInstance) applyToPGModel(instance *pgModelInstance) error
 	instance.value.Elem().FieldByName(i.field.relationIdFieldName()).SetInt(*id)
 
 	// apply relation instance to pg model field
-	joinPGModelInstance, err := v.ToJoinPGModel()
-	if err != nil {
-		return err
-	}
-	instance.value.Elem().FieldByName(i.field.fieldName).Set(reflect.ValueOf(joinPGModelInstance))
-	return nil
+	instance.value.Elem().FieldByName(i.field.fieldName).Set(reflect.ValueOf(v.ToJoinPGModel()))
 }

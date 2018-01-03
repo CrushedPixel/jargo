@@ -38,14 +38,11 @@ func (r *resource) ParseJsonapiUpdatePayloadString(payload string, instance inte
 // unmarshals a jsonapi payload, applying it to a resource model instance.
 // if validate is true, it also validates all fields set by the user.
 func (r *resource) unmarshalJsonapiPayload(in io.Reader, resourceModelInstance interface{}, validate bool) (interface{}, error) {
-	si, err := r.ParseResourceModel(resourceModelInstance)
-	if err != nil {
-		return nil, err
-	}
+	si := r.ParseResourceModel(resourceModelInstance).(*schemaInstance)
 
 	// parse payload into new jsonapi instance
 	jsonapiTargetInstance := r.NewJsonapiModelInstance()
-	err = jsonapi.UnmarshalPayload(in, jsonapiTargetInstance)
+	err := jsonapi.UnmarshalPayload(in, jsonapiTargetInstance)
 	if err != nil {
 		return nil, err
 	}
@@ -59,12 +56,9 @@ func (r *resource) unmarshalJsonapiPayload(in io.Reader, resourceModelInstance i
 	// copy original resource model fields to a new target resource model,
 	// applying writable fields from parsed jsonapi model
 	target := r.newResourceModelInstance()
-	for _, fieldInstance := range si.(*schemaInstance).fields {
+	for _, fieldInstance := range si.fields {
 		if fieldInstance.parentField().writable() {
-			err := fieldInstance.parseJsonapiModel(jmi)
-			if err != nil {
-				return nil, err
-			}
+			fieldInstance.parseJsonapiModel(jmi)
 
 			// NOTE: this validates any writable field,
 			// regardless if it has actually been set by the user
@@ -85,12 +79,7 @@ func (r *resource) unmarshalJsonapiPayload(in io.Reader, resourceModelInstance i
 }
 
 func (r *resource) Validate(instance interface{}) error {
-	si, err := r.ParseResourceModel(instance)
-	if err != nil {
-		return err
-	}
-
-	return si.Validate()
+	return r.ParseResourceModel(instance).Validate()
 }
 
 func (r *resource) CreateTable(db *pg.DB) error {

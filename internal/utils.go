@@ -4,8 +4,9 @@ import (
 	"regexp"
 	"reflect"
 	"strconv"
-	"crushedpixel.net/jargo/api"
 	"github.com/go-pg/pg/types"
+	"errors"
+	"fmt"
 )
 
 var sqlNameRegex = regexp.MustCompile(`^[0-9a-zA-Z$_]+$`)
@@ -19,12 +20,16 @@ func isValidSQLName(val string) bool {
 	return sqlNameRegex.MatchString(val)
 }
 
-func parseBoolOption(val string) (bool, error) {
+func parseBoolOption(val string) bool {
 	if val == "" {
-		return true, nil
+		return true
 	}
 
-	return strconv.ParseBool(val)
+	b, err := strconv.ParseBool(val)
+	if err != nil {
+		panic(errors.New(fmt.Sprintf("error parsing bool option: %s", err.Error())))
+	}
+	return b
 }
 
 // wrapper types for at least a bit of type-safety when working with reflection.
@@ -50,54 +55,6 @@ type (
 		value  *reflect.Value // struct pointer value
 	}
 )
-
-func resourceModelToPGModel(schema api.Schema, resourceModelInstance interface{}) interface{} {
-	schemaInstance, err := schema.ParseResourceModel(resourceModelInstance)
-	if err != nil {
-		panic(err)
-	}
-	pgModelInstance, err := schemaInstance.ToPGModel()
-	if err != nil {
-		panic(err)
-	}
-	return pgModelInstance
-}
-
-func resourceModelToJsonapiModel(schema api.Schema, resourceModelInstance interface{}) interface{} {
-	schemaInstance, err := schema.ParseResourceModel(resourceModelInstance)
-	if err != nil {
-		panic(err)
-	}
-	jsonapiModelInstance, err := schemaInstance.ToJsonapiModel()
-	if err != nil {
-		panic(err)
-	}
-	return jsonapiModelInstance
-}
-
-func pgModelToResourceModel(schema api.Schema, pgModelInstance interface{}) interface{} {
-	schemaInstance, err := schema.ParsePGModel(pgModelInstance)
-	if err != nil {
-		panic(err)
-	}
-	resourceModelInstance, err := schemaInstance.ToResourceModel()
-	if err != nil {
-		panic(err)
-	}
-	return resourceModelInstance
-}
-
-func jsonapiModelToResourceModel(schema api.Schema, pgModelInstance interface{}) interface{} {
-	schemaInstance, err := schema.ParseJsonapiModel(pgModelInstance)
-	if err != nil {
-		panic(err)
-	}
-	resourceModelInstance, err := schemaInstance.ToResourceModel()
-	if err != nil {
-		panic(err)
-	}
-	return resourceModelInstance
-}
 
 // escapes a go-pg column string according to postgres rules.
 // example: user.id => "user"."id"

@@ -12,11 +12,8 @@ type hasField struct {
 	fk           string
 }
 
-func newHasField(r Registry, schema *schema, f *reflect.StructField, fk string) (field, error) {
-	base, err := newRelationField(r, schema, f)
-	if err != nil {
-		return nil, err
-	}
+func newHasField(r Registry, schema *schema, f *reflect.StructField, fk string) field {
+	base := newRelationField(r, schema, f)
 
 	if fk == "" {
 		// the internal pg model struct types are unnamed,
@@ -34,18 +31,18 @@ func newHasField(r Registry, schema *schema, f *reflect.StructField, fk string) 
 
 	// TODO: fail if there are invalid struct tag options
 
-	return field, nil
+	return field
 }
 
 // override this function to calculate topLevel pg fields on demand,
 // i.e. after non-top-level pg fields were calculated for reference.
-func (f *hasField) pgFields() ([]reflect.StructField, error) {
+func (f *hasField) pgFields() []reflect.StructField {
 	if f.pgF != nil {
-		return f.pgF, nil
+		return f.pgF
 	}
 
 	f.pgF = pgHasFields(f)
-	return f.pgF, nil
+	return f.pgF
 }
 
 func pgHasFields(f *hasField) []reflect.StructField {

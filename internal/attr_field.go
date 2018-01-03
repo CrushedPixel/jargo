@@ -30,11 +30,8 @@ type attrField struct {
 	validation string
 }
 
-func newAttrField(schema *schema, f *reflect.StructField) (field, error) {
-	base, err := newBaseField(schema, f)
-	if err != nil {
-		return nil, err
-	}
+func newAttrField(schema *schema, f *reflect.StructField) field {
+	base := newBaseField(schema, f)
 
 	// determine default column name.
 	// defaults to underscored jsonapi member name.
@@ -55,7 +52,7 @@ func newAttrField(schema *schema, f *reflect.StructField) (field, error) {
 	// validate field type
 	typ := f.Type
 	if !isValidAttrType(typ) {
-		return nil, errInvalidAttrFieldType(typ)
+		panic(errInvalidAttrFieldType(typ))
 	}
 
 	parsed := parser.ParseJargoTag(f.Tag.Get(jargoFieldTag))
@@ -72,13 +69,13 @@ func newAttrField(schema *schema, f *reflect.StructField) (field, error) {
 			// these were handled when parsing the baseField
 			// and should therefore not trigger the default handler.
 		default:
-			return nil, errDisallowedOption(option)
+			panic(errDisallowedOption(option))
 		}
 	}
 
 	// validate sql column
 	if !isValidSQLName(field.column) {
-		return nil, errInvalidColumnName
+		panic(errInvalidColumnName)
 	}
 
 	// store "validate" struct tag
@@ -88,7 +85,7 @@ func newAttrField(schema *schema, f *reflect.StructField) (field, error) {
 	field.jsonapiF = jsonapiAttrFields(field)
 	field.pgF = pgAttrFields(field)
 
-	return field, nil
+	return field
 }
 
 func (f *attrField) pgSelectColumn() string {
@@ -99,9 +96,9 @@ func (f *attrField) pgFilterColumn() string {
 	return f.pgSelectColumn()
 }
 
-func (f *attrField) jsonapiJoinFields() ([]reflect.StructField, error) {
+func (f *attrField) jsonapiJoinFields() []reflect.StructField {
 	// the jsonapi join model only needs the id field
-	return []reflect.StructField{}, nil
+	return []reflect.StructField{}
 }
 
 func jsonapiAttrFields(f *attrField) []reflect.StructField {
@@ -176,114 +173,107 @@ func (i *attrFieldInstance) parentField() field {
 	return i.field
 }
 
-func (i *attrFieldInstance) parseResourceModel(instance *resourceModelInstance) error {
+func (i *attrFieldInstance) parseResourceModel(instance *resourceModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	return i.parse(instance.value)
+	i.parse(instance.value)
 }
 
-func (i *attrFieldInstance) applyToResourceModel(instance *resourceModelInstance) error {
+func (i *attrFieldInstance) applyToResourceModel(instance *resourceModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	return i.apply(instance.value)
+	i.apply(instance.value)
 }
 
-func (i *attrFieldInstance) parseJoinResourceModel(instance *resourceModelInstance) error {
+func (i *attrFieldInstance) parseJoinResourceModel(instance *resourceModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	return i.parse(instance.value)
+	i.parse(instance.value)
 }
 
-func (i *attrFieldInstance) applyToJoinResourceModel(instance *resourceModelInstance) error {
+func (i *attrFieldInstance) applyToJoinResourceModel(instance *resourceModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	return i.apply(instance.value)
+	i.apply(instance.value)
 }
 
-func (i *attrFieldInstance) parseJsonapiModel(instance *jsonapiModelInstance) error {
+func (i *attrFieldInstance) parseJsonapiModel(instance *jsonapiModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	if !i.field.jsonapiExported {
-		return nil
+	if i.field.jsonapiExported {
+		i.parse(instance.value)
 	}
-	return i.parse(instance.value)
 }
 
-func (i *attrFieldInstance) applyToJsonapiModel(instance *jsonapiModelInstance) error {
+func (i *attrFieldInstance) applyToJsonapiModel(instance *jsonapiModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	if !i.field.jsonapiExported {
-		return nil
+	if i.field.jsonapiExported {
+		i.apply(instance.value)
 	}
-	return i.apply(instance.value)
 }
 
-func (i *attrFieldInstance) parseJoinJsonapiModel(instance *joinJsonapiModelInstance) error {
-	if i.field.schema != instance.schema {
-		panic(errMismatchingSchema)
-	}
-	// only the id field exists in join jsonapi models
-	return nil
-}
-
-func (i *attrFieldInstance) applyToJoinJsonapiModel(instance *joinJsonapiModelInstance) error {
+func (i *attrFieldInstance) parseJoinJsonapiModel(instance *joinJsonapiModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
 	// only the id field exists in join jsonapi models
-	return nil
 }
 
-func (i *attrFieldInstance) parsePGModel(instance *pgModelInstance) error {
+func (i *attrFieldInstance) applyToJoinJsonapiModel(instance *joinJsonapiModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	return i.parse(instance.value)
+	// only the id field exists in join jsonapi models
 }
 
-func (i *attrFieldInstance) applyToPGModel(instance *pgModelInstance) error {
+func (i *attrFieldInstance) parsePGModel(instance *pgModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	return i.apply(instance.value)
+	i.parse(instance.value)
 }
 
-func (i *attrFieldInstance) parseJoinPGModel(instance *joinPGModelInstance) error {
+func (i *attrFieldInstance) applyToPGModel(instance *pgModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	return i.parse(instance.value)
+	i.apply(instance.value)
 }
 
-func (i *attrFieldInstance) applyToJoinPGModel(instance *joinPGModelInstance) error {
+func (i *attrFieldInstance) parseJoinPGModel(instance *joinPGModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	return i.apply(instance.value)
+	i.parse(instance.value)
 }
 
-func (i *attrFieldInstance) parse(v *reflect.Value) error {
-	if v.IsNil() {
-		return nil
+func (i *attrFieldInstance) applyToJoinPGModel(instance *joinPGModelInstance) {
+	if i.field.schema != instance.schema {
+		panic(errMismatchingSchema)
 	}
-	i.value = v.Elem().FieldByName(i.field.fieldName).Interface()
-	return nil
+	i.apply(instance.value)
 }
 
-func (i *attrFieldInstance) apply(v *reflect.Value) error {
+func (i *attrFieldInstance) parse(v *reflect.Value) {
+	if !v.IsNil() {
+		i.value = v.Elem().FieldByName(i.field.fieldName).Interface()
+	}
+}
+
+func (i *attrFieldInstance) apply(v *reflect.Value) {
 	if v.IsNil() {
 		panic(errors.New("struct pointer must not be nil"))
 	}
 	if i.value != nil {
 		v.Elem().FieldByName(i.field.fieldName).Set(reflect.ValueOf(i.value))
 	}
-	return nil
 }
 
 func (i *attrFieldInstance) validate() error {
