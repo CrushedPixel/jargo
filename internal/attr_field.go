@@ -269,7 +269,7 @@ func (i *attrFieldInstance) parse(v *reflect.Value) {
 
 func (i *attrFieldInstance) apply(v *reflect.Value) {
 	if v.IsNil() {
-		panic(errors.New("struct pointer must not be nil"))
+		panic(errNilPointer)
 	}
 	if i.value != nil {
 		v.Elem().FieldByName(i.field.fieldName).Set(reflect.ValueOf(i.value))

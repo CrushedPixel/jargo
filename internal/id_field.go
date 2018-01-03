@@ -7,6 +7,7 @@ import (
 )
 
 var (
+	errNilPointer        = errors.New("resource must not be nil")
 	errMismatchingSchema = errors.New("mismatching schema")
 	emptyStructType      = reflect.TypeOf(new(struct{}))
 )
@@ -216,7 +217,7 @@ func (i *idFieldInstance) parse(v *reflect.Value) {
 
 func (i *idFieldInstance) apply(v *reflect.Value) {
 	if v.IsNil() {
-		panic(errors.New("struct pointer must not be nil"))
+		panic(errNilPointer)
 	}
 	v.Elem().FieldByName(idFieldName).SetInt(i.value)
 }
