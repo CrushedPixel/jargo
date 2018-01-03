@@ -42,8 +42,6 @@ func (c *Controller) Use(middleware HandlerFunc) {
 }
 
 func (c *Controller) initialize(app *Application) {
-	c.Resource.CreateTable(app.DB)
-
 	// register actions
 	for k, v := range c.Actions {
 		app.Register(v.toEndpoint(c, k))

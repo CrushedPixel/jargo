@@ -2,6 +2,7 @@ package internal
 
 import (
 	"reflect"
+	"github.com/go-pg/pg"
 )
 
 type field interface {
@@ -51,4 +52,10 @@ type fieldInstance interface {
 	applyToJoinPGModel(*joinPGModelInstance)
 
 	validate() error
+}
+
+type afterCreateTableHook interface {
+	// called on resource fields implementing afterCreateTableHook
+	// by Resource.CreateTable() after table was created
+	afterCreateTable(db *pg.DB) error
 }

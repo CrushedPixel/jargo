@@ -83,7 +83,22 @@ func (r *resource) Validate(instance interface{}) error {
 }
 
 func (r *resource) CreateTable(db *pg.DB) error {
-	return db.CreateTable(r.NewPGModelInstance(), &orm.CreateTableOptions{IfNotExists: true})
+	err := db.CreateTable(r.NewPGModelInstance(), &orm.CreateTableOptions{IfNotExists: true})
+	if err != nil {
+		return err
+	}
+
+	// call afterCreateTable hooks on fields
+	for _, f := range r.fields {
+		if afterHook, ok := f.(afterCreateTableHook); ok {
+			err = afterHook.afterCreateTable(db)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func (r *resource) Select(db orm.DB) api.Query {
@@ -108,12 +123,22 @@ func (r *resource) InsertOne(db orm.DB, instance interface{}) api.Query {
 	return newQueryFromResourceModel(db, r, typeInsert, instance)
 }
 
+func (r *resource) updateQuery(db orm.DB, data interface{}) api.Query {
+	q := newQueryFromResourceModel(db, r, typeUpdate, data)
+	// some values, for example updatedAt attributes are modified on the server,
+	// so the actual values have to be fetched back from the update request.
+	// this should probably be optimized to only fetch values that
+	// are expected to be modified by the server.
+	q.Returning("*")
+	return q
+}
+
 func (r *resource) Update(db orm.DB, instances []interface{}) api.Query {
-	return newQueryFromResourceModel(db, r, typeUpdate, instances)
+	return r.updateQuery(db, instances)
 }
 
 func (r *resource) UpdateOne(db orm.DB, instance interface{}) api.Query {
-	return newQueryFromResourceModel(db, r, typeUpdate, instance)
+	return r.updateQuery(db, instance)
 }
 
 func (r *resource) Delete(db orm.DB, instances []interface{}) api.Query {

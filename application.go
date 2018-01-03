@@ -58,6 +58,8 @@ func NewApplication(db *pg.DB) *Application {
 	}
 }
 
+// registers a resource with the application, creating the respective
+// database tables if they don't exist yet.
 func (app *Application) RegisterResource(model interface{}) (resource api.Resource, err error) {
 	// internally, jargo panics when parsing an invalid resource.
 	// to be a little bit more gracious to the user, we recover from those
@@ -76,6 +78,11 @@ func (app *Application) RegisterResource(model interface{}) (resource api.Resour
 	}()
 
 	resource = app.registry.RegisterResource(reflect.TypeOf(model))
+
+	err = resource.CreateTable(app.DB)
+	if err != nil {
+		resource = nil
+	}
 	return
 }
 

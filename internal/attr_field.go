@@ -14,7 +14,12 @@ const validationTag = "validate"
 var (
 	errJsonapiOptionOnUnexportedField = errors.New("jsonapi-related option on unexported field")
 	errInvalidColumnName              = errors.New("column name may only consist of [0-9,a-z,A-Z$_]")
-	timeType                          = reflect.TypeOf(time.Time{})
+	errCreatedAtDefaultForbidden      = errors.New(`"default" option may not be used in conjunction with "createdAt""`)
+	errUpdatedAtDefaultForbidden      = errors.New(`"default" option may not be used in conjunction with "updatedAt""`)
+	errCreatedAtUpdatedAtExclusive    = errors.New(`"createdAt" and "updatedAt" options are mutually exclusive`)
+	errCreatedAtUpdatedAtType         = errors.New(`"createdAt" and "updatedAt" options are only allowed on fields of type time.Time`)
+
+	timeType = reflect.TypeOf(time.Time{})
 )
 
 func errInvalidAttrFieldType(p reflect.Type) error {
@@ -57,6 +62,8 @@ func newAttrField(schema *schema, f *reflect.StructField) field {
 
 	parsed := parser.ParseJargoTag(f.Tag.Get(jargoFieldTag))
 
+	var createdAt, updatedAt bool
+
 	// parse options
 	for option, value := range parsed.Options {
 		switch option {
@@ -64,6 +71,10 @@ func newAttrField(schema *schema, f *reflect.StructField) field {
 			field.column = value
 		case optionDefault:
 			field.sqlDefault = value
+		case optionCreatedAt:
+			createdAt = parseBoolOption(value)
+		case optionUpdatedAt:
+			updatedAt = parseBoolOption(value)
 		case optionReadonly, optionSort, optionFilter,
 			optionOmitempty, optionNotnull, optionUnique:
 			// these were handled when parsing the baseField
@@ -71,6 +82,26 @@ func newAttrField(schema *schema, f *reflect.StructField) field {
 		default:
 			panic(errDisallowedOption(option))
 		}
+	}
+
+	// validate createdAt and updatedAt tags
+	if createdAt && updatedAt {
+		panic(errCreatedAtUpdatedAtExclusive)
+	}
+	if field.sqlDefault != "" && createdAt {
+		panic(errCreatedAtDefaultForbidden)
+	}
+	if field.sqlDefault != "" && updatedAt {
+		panic(errUpdatedAtDefaultForbidden)
+	}
+
+	if createdAt || updatedAt {
+		if field.fieldType != timeType {
+			panic(errCreatedAtUpdatedAtType)
+		}
+
+		// set default to "NOW()" for createdAt and updatedAt columns
+		field.sqlDefault = "NOW()"
 	}
 
 	// validate sql column
@@ -84,6 +115,14 @@ func newAttrField(schema *schema, f *reflect.StructField) field {
 	// finally, generate jsonapi and pg attribute fields
 	field.jsonapiF = jsonapiAttrFields(field)
 	field.pgF = pgAttrFields(field)
+
+	// wrap updatedAt fields in updatedAtField struct
+	// to implement afterCreateTable
+	if updatedAt {
+		return &updatedAtField{
+			field,
+		}
+	}
 
 	return field
 }
