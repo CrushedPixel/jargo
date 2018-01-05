@@ -9,16 +9,15 @@ import (
 )
 
 const (
+	codeInternalServerError  = "INTERNAL_SERVER_ERROR"
 	codeUnsupportedMediaType = "UNSUPPORTED_MEDIA_TYPE"
 	codeNotAcceptable        = "NOT_ACCEPTABLE"
-	codeInternalServerError  = "INTERNAL_SERVER_ERROR"
 	codeNotFound             = "RESOURCE_NOT_FOUND"
 	codeInvalidQueryParams   = "INVALID_QUERY_PARAMS"
 	codeInvalidPayload       = "INVALID_PAYLOAD"
 	codeInvalidId            = "INVALID_ID"
 	codeUnauthorized         = "UNAUTHORIZED"
 	codeForbidden            = "FORBIDDEN"
-	codeValidationFailed     = "VALIDATION_FAILED"
 )
 
 var ErrInternalServerError = NewApiError(
@@ -85,8 +84,6 @@ func ErrValidationFailed(errors validator.ValidationErrors) *ApiError {
 		failed = append(failed, v.Tag())
 	}
 
-	return NewApiError(http.StatusBadRequest,
-		codeValidationFailed,
-		strings.Join(failed, ", "),
-	)
+	// TODO: more descriptive error detail
+	return ErrInvalidPayload(strings.Join(failed, ", "))
 }
