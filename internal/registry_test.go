@@ -1,12 +1,13 @@
 package internal
 
 import (
-	"testing"
-	"reflect"
-	"github.com/stretchr/testify/assert"
-	"github.com/google/jsonapi"
-	"os"
 	"encoding/json"
+	"github.com/google/jsonapi"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"os"
+	"reflect"
+	"testing"
 )
 
 type Age int
@@ -24,31 +25,31 @@ type CustomType struct {
 }
 
 type HasOne struct {
-	Id    int64  `jargo:""`
+	Id    int64 `jargo:""`
 	Name  string
 	Basic *Basic `jargo:",has"`
 }
 
 type HasMany struct {
-	Id    int64    `jargo:""`
+	Id    int64 `jargo:""`
 	Name  string
 	Basic []*Basic `jargo:",has"`
 }
 
 type HasSelf struct {
-	Id   int64    `jargo:""`
+	Id   int64 `jargo:""`
 	Name string
 	Self *HasSelf `jargo:",has"`
 }
 
 type CircularHas struct {
-	Id   int64              `jargo:""`
+	Id   int64 `jargo:""`
 	Name string
 	B    *CircularBelongsTo `jargo:",has"`
 }
 
 type CircularBelongsTo struct {
-	Id   int64        `jargo:""`
+	Id   int64 `jargo:""`
 	Name string
 	A    *CircularHas `jargo:",belongsTo"`
 }
@@ -57,7 +58,7 @@ func TestRegistry_RegisterSchema(t *testing.T) {
 	r := make(Registry)
 	// create schema from struct type
 	s, err := r.RegisterResource(reflect.TypeOf(Basic{}))
-	assert.Nil(t, err)
+	require.Nil(t, err)
 	// TODO: test field generation
 
 	// parse resource model instance to schema instance
@@ -66,27 +67,22 @@ func TestRegistry_RegisterSchema(t *testing.T) {
 		Name: "Peter",
 		Age:  50,
 	}
-	instance, err := s.ParseResourceModel(&b)
-	assert.Nil(t, err)
+	instance := s.ParseResourceModel(&b)
 
 	// convert schema instance back to resource model instance
-	b1, err := instance.ToResourceModel()
-	assert.Nil(t, err)
+	b1 := instance.ToResourceModel()
 
-	j1, err := instance.ToJsonapiModel()
-	assert.Nil(t, err)
+	j1 := instance.ToJsonapiModel()
 	jsonapi.MarshalPayloadWithoutIncluded(os.Stdout, j1)
 
 	// expect original and converted instances to be equal
 	assert.Equal(t, &b, b1)
 
 	// test conversion to jsonapi model
-	_, err = instance.ToJsonapiModel()
-	assert.Nil(t, err)
+	_ = instance.ToJsonapiModel()
 
 	// test conversion to pg model
-	_, err = instance.ToPGModel()
-	assert.Nil(t, err)
+	_ = instance.ToPGModel()
 
 	// test handling of custom types
 	s, err = r.RegisterResource(reflect.TypeOf(CustomType{}))
@@ -94,55 +90,49 @@ func TestRegistry_RegisterSchema(t *testing.T) {
 
 	// test hasOne relations
 	s, err = r.RegisterResource(reflect.TypeOf(HasOne{}))
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	h := HasOne{
 		Id:    1,
 		Name:  "Peter",
 		Basic: &b,
 	}
-	instance, err = s.ParseResourceModel(&h)
-	assert.Nil(t, err)
+	instance = s.ParseResourceModel(&h)
 
-	j1, err = instance.ToJsonapiModel()
-	assert.Nil(t, err)
+	j1 = instance.ToJsonapiModel()
 	jsonapi.MarshalPayloadWithoutIncluded(os.Stdout, j1)
 
 	// test hasMany relations
 	s, err = r.RegisterResource(reflect.TypeOf(HasMany{}))
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	hm := HasMany{
 		Id:    1,
 		Name:  "Peter",
 		Basic: []*Basic{&b, b1.(*Basic)},
 	}
-	instance, err = s.ParseResourceModel(&hm)
-	assert.Nil(t, err)
+	instance = s.ParseResourceModel(&hm)
 
-	j1, err = instance.ToJsonapiModel()
-	assert.Nil(t, err)
+	j1 = instance.ToJsonapiModel()
 	jsonapi.MarshalPayloadWithoutIncluded(os.Stdout, j1)
 
 	// test hasSelf relations
 	s, err = r.RegisterResource(reflect.TypeOf(HasSelf{}))
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	hs := HasSelf{
 		Id:   1,
 		Name: "Peter",
 		Self: nil,
 	}
-	instance, err = s.ParseResourceModel(&hs)
-	assert.Nil(t, err)
+	instance = s.ParseResourceModel(&hs)
 
-	j1, err = instance.ToJsonapiModel()
-	assert.Nil(t, err)
+	j1 = instance.ToJsonapiModel()
 	jsonapi.MarshalPayloadWithoutIncluded(os.Stdout, j1)
 
 	// test circular relations
 	s, err = r.RegisterResource(reflect.TypeOf(CircularHas{}))
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	hb := CircularBelongsTo{
 		Id:   2,
@@ -154,17 +144,14 @@ func TestRegistry_RegisterSchema(t *testing.T) {
 		Name: "Peter",
 		B:    &hb,
 	}
-	instance, err = s.ParseResourceModel(&ha)
-	assert.Nil(t, err)
+	instance = s.ParseResourceModel(&ha)
 
-	j1, err = instance.ToJsonapiModel()
-	assert.Nil(t, err)
+	j1 = instance.ToJsonapiModel()
 	jsonapi.MarshalPayloadWithoutIncluded(os.Stdout, j1)
 
-	p1, err := instance.ToResourceModel()
-	assert.Nil(t, err)
+	p1 := instance.ToResourceModel()
 	bytes, err := json.Marshal(p1)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 	println(string(bytes))
 
 	// more circular relations testing
@@ -178,16 +165,13 @@ func TestRegistry_RegisterSchema(t *testing.T) {
 		Name: "Peter",
 		B:    &hb,
 	}
-	instance, err = s.ParseResourceModel(&ha)
-	assert.Nil(t, err)
+	instance = s.ParseResourceModel(&ha)
 
-	j1, err = instance.ToJsonapiModel()
-	assert.Nil(t, err)
+	j1 = instance.ToJsonapiModel()
 	jsonapi.MarshalPayloadWithoutIncluded(os.Stdout, j1)
 
-	p1, err = instance.ToPGModel()
-	assert.Nil(t, err)
+	p1 = instance.ToPGModel()
 	bytes, err = json.Marshal(p1)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 	println(string(bytes))
 }

@@ -1,9 +1,9 @@
 package internal
 
 import (
-	"reflect"
 	"github.com/go-pg/pg"
 	"gopkg.in/go-playground/validator.v9"
+	"reflect"
 )
 
 type field interface {

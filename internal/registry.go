@@ -1,20 +1,38 @@
 package internal
 
 import (
+	"github.com/crushedpixel/jargo/api"
 	"reflect"
-	"crushedpixel.net/jargo/api"
 )
 
 // resource registry
 type Registry map[reflect.Type]*resource
 
-func (r Registry) RegisterResource(resourceModelType reflect.Type) api.Resource {
-	if resource, ok := r[resourceModelType]; ok {
-		return resource
+func (r Registry) RegisterResource(resourceModelType reflect.Type) (resource api.Resource, err error) {
+	// internally, jargo panics when parsing an invalid resource.
+	// to be more gracious to the user, we recover from those
+	// and return them as an error value.
+	defer func() {
+		if r := recover(); r != nil {
+			resource = nil
+
+			switch x := r.(type) {
+			case error:
+				err = x
+			default:
+				panic(r)
+			}
+		}
+	}()
+
+	var ok bool
+	if resource, ok = r[resourceModelType]; ok {
+		return
 	}
 
 	r.registerResource(resourceModelType)
-	return r[resourceModelType]
+	resource = r[resourceModelType]
+	return
 }
 
 func (r Registry) registerResource(resourceModelType reflect.Type) {

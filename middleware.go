@@ -1,12 +1,12 @@
 package jargo
 
 import (
+	"github.com/crushedpixel/jargo/api"
+	"github.com/crushedpixel/margo"
 	"github.com/gin-gonic/gin"
-	"crushedpixel.net/margo"
 	"github.com/google/jsonapi"
 	"net/http"
 	"strings"
-	"crushedpixel.net/jargo/api"
 )
 
 // gin middleware injecting the jargo application into the context

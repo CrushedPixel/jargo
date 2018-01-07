@@ -1,9 +1,9 @@
 package parser
 
 import (
-	"testing"
-	"net/url"
 	"github.com/stretchr/testify/assert"
+	"net/url"
+	"testing"
 )
 
 func TestParseFilterParameters(t *testing.T) {

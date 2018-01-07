@@ -1,11 +1,11 @@
 package internal
 
 import (
-	"reflect"
 	"errors"
-	"crushedpixel.net/jargo/internal/parser"
 	"fmt"
 	"github.com/c9s/inflect"
+	"github.com/crushedpixel/jargo/internal/parser"
+	"reflect"
 )
 
 const (

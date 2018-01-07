@@ -1,8 +1,9 @@
 package jargo
 
 import (
-	"crushedpixel.net/margo"
 	"fmt"
+	"github.com/crushedpixel/margo"
+	"github.com/gin-gonic/gin"
 	"net/http"
 )
 
@@ -86,7 +87,7 @@ func (a Actions) SetAction(route *Route, action *Action) {
 	a[*route] = action
 }
 
-func (a *Action) toEndpoint(c *Controller, route Route) *margo.Endpoint {
+func (a *Action) toEndpoint(c *Controller, route Route) margo.Endpoint {
 	namespace := c.Namespace
 	// add trailing slash to namespace if missing
 	if namespace != "" && namespace[len(namespace)-1] != '/' {
@@ -108,8 +109,8 @@ func (a *Action) toEndpoint(c *Controller, route Route) *margo.Endpoint {
 }
 
 func toMargoHandler(handlers ...HandlerFunc) margo.HandlerFunc {
-	return func(c *margo.Context) margo.Response {
-		context := &Context{c.Context}
+	return func(c *gin.Context) margo.Response {
+		context := &Context{c}
 
 		for _, h := range handlers {
 			if res := h(context); res != nil {

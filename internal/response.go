@@ -1,11 +1,11 @@
 package internal
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/google/jsonapi"
-	"crushedpixel.net/jargo/api"
 	"encoding/json"
 	"errors"
+	"github.com/crushedpixel/jargo/api"
+	"github.com/gin-gonic/gin"
+	"github.com/google/jsonapi"
 )
 
 var errDataNil = errors.New("resource response data is nil")

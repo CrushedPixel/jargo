@@ -1,8 +1,8 @@
 package jargo
 
 import (
-	"crushedpixel.net/margo"
-	"crushedpixel.net/jargo/api"
+	"github.com/crushedpixel/jargo/api"
+	"github.com/crushedpixel/margo"
 )
 
 func DefaultIndexResourceHandler(c *Context) margo.Response {

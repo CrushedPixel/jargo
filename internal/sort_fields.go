@@ -1,11 +1,11 @@
 package internal
 
 import (
-	"github.com/go-pg/pg/orm"
-	"fmt"
 	"errors"
+	"fmt"
+	"github.com/crushedpixel/jargo/internal/parser"
+	"github.com/go-pg/pg/orm"
 	"net/url"
-	"crushedpixel.net/jargo/internal/parser"
 )
 
 const (

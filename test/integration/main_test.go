@@ -7,7 +7,7 @@ import (
 	"flag"
 	"github.com/go-pg/pg"
 	"os"
-	"crushedpixel.net/jargo"
+	"crushedpixel/jargo"
 	"log"
 	"time"
 )

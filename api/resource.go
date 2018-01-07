@@ -1,12 +1,12 @@
 package api
 
 import (
+	"github.com/crushedpixel/margo"
 	"github.com/go-pg/pg"
-	"crushedpixel.net/margo"
-	"net/url"
-	"io"
 	"github.com/go-pg/pg/orm"
 	"gopkg.in/go-playground/validator.v9"
+	"io"
+	"net/url"
 )
 
 type Resource interface {
@@ -69,13 +69,13 @@ type Schema interface {
 	// returns a pointer to a new resource model instance
 	NewResourceModelInstance() interface{}
 	// returns a slice of pointers to resource model instances
-	NewResourceModelCollection(entries ... interface{}) interface{}
+	NewResourceModelCollection(entries ...interface{}) interface{}
 	// returns a pointer to a new jsonapi model instance
 	NewJsonapiModelInstance() interface{}
 	// returns a pointer to a new pg model instance
 	NewPGModelInstance() interface{}
 	// returns a slice of pointers to pg model instances
-	NewPGModelCollection(entries ... interface{}) interface{}
+	NewPGModelCollection(entries ...interface{}) interface{}
 
 	ParseResourceModelCollection(interface{}) []SchemaInstance
 	ParseJsonapiModelCollection(interface{}) []SchemaInstance

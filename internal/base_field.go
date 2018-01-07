@@ -1,9 +1,9 @@
 package internal
 
 import (
-	"reflect"
-	"crushedpixel.net/jargo/internal/parser"
 	"github.com/c9s/inflect"
+	"github.com/crushedpixel/jargo/internal/parser"
+	"reflect"
 )
 
 type baseField struct {

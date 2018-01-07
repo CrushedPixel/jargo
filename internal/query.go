@@ -1,14 +1,14 @@
 package internal
 
 import (
-	"github.com/go-pg/pg/orm"
 	"errors"
-	"reflect"
-	"github.com/go-pg/pg"
+	"github.com/crushedpixel/jargo/api"
+	"github.com/crushedpixel/margo"
 	"github.com/gin-gonic/gin"
-	"crushedpixel.net/jargo/api"
+	"github.com/go-pg/pg"
+	"github.com/go-pg/pg/orm"
 	"net/http"
-	"crushedpixel.net/margo"
+	"reflect"
 )
 
 var errQueryType = errors.New("invalid query type")
@@ -202,7 +202,7 @@ func (q *Query) Send(c *gin.Context) error {
 		}
 		response = q.resource.ResponseWithStatusCode(result, q.fields, status)
 	case typeDelete:
-		response = margo.NewEmptyResponse(http.StatusNoContent)
+		response = margo.Empty(http.StatusNoContent)
 	}
 
 	return response.Send(c)

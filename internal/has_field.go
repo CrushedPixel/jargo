@@ -1,8 +1,8 @@
 package internal
 
 import (
-	"reflect"
 	"fmt"
+	"reflect"
 )
 
 type hasField struct {
@@ -61,7 +61,7 @@ func pgHasFields(f *hasField) []reflect.StructField {
 func (f *hasField) createInstance() fieldInstance {
 	return &hasFieldInstance{
 		relationFieldInstance: f.relationField.createInstance(),
-		field:                 f,
+		field: f,
 	}
 }
 

@@ -1,10 +1,10 @@
 package internal
 
 import (
-	"reflect"
-	"fmt"
 	"errors"
+	"fmt"
 	"gopkg.in/go-playground/validator.v9"
+	"reflect"
 )
 
 var (

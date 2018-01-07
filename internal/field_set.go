@@ -1,13 +1,13 @@
 package internal
 
 import (
+	"errors"
+	"fmt"
+	"github.com/crushedpixel/jargo/api"
+	"github.com/crushedpixel/jargo/internal/parser"
 	"github.com/go-pg/pg/orm"
-	"crushedpixel.net/jargo/api"
 	"github.com/google/jsonapi"
 	"net/url"
-	"crushedpixel.net/jargo/internal/parser"
-	"fmt"
-	"errors"
 )
 
 type fieldSet struct {
@@ -18,7 +18,7 @@ type fieldSet struct {
 func allFields(r *resource) api.FieldSet {
 	fs := &fieldSet{
 		resource: r,
-		fields: make([]field, len(r.fields)),
+		fields:   make([]field, len(r.fields)),
 	}
 	copy(fs.fields, r.fields)
 	return fs

@@ -1,6 +1,6 @@
 package jargo
 
-import "crushedpixel.net/jargo/api"
+import "github.com/crushedpixel/jargo/api"
 
 type Controller struct {
 	Namespace  string
@@ -44,6 +44,6 @@ func (c *Controller) Use(middleware HandlerFunc) {
 func (c *Controller) initialize(app *Application) {
 	// register actions
 	for k, v := range c.Actions {
-		app.Register(v.toEndpoint(c, k))
+		app.Endpoint(v.toEndpoint(c, k))
 	}
 }

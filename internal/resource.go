@@ -1,17 +1,17 @@
 package internal
 
 import (
-	"io"
-	"strings"
+	"github.com/crushedpixel/jargo/api"
+	"github.com/crushedpixel/margo"
 	"github.com/go-pg/pg"
 	"github.com/go-pg/pg/orm"
 	"github.com/google/jsonapi"
-	"crushedpixel.net/jargo/api"
-	"crushedpixel.net/margo"
+	"gopkg.in/go-playground/validator.v9"
+	"io"
 	"net/http"
 	"net/url"
 	"reflect"
-	"gopkg.in/go-playground/validator.v9"
+	"strings"
 )
 
 // implements api.Resource

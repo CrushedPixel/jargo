@@ -1,11 +1,11 @@
 package internal
 
 import (
-	"reflect"
-	"fmt"
 	"errors"
-	"crushedpixel.net/jargo/api"
+	"fmt"
 	"github.com/c9s/inflect"
+	"github.com/crushedpixel/jargo/api"
+	"reflect"
 )
 
 var errInvalidBelongsToType = errors.New("invalid belongsTo field type. for a belongsToMany relation, use many2many")
@@ -108,7 +108,7 @@ func (f *belongsToField) relationIdFieldColumn() string {
 func (f *belongsToField) createInstance() fieldInstance {
 	return &belongsToFieldInstance{
 		relationFieldInstance: f.relationField.createInstance(),
-		field:                 f,
+		field: f,
 	}
 }
 

@@ -2,8 +2,8 @@ package jargo
 
 import (
 	"errors"
+	"github.com/crushedpixel/jargo/api"
 	"github.com/go-pg/pg"
-	"crushedpixel.net/jargo/api"
 )
 
 var ErrIncludeNotSupported = errors.New("include parameter not supported")

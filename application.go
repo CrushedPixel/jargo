@@ -1,23 +1,23 @@
 package jargo
 
 import (
-	"crushedpixel.net/margo"
-	"github.com/go-pg/pg"
 	"errors"
-	"log"
-	"github.com/gin-gonic/gin"
 	"fmt"
-	"crushedpixel.net/jargo/api"
-	"crushedpixel.net/jargo/internal"
+	"github.com/crushedpixel/jargo/api"
+	"github.com/crushedpixel/jargo/internal"
+	"github.com/crushedpixel/margo"
+	"github.com/gin-gonic/gin"
+	"github.com/go-pg/pg"
+	"gopkg.in/go-playground/validator.v9"
+	"log"
 	"net/url"
 	"reflect"
-	"gopkg.in/go-playground/validator.v9"
 )
 
 const defaultPageSize = 25
 
 type Application struct {
-	*margo.Server
+	*margo.Application
 	registry internal.Registry
 
 	DB          *pg.DB
@@ -34,10 +34,10 @@ type Application struct {
 }
 
 func NewApplication(db *pg.DB) *Application {
-	server := margo.NewServer()
+	server := margo.NewApplication()
 	server.ErrorHandler = defaultErrorHandler
 	return &Application{
-		Server:      server,
+		Application: server,
 		registry:    make(internal.Registry),
 		DB:          db,
 		Controllers: []*Controller{},
@@ -49,23 +49,7 @@ func NewApplication(db *pg.DB) *Application {
 // registers a resource with the application, creating the respective
 // database tables if they don't exist yet.
 func (app *Application) RegisterResource(model interface{}) (resource api.Resource, err error) {
-	// internally, jargo panics when parsing an invalid resource.
-	// to be a little bit more gracious to the user, we recover from those
-	// and return them as an error value.
-	defer func() {
-		if r := recover(); r != nil {
-			resource = nil
-
-			switch x := r.(type) {
-			case error:
-				err = x
-			default:
-				panic(r)
-			}
-		}
-	}()
-
-	resource = app.registry.RegisterResource(reflect.TypeOf(model))
+	resource, err = app.registry.RegisterResource(reflect.TypeOf(model))
 
 	err = resource.CreateTable(app.DB)
 	if err != nil {
@@ -90,7 +74,7 @@ func (app *Application) Run(addr ...string) error {
 		c.initialize(app)
 	}
 
-	return app.Server.Run(addr...)
+	return app.Application.Run(addr...)
 }
 
 func (app *Application) ParsePagination(query url.Values) (api.Pagination, error) {

@@ -1,12 +1,12 @@
 package api
 
 import (
-	"github.com/google/jsonapi"
-	"strconv"
-	"github.com/satori/go.uuid"
-	"github.com/gin-gonic/gin"
 	"fmt"
-	"crushedpixel.net/margo"
+	"github.com/crushedpixel/margo"
+	"github.com/gin-gonic/gin"
+	"github.com/google/jsonapi"
+	"github.com/satori/go.uuid"
+	"strconv"
 )
 
 // implements error and margo.Response

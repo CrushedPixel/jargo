@@ -1,10 +1,10 @@
 package parser
 
 import (
-	"net/url"
-	"regexp"
 	"errors"
 	"fmt"
+	"net/url"
+	"regexp"
 	"strings"
 )
 

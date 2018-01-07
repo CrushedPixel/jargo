@@ -1,8 +1,8 @@
 package api
 
 import (
+	"github.com/crushedpixel/margo"
 	"github.com/go-pg/pg/orm"
-	"crushedpixel.net/margo"
 )
 
 type Query interface {

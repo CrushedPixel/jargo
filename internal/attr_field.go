@@ -1,13 +1,13 @@
 package internal
 
 import (
-	"reflect"
 	"errors"
 	"fmt"
-	"crushedpixel.net/jargo/internal/parser"
 	"github.com/c9s/inflect"
-	"time"
+	"github.com/crushedpixel/jargo/internal/parser"
 	"gopkg.in/go-playground/validator.v9"
+	"reflect"
+	"time"
 )
 
 const validationTag = "validate"
@@ -210,7 +210,7 @@ func (f *attrField) createInstance() fieldInstance {
 func isValidAttrType(typ reflect.Type) bool {
 	switch reflect.New(typ).Elem().Interface().(type) {
 	case bool, int, int8, int16, int32, int64, uint, uint8,
-	uint16, uint32, uint64, float32, float64, string, time.Time:
+		uint16, uint32, uint64, float32, float64, string, time.Time:
 		return true
 	default:
 		return false

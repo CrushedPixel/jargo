@@ -1,11 +1,11 @@
 package internal
 
 import (
-	"reflect"
-	"fmt"
 	"errors"
-	"crushedpixel.net/jargo/api"
+	"fmt"
+	"github.com/crushedpixel/jargo/api"
 	"gopkg.in/go-playground/validator.v9"
+	"reflect"
 )
 
 func errInvalidRelationFieldType(p reflect.Type) error {
@@ -133,9 +133,14 @@ func (f *relationField) relationJoinPGFieldType() reflect.Type {
 }
 
 func (f *relationField) createInstance() *relationFieldInstance {
+	relation, err := f.registry.RegisterResource(f.relationType)
+	if err != nil {
+		panic(err)
+	}
+
 	return &relationFieldInstance{
 		field:          f,
-		relationSchema: f.registry.RegisterResource(f.relationType),
+		relationSchema: relation,
 	}
 }
 

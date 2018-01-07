@@ -1,8 +1,8 @@
 package jargo
 
 import (
+	"github.com/crushedpixel/jargo/api"
 	"github.com/gin-gonic/gin"
-	"crushedpixel.net/jargo/api"
 	"strconv"
 )
 
