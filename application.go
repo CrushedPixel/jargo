@@ -116,9 +116,9 @@ func (app *Application) AddController(c *Controller) {
 			route.method,
 			path,
 			// first, call controller-level middleware
-			HandlerChain(c.middleware).ToMargoHandler(),
+			HandlerChain(c.handlers(app)).ToMargoHandler(),
 			// call action handlers
-			action.Handlers(app).ToMargoHandler()))
+			action.Handlers().ToMargoHandler()))
 	}
 }
 

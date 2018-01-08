@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 )
@@ -42,6 +43,10 @@ func (f *hasField) Filterable() bool {
 func (f *hasField) Sortable() bool {
 	// TODO: ensure user does not set `sortable:true`
 	return false
+}
+
+func (f *hasField) PGFilterColumn() string {
+	panic(errors.New("unsupported operation"))
 }
 
 // override this function to calculate topLevel pg fields on demand,

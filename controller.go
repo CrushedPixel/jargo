@@ -54,6 +54,19 @@ func NewController(namespace string, resource *Resource) *Controller {
 	}
 }
 
+// handlers returns a HandlerChain to be called
+// when an Application handles a request for this Controller.
+func (c *Controller) handlers(app *Application) HandlerChain {
+	// prepend injectApplicationMiddleware
+	// and injectControllerMiddleware
+	// to Controller-level middleware
+	handlers := append([]HandlerFunc{
+		injectApplicationMiddleware(app),
+		injectControllerMiddleware(c),
+	}, c.middleware...)
+	return HandlerChain(handlers)
+}
+
 // Namespace returns the Controller's namespace.
 func (c *Controller) Namespace() string {
 	return c.namespace

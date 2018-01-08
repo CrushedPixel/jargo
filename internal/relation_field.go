@@ -68,10 +68,6 @@ func (f *relationField) PGSelectColumn() string {
 	return f.fieldName
 }
 
-func (f *relationField) PGFilterColumn() string {
-	panic(errors.New("unsupported operation"))
-}
-
 // override this function to calculate topLevel jsonapi fields on demand,
 // i.e. after non-top-level jsonapi fields were calculated for reference.
 func (f *relationField) jsonapiFields() []reflect.StructField {

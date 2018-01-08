@@ -1,6 +1,7 @@
 package jargo
 
 import (
+	"github.com/crushedpixel/margo"
 	"github.com/gin-gonic/gin"
 	"github.com/go-pg/pg"
 	"strconv"
@@ -32,18 +33,10 @@ func (c *Context) Application() *Application {
 	return a.(*Application)
 }
 
-func (c *Context) setApplication(app *Application) {
-	c.Set(keyApplication, app)
-}
-
 // Controller returns the Controller the Context belongs to.
 func (c *Context) Controller() *Controller {
 	b, _ := c.Get(keyController)
 	return b.(*Controller)
-}
-
-func (c *Context) setController(cont *Controller) {
-	c.Set(keyController, cont)
 }
 
 // Resource returns the Resource of the Controller the Context belongs to.
@@ -195,4 +188,22 @@ func parseUpdateRequest(c *Context) (interface{}, error) {
 	}
 
 	return c.Resource().ParseJsonapiUpdatePayload(c.Request.Body, instance, c.Application().Validate())
+}
+
+// injectApplicationMiddleware returns a HandlerFunc
+// setting the Context's Application.
+func injectApplicationMiddleware(app *Application) HandlerFunc {
+	return func(c *Context) margo.Response {
+		c.Set(keyApplication, app)
+		return nil
+	}
+}
+
+// injectApplicationMiddleware returns a HandlerFunc
+// setting the Context's Controller.
+func injectControllerMiddleware(controller *Controller) HandlerFunc {
+	return func(c *Context) margo.Response {
+		c.Set(keyController, controller)
+		return nil
+	}
 }

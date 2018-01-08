@@ -35,11 +35,9 @@ func NewJSONAPIAction(handlers ...HandlerFunc) *Action {
 }
 
 // Handlers returns a HandlerChain to be called when
-// an Application handles a request for this Action.
-func (a *Action) Handlers(app *Application) HandlerChain {
-	// prepend injectApplicationMiddleware
-	handlers := append([]HandlerFunc{injectApplicationMiddleware(app)}, a.handlers...)
-	return HandlerChain(handlers)
+// handling a request for this Action.
+func (a *Action) Handlers() HandlerChain {
+	return HandlerChain(a.handlers)
 }
 
 // A HandlerFunc is a function handling a request.
@@ -171,15 +169,6 @@ func DefaultDeleteResourceHandler(c *Context) margo.Response {
 	}
 
 	return c.Resource().DeleteById(c.DB(), id)
-}
-
-// injectApplicationMiddleware returns a HandlerFunc
-// setting the Context's Application.
-func injectApplicationMiddleware(app *Application) HandlerFunc {
-	return func(c *Context) margo.Response {
-		c.setApplication(app)
-		return nil
-	}
 }
 
 // contentTypeMiddleware is a HandlerFunc validating JSON API requests
