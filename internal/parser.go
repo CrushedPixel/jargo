@@ -59,7 +59,7 @@ var (
 )
 
 // parses a schema definition from a resource model type.
-func (r Registry) newSchemaDefinition(t reflect.Type) *schema {
+func (r ResourceRegistry) newSchemaDefinition(t reflect.Type) *schema {
 	if t.Kind() != reflect.Struct {
 		panic(errInvalidModelType)
 	}
@@ -83,7 +83,7 @@ func (r Registry) newSchemaDefinition(t reflect.Type) *schema {
 	return schema
 }
 
-func (r Registry) generateSchemaModels(schema *schema) {
+func (r ResourceRegistry) generateSchemaModels(schema *schema) {
 	var jsonapiFields []reflect.StructField
 	var pgFields []reflect.StructField
 	for _, f := range schema.fields {
@@ -167,7 +167,7 @@ func parseSchema(t reflect.Type) *schema {
 
 // parses a struct field into a schema field.
 // returns nil, nil for non-attribute fields.
-func (r Registry) parseField(schema *schema, f *reflect.StructField) field {
+func (r ResourceRegistry) parseField(schema *schema, f *reflect.StructField) field {
 	if f.Name == idFieldName {
 		return newIdField(schema)
 	}

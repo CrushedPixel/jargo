@@ -38,9 +38,6 @@ type schema struct {
 	// avoiding infinite recursion
 	joinJsonapiModelType reflect.Type
 	joinPGModelType      reflect.Type
-
-	// validator to be used
-	validator validator.Validate
 }
 
 func (s *schema) Name() string {

@@ -2,13 +2,14 @@ package internal
 
 import (
 	"github.com/crushedpixel/jargo/api"
+	"github.com/go-pg/pg"
 	"reflect"
 )
 
 // resource registry
-type Registry map[reflect.Type]*resource
+type ResourceRegistry map[reflect.Type]*resource
 
-func (r Registry) RegisterResource(resourceModelType reflect.Type) (resource api.Resource, err error) {
+func (r ResourceRegistry) RegisterResource(resourceModelType reflect.Type) (resource api.Resource, err error) {
 	// internally, jargo panics when parsing an invalid resource.
 	// to be more gracious to the user, we recover from those
 	// and return them as an error value.
@@ -35,7 +36,18 @@ func (r Registry) RegisterResource(resourceModelType reflect.Type) (resource api
 	return
 }
 
-func (r Registry) registerResource(resourceModelType reflect.Type) {
+// InitializeResources calls the Initialize method on all resources.
+func (r ResourceRegistry) InitializeResources(db *pg.DB) error {
+	for _, resource := range r {
+		err := resource.Initialize(db)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r ResourceRegistry) registerResource(resourceModelType reflect.Type) {
 	// check if schema is already registered
 	// or currently being registered
 	if _, ok := r[resourceModelType]; ok {

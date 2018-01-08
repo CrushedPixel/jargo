@@ -55,7 +55,7 @@ type CircularBelongsTo struct {
 }
 
 func TestRegistry_RegisterSchema(t *testing.T) {
-	r := make(Registry)
+	r := make(ResourceRegistry)
 	// create schema from struct type
 	s, err := r.RegisterResource(reflect.TypeOf(Basic{}))
 	require.Nil(t, err)

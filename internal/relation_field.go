@@ -15,13 +15,13 @@ func errInvalidRelationFieldType(p reflect.Type) error {
 type relationField struct {
 	*baseField
 
-	registry Registry
+	registry ResourceRegistry
 
 	relationType reflect.Type // struct type of relation
 	collection   bool         // whether it's a to-many-relation
 }
 
-func newRelationField(r Registry, schema *schema, f *reflect.StructField) *relationField {
+func newRelationField(r ResourceRegistry, schema *schema, f *reflect.StructField) *relationField {
 	base := newBaseField(schema, f)
 
 	// validate field type

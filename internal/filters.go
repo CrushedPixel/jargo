@@ -17,16 +17,6 @@ type filters struct {
 	filter   map[field]map[string][]string
 }
 
-type filterOptions struct {
-	Eq   []string
-	Ne   []string
-	Like []string
-	Gt   []string
-	Gte  []string
-	Lt   []string
-	Lte  []string
-}
-
 func (f *filters) ApplyToQuery(q *orm.Query) {
 	for field, options := range f.filter {
 		andWhereOr(q, field, "=", options["EQ"])

@@ -12,20 +12,24 @@ import (
 type Resource interface {
 	Schema
 
-	// parses a jsonapi data payload from a reader into a resource model instance
+	// Initialize initializes the resource,
+	// making it ready to use. Called by ResourceRegistry.
+	Initialize(db *pg.DB) error
+
+	// ParseJsonapiPayload parses a jsonapi data payload from a reader into a resource model instance
 	// if validate is not nil, validates all writable fields
 	ParseJsonapiPayload(reader io.Reader, validate *validator.Validate) (interface{}, error)
-	// parses a jsonapi data payload from a string into a resource model instance
+	// ParseJsonapiPayloadString parses a jsonapi data payload from a string into a resource model instance
 	// if validate is not nil, validates all writable fields
 	ParseJsonapiPayloadString(payload string, validate *validator.Validate) (interface{}, error)
-	// parses a jsonapi data payload from a reader, applying it to an existing resource model instance
+	// ParseJsonapiUpdatePayload parses a jsonapi data payload from a reader, applying it to an existing resource model instance
 	// if validate is not nil, validates all writable fields
 	ParseJsonapiUpdatePayload(reader io.Reader, instance interface{}, validate *validator.Validate) (interface{}, error)
-	// parses a jsonapi data payload from a string, applying it to an existing resource model instance
+	// ParseJsonapiUpdatePayloadString parses a jsonapi data payload from a string, applying it to an existing resource model instance
 	// if validate is not nil, validates all writable fields
 	ParseJsonapiUpdatePayloadString(payload string, instance interface{}, validate *validator.Validate) (interface{}, error)
 
-	// validates a resource model instance according to validate struct tag,
+	// Validate validates a resource model instance according to validate struct tag,
 	// using the validator.Validate provided.
 	// returns the first validation errors encountered if any
 	Validate(*validator.Validate, interface{}) error

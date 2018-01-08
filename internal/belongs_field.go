@@ -17,7 +17,7 @@ type belongsToField struct {
 	joinPGFields      []reflect.StructField
 }
 
-func newBelongsToField(r Registry, schema *schema, f *reflect.StructField) field {
+func newBelongsToField(r ResourceRegistry, schema *schema, f *reflect.StructField) field {
 	base := newRelationField(r, schema, f)
 
 	if base.collection {

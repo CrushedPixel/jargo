@@ -3,10 +3,10 @@
 package integration
 
 import (
-	"testing"
-	"time"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"testing"
+	"time"
 )
 
 type AutoTimestamps struct {
@@ -26,7 +26,7 @@ func TestAutoTimestamps(t *testing.T) {
 	// indicating the createdAt timestamp is set on the client,
 	// it actually executes a different query, containing DEFAULT values
 	// for createdAt and updatedAt.
-	r, err := resource.InsertOne(app.DB, &AutoTimestamps{Name: "A"}).Result()
+	r, err := resource.InsertOne(app.DB(), &AutoTimestamps{Name: "A"}).Result()
 	require.Nil(t, err)
 	instance := r.(*AutoTimestamps)
 	assert.Equal(t, "A", instance.Name)
@@ -41,7 +41,7 @@ func TestAutoTimestamps(t *testing.T) {
 
 	// update resource
 	instance.Name = "B"
-	r, err = resource.UpdateOne(app.DB, instance).Result()
+	r, err = resource.UpdateOne(app.DB(), instance).Result()
 	require.Nil(t, err)
 	updated := r.(*AutoTimestamps)
 	assert.Equal(t, "B", updated.Name)

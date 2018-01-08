@@ -3,12 +3,12 @@
 package integration
 
 import (
-	"testing"
 	"flag"
+	"github.com/crushedpixel/jargo"
 	"github.com/go-pg/pg"
-	"os"
-	"crushedpixel/jargo"
 	"log"
+	"os"
+	"testing"
 	"time"
 )
 

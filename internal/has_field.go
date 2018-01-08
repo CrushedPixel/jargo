@@ -12,7 +12,7 @@ type hasField struct {
 	fk           string
 }
 
-func newHasField(r Registry, schema *schema, f *reflect.StructField, fk string) field {
+func newHasField(r ResourceRegistry, schema *schema, f *reflect.StructField, fk string) field {
 	base := newRelationField(r, schema, f)
 
 	if fk == "" {

@@ -19,6 +19,12 @@ type resource struct {
 	*schema
 }
 
+func (r *resource) Initialize(db *pg.DB) error {
+	// for now, creating the table in the database
+	// is all that's needed to initialize a resource
+	return r.CreateTable(db)
+}
+
 func (r *resource) ParseJsonapiPayload(in io.Reader, validate *validator.Validate) (interface{}, error) {
 	return r.ParseJsonapiUpdatePayload(in, r.NewResourceModelInstance(), validate)
 }

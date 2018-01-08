@@ -1,123 +1,218 @@
 package jargo
 
 import (
-	"fmt"
+	"github.com/crushedpixel/jargo/api"
 	"github.com/crushedpixel/margo"
 	"github.com/gin-gonic/gin"
+	"github.com/google/jsonapi"
 	"net/http"
+	"strings"
 )
-
-type Route struct {
-	Method string
-	Path   string
-}
-
-type HandlerFunc func(context *Context) margo.Response
 
 type Action struct {
-	JsonapiMiddleware bool
-	handlers          []HandlerFunc
+	handlers []HandlerFunc
 }
 
+// NewAction returns a new Action
+// from one or more HandlerFuncs.
+//
+// Panics if no handler is provided.
 func NewAction(handlers ...HandlerFunc) *Action {
 	return &Action{
-		JsonapiMiddleware: false,
-		handlers:          handlers,
+		handlers: handlers,
 	}
 }
 
-func NewJsonapiAction(handlers ...HandlerFunc) *Action {
-	return &Action{
-		JsonapiMiddleware: true,
-		handlers:          handlers,
-	}
+// NewJSONAPIAction returns a new Action,
+// inserting middleware validating requests according to
+// the JSON API spec before other handlers.
+// http://jsonapi.org/format/#content-negotiation-clients
+//
+// Panics if no handler is provided.
+func NewJSONAPIAction(handlers ...HandlerFunc) *Action {
+	// prepend contentTypeMiddleware
+	handlers = append([]HandlerFunc{contentTypeMiddleware}, handlers...)
+	return NewAction(handlers...)
 }
 
-type Actions map[Route]*Action
-
-var (
-	showRoute   = Route{Method: http.MethodGet, Path: "/:id"}
-	indexRoute  = Route{Method: http.MethodGet, Path: "/"}
-	createRoute = Route{Method: http.MethodPost, Path: "/"}
-	updateRoute = Route{Method: http.MethodPatch, Path: "/:id"}
-	deleteRoute = Route{Method: http.MethodDelete, Path: "/:id"}
-)
-
-func (a Actions) GetShowAction() *Action {
-	return a[showRoute]
+// Handlers returns a HandlerChain to be called when
+// an Application handles a request for this Action.
+func (a *Action) Handlers(app *Application) HandlerChain {
+	// prepend injectApplicationMiddleware
+	handlers := append([]HandlerFunc{injectApplicationMiddleware(app)}, a.handlers...)
+	return HandlerChain(handlers)
 }
 
-func (a Actions) SetShowAction(action *Action) {
-	a[showRoute] = action
-}
+// A HandlerFunc is a function handling a request.
+type HandlerFunc func(context *Context) margo.Response
 
-func (a Actions) GetIndexAction() *Action {
-	return a[indexRoute]
-}
+// A HandlerChain is a slice of handler functions to be executed in order.
+// If a HandlerFunc returns a Response value, the Response is sent to the client,
+// otherwise, the next HandlerFunc in the chain is executed.
+// The last HandlerFunc in the chain is expected to return a Response value.
+type HandlerChain []HandlerFunc
 
-func (a Actions) SetIndexAction(action *Action) {
-	a[indexRoute] = action
-}
+// ToMargoHandler converts a HandlerChain into a single margo.HandlerFunc.
+func (chain HandlerChain) ToMargoHandler() margo.HandlerFunc {
+	return func(context *gin.Context) margo.Response {
+		if len(chain) < 1 {
+			return nil
+		}
 
-func (a Actions) GetCreateAction() *Action {
-	return a[createRoute]
-}
-
-func (a Actions) SetCreateAction(action *Action) {
-	a[createRoute] = action
-}
-
-func (a Actions) GetUpdateAction() *Action {
-	return a[updateRoute]
-}
-
-func (a Actions) SetUpdateAction(action *Action) {
-	a[updateRoute] = action
-}
-
-func (a Actions) GetDeleteAction() *Action {
-	return a[deleteRoute]
-}
-
-func (a Actions) SetDeleteAction(action *Action) {
-	a[deleteRoute] = action
-}
-
-func (a Actions) SetAction(route *Route, action *Action) {
-	a[*route] = action
-}
-
-func (a *Action) toEndpoint(c *Controller, route Route) margo.Endpoint {
-	namespace := c.Namespace
-	// add trailing slash to namespace if missing
-	if namespace != "" && namespace[len(namespace)-1] != '/' {
-		namespace += "/"
-	}
-
-	middleware := []HandlerFunc{injectControllerMiddleware(c)}
-	if a.JsonapiMiddleware {
-		middleware = append(middleware, contentTypeMiddleware)
-	}
-
-	fullPath := fmt.Sprintf("%s%s%s", namespace, c.Resource.Name(), route.Path)
-	endpoint := margo.NewEndpoint(route.Method, fullPath,
-		toMargoHandler(c.Middleware...),
-		toMargoHandler(middleware...),
-		toMargoHandler(a.handlers...))
-
-	return endpoint
-}
-
-func toMargoHandler(handlers ...HandlerFunc) margo.HandlerFunc {
-	return func(c *gin.Context) margo.Response {
-		context := &Context{c}
-
-		for _, h := range handlers {
-			if res := h(context); res != nil {
+		// wrap gin context in a jargo context
+		jargoContext := &Context{
+			Context: context,
+		}
+		for _, h := range chain {
+			if res := h(jargoContext); res != nil {
 				return res
 			}
 		}
-
 		return nil
 	}
+}
+
+// DefaultIndexResourceHandler is the HandlerFunc
+// used by the builtin JSON API index Action.
+// It supports Pagination, Sorting, Filtering and Sparse Fieldsets
+// according to the JSON API spec.
+// http://jsonapi.org/format/#fetching
+func DefaultIndexResourceHandler(c *Context) margo.Response {
+	filters, err := c.Filters()
+	if err != nil {
+		return api.NewErrorResponse(err)
+	}
+
+	fields, err := c.FieldSet()
+	if err != nil {
+		return api.NewErrorResponse(err)
+	}
+
+	sort, err := c.SortFields()
+	if err != nil {
+		return api.NewErrorResponse(err)
+	}
+
+	pagination, err := c.Pagination()
+	if err != nil {
+		return api.NewErrorResponse(err)
+	}
+
+	return c.Resource().Select(c.DB()).
+		Filters(filters).
+		Fields(fields).
+		Sort(sort).
+		Pagination(pagination)
+}
+
+// DefaultShowResourceHandler is the HandlerFunc
+// used by the builtin JSON API show Action.
+// It supports Sparse Fieldsets according to the JSON API spec.
+// http://jsonapi.org/format/#fetching
+func DefaultShowResourceHandler(c *Context) margo.Response {
+	fields, err := c.FieldSet()
+	if err != nil {
+		return api.NewErrorResponse(err)
+	}
+
+	id, err := c.ResourceId()
+	if err != nil {
+		return api.NewErrorResponse(err)
+	}
+
+	return c.Resource().SelectById(c.DB(), id).
+		Fields(fields)
+}
+
+// DefaultCreateResourceHandler is the HandlerFunc
+// used by the builtin JSON API create Action.
+// It supports Sparse Fieldsets according to the JSON API spec.
+// http://jsonapi.org/format/#crud-creating
+func DefaultCreateResourceHandler(c *Context) margo.Response {
+	fields, err := c.FieldSet()
+	if err != nil {
+		return api.NewErrorResponse(err)
+	}
+
+	m, err := c.CreateModel()
+	if err != nil {
+		return api.NewErrorResponse(err)
+	}
+
+	return c.Resource().InsertOne(c.DB(), m).
+		Fields(fields)
+}
+
+// DefaultUpdateResourceHandler is the HandlerFunc
+// used by the builtin JSON API update Action.
+// It supports Sparse Fieldsets according to the JSON API spec.
+// http://jsonapi.org/format/#crud-updating
+func DefaultUpdateResourceHandler(c *Context) margo.Response {
+	fields, err := c.FieldSet()
+	if err != nil {
+		return api.NewErrorResponse(err)
+	}
+
+	m, err := c.UpdateModel()
+	if err != nil {
+		return api.NewErrorResponse(err)
+	}
+
+	return c.Resource().UpdateOne(c.DB(), m).
+		Fields(fields)
+}
+
+// DefaultDeleteResourceHandler is the HandlerFunc
+// used by the builtin JSON API delete Action.
+// http://jsonapi.org/format/#crud-deleting
+func DefaultDeleteResourceHandler(c *Context) margo.Response {
+	id, err := c.ResourceId()
+	if err != nil {
+		return api.NewErrorResponse(err)
+	}
+
+	return c.Resource().DeleteById(c.DB(), id)
+}
+
+// injectApplicationMiddleware returns a HandlerFunc
+// setting the Context's Application.
+func injectApplicationMiddleware(app *Application) HandlerFunc {
+	return func(c *Context) margo.Response {
+		c.setApplication(app)
+		return nil
+	}
+}
+
+// contentTypeMiddleware is a HandlerFunc validating JSON API requests
+// according to JSON API spec.
+// http://jsonapi.org/format/#content-negotiation-clients
+func contentTypeMiddleware(c *Context) margo.Response {
+	// if Content-Type header not the jsonapi media type,
+	// return 415 Unsupported Media Type
+	ct := c.Request.Header.Get("Content-Type")
+	if ct != jsonapi.MediaType &&
+		c.Request.Method != http.MethodGet &&
+		c.Request.Method != http.MethodDelete {
+		return api.ErrUnsupportedMediaType
+	}
+
+	var contains, exact bool
+	for _, accept := range c.Request.Header["Accept"] {
+		if jsonapi.MediaType == accept {
+			exact = true
+			break
+		}
+
+		if strings.Contains(accept, jsonapi.MediaType) {
+			contains = true
+		}
+	}
+
+	// if accept header contains media type but never unmodified,
+	// return 406 Not Acceptable
+	if contains && !exact {
+		return api.ErrNotAcceptable
+	}
+
+	return nil
 }
