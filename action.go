@@ -1,7 +1,6 @@
 package jargo
 
 import (
-	"github.com/crushedpixel/jargo/api"
 	"github.com/crushedpixel/margo"
 	"github.com/gin-gonic/gin"
 	"github.com/google/jsonapi"
@@ -80,22 +79,22 @@ func (chain HandlerChain) ToMargoHandler() margo.HandlerFunc {
 func DefaultIndexResourceHandler(c *Context) margo.Response {
 	filters, err := c.Filters()
 	if err != nil {
-		return api.NewErrorResponse(err)
+		return NewErrorResponse(err)
 	}
 
 	fields, err := c.FieldSet()
 	if err != nil {
-		return api.NewErrorResponse(err)
+		return NewErrorResponse(err)
 	}
 
 	sort, err := c.SortFields()
 	if err != nil {
-		return api.NewErrorResponse(err)
+		return NewErrorResponse(err)
 	}
 
 	pagination, err := c.Pagination()
 	if err != nil {
-		return api.NewErrorResponse(err)
+		return NewErrorResponse(err)
 	}
 
 	return c.Resource().Select(c.DB()).
@@ -112,12 +111,12 @@ func DefaultIndexResourceHandler(c *Context) margo.Response {
 func DefaultShowResourceHandler(c *Context) margo.Response {
 	fields, err := c.FieldSet()
 	if err != nil {
-		return api.NewErrorResponse(err)
+		return NewErrorResponse(err)
 	}
 
 	id, err := c.ResourceId()
 	if err != nil {
-		return api.NewErrorResponse(err)
+		return NewErrorResponse(err)
 	}
 
 	return c.Resource().SelectById(c.DB(), id).
@@ -131,12 +130,12 @@ func DefaultShowResourceHandler(c *Context) margo.Response {
 func DefaultCreateResourceHandler(c *Context) margo.Response {
 	fields, err := c.FieldSet()
 	if err != nil {
-		return api.NewErrorResponse(err)
+		return NewErrorResponse(err)
 	}
 
 	m, err := c.CreateModel()
 	if err != nil {
-		return api.NewErrorResponse(err)
+		return NewErrorResponse(err)
 	}
 
 	return c.Resource().InsertOne(c.DB(), m).
@@ -150,12 +149,12 @@ func DefaultCreateResourceHandler(c *Context) margo.Response {
 func DefaultUpdateResourceHandler(c *Context) margo.Response {
 	fields, err := c.FieldSet()
 	if err != nil {
-		return api.NewErrorResponse(err)
+		return NewErrorResponse(err)
 	}
 
 	m, err := c.UpdateModel()
 	if err != nil {
-		return api.NewErrorResponse(err)
+		return NewErrorResponse(err)
 	}
 
 	return c.Resource().UpdateOne(c.DB(), m).
@@ -168,7 +167,7 @@ func DefaultUpdateResourceHandler(c *Context) margo.Response {
 func DefaultDeleteResourceHandler(c *Context) margo.Response {
 	id, err := c.ResourceId()
 	if err != nil {
-		return api.NewErrorResponse(err)
+		return NewErrorResponse(err)
 	}
 
 	return c.Resource().DeleteById(c.DB(), id)
@@ -193,7 +192,7 @@ func contentTypeMiddleware(c *Context) margo.Response {
 	if ct != jsonapi.MediaType &&
 		c.Request.Method != http.MethodGet &&
 		c.Request.Method != http.MethodDelete {
-		return api.ErrUnsupportedMediaType
+		return ErrUnsupportedMediaType
 	}
 
 	var contains, exact bool
@@ -211,7 +210,7 @@ func contentTypeMiddleware(c *Context) margo.Response {
 	// if accept header contains media type but never unmodified,
 	// return 406 Not Acceptable
 	if contains && !exact {
-		return api.ErrNotAcceptable
+		return ErrNotAcceptable
 	}
 
 	return nil

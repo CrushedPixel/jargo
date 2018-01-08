@@ -1,12 +1,11 @@
 package internal
 
 import (
-	"regexp"
-	"reflect"
-	"strconv"
-	"github.com/go-pg/pg/types"
 	"errors"
 	"fmt"
+	"reflect"
+	"regexp"
+	"strconv"
 )
 
 var sqlNameRegex = regexp.MustCompile(`^[0-9a-zA-Z$_]+$`)
@@ -35,31 +34,23 @@ func parseBoolOption(val string) bool {
 // wrapper types for at least a bit of type-safety when working with reflection.
 type (
 	resourceModelInstance struct {
-		schema *schema
+		schema *Schema
 		value  *reflect.Value // struct pointer value
 	}
 	jsonapiModelInstance struct {
-		schema *schema
+		schema *Schema
 		value  *reflect.Value // struct pointer value
 	}
 	pgModelInstance struct {
-		schema *schema
+		schema *Schema
 		value  *reflect.Value // struct pointer value
 	}
 	joinJsonapiModelInstance struct {
-		schema *schema
+		schema *Schema
 		value  *reflect.Value // struct pointer value
 	}
 	joinPGModelInstance struct {
-		schema *schema
+		schema *Schema
 		value  *reflect.Value // struct pointer value
 	}
 )
-
-// escapes a go-pg column string according to postgres rules.
-// example: user.id => "user"."id"
-func escapePGColumn(field string) string {
-	var b []byte
-	b = types.AppendField(b, field, 1)
-	return string(b)
-}

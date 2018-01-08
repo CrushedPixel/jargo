@@ -14,19 +14,19 @@ var (
 )
 
 const (
-	idFieldColumn      = "id"
-	idFieldJsonapiName = "id"
+	IdFieldColumn      = "id"
+	IdFieldJsonapiName = "id"
 )
 
 // implements field
 type idField struct {
-	schema *schema
+	schema *Schema
 
 	jsonapiF []reflect.StructField
 	pgF      []reflect.StructField
 }
 
-func newIdField(schema *schema) field {
+func newIdField(schema *Schema) SchemaField {
 	f := &idField{
 		schema:   schema,
 		jsonapiF: jsonapiIdFields(schema),
@@ -35,7 +35,7 @@ func newIdField(schema *schema) field {
 	return f
 }
 
-func jsonapiIdFields(schema *schema) []reflect.StructField {
+func jsonapiIdFields(schema *Schema) []reflect.StructField {
 	tag := fmt.Sprintf(`jsonapi:"primary,%s"`, schema.name)
 	idField := reflect.StructField{
 		Name: idFieldName,
@@ -46,7 +46,7 @@ func jsonapiIdFields(schema *schema) []reflect.StructField {
 	return []reflect.StructField{idField}
 }
 
-func pgIdFields(schema *schema) []reflect.StructField {
+func pgIdFields(schema *Schema) []reflect.StructField {
 	tableNameField := reflect.StructField{
 		Name: "TableName",
 		Type: emptyStructType,
@@ -57,37 +57,37 @@ func pgIdFields(schema *schema) []reflect.StructField {
 	idField := reflect.StructField{
 		Name: idFieldName,
 		Type: idFieldType,
-		Tag:  reflect.StructTag(fmt.Sprintf(`sql:"%s,pk"`, idFieldColumn)),
+		Tag:  reflect.StructTag(fmt.Sprintf(`sql:"%s,pk"`, IdFieldColumn)),
 	}
 
 	return []reflect.StructField{tableNameField, idField}
 }
 
-func (f *idField) writable() bool {
+func (f *idField) Writable() bool {
 	return false
 }
 
-func (f *idField) sortable() bool {
+func (f *idField) Sortable() bool {
 	return true
 }
 
-func (f *idField) filterable() bool {
+func (f *idField) Filterable() bool {
 	return true
 }
 
-func (f *idField) jsonapiName() string {
-	return idFieldJsonapiName
+func (f *idField) JSONAPIName() string {
+	return IdFieldJsonapiName
 }
 
-func (f *idField) pgSelectColumn() string {
-	return fmt.Sprintf("%s.%s", f.schema.alias, idFieldColumn)
+func (f *idField) PGSelectColumn() string {
+	return fmt.Sprintf("%s.%s", f.schema.alias, IdFieldColumn)
 }
 
-func (f *idField) pgFilterColumn() string {
-	return f.pgSelectColumn()
+func (f *idField) PGFilterColumn() string {
+	return f.PGSelectColumn()
 }
 
-func (f *idField) createInstance() fieldInstance {
+func (f *idField) createInstance() schemaFieldInstance {
 	return &idFieldInstance{
 		field: f,
 	}
@@ -120,7 +120,7 @@ type idFieldInstance struct {
 	value int64
 }
 
-func (i *idFieldInstance) parentField() field {
+func (i *idFieldInstance) parentField() SchemaField {
 	return i.field
 }
 

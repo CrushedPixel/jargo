@@ -38,7 +38,7 @@ type attrField struct {
 	validation string
 }
 
-func newAttrField(schema *schema, f *reflect.StructField) field {
+func newAttrField(schema *Schema, f *reflect.StructField) SchemaField {
 	base := newBaseField(schema, f)
 
 	// determine default column name.
@@ -141,12 +141,12 @@ func newAttrField(schema *schema, f *reflect.StructField) field {
 	return field
 }
 
-func (f *attrField) pgSelectColumn() string {
+func (f *attrField) PGSelectColumn() string {
 	return fmt.Sprintf("%s.%s", f.schema.alias, f.column)
 }
 
-func (f *attrField) pgFilterColumn() string {
-	return f.pgSelectColumn()
+func (f *attrField) PGFilterColumn() string {
+	return f.PGSelectColumn()
 }
 
 func (f *attrField) jsonapiJoinFields() []reflect.StructField {
@@ -201,7 +201,7 @@ func pgAttrFields(f *attrField) []reflect.StructField {
 	return []reflect.StructField{field}
 }
 
-func (f *attrField) createInstance() fieldInstance {
+func (f *attrField) createInstance() schemaFieldInstance {
 	return &attrFieldInstance{
 		field: f,
 	}
@@ -222,7 +222,7 @@ type attrFieldInstance struct {
 	value interface{}
 }
 
-func (i *attrFieldInstance) parentField() field {
+func (i *attrFieldInstance) parentField() SchemaField {
 	return i.field
 }
 

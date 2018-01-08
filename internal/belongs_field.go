@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/c9s/inflect"
-	"github.com/crushedpixel/jargo/api"
 	"reflect"
 )
 
@@ -17,7 +16,7 @@ type belongsToField struct {
 	joinPGFields      []reflect.StructField
 }
 
-func newBelongsToField(r ResourceRegistry, schema *schema, f *reflect.StructField) field {
+func newBelongsToField(r SchemaRegistry, schema *Schema, f *reflect.StructField) SchemaField {
 	base := newRelationField(r, schema, f)
 
 	if base.collection {
@@ -105,7 +104,7 @@ func (f *belongsToField) relationIdFieldColumn() string {
 	return inflect.Underscore(f.relationIdFieldName())
 }
 
-func (f *belongsToField) createInstance() fieldInstance {
+func (f *belongsToField) createInstance() schemaFieldInstance {
 	return &belongsToFieldInstance{
 		relationFieldInstance: f.relationField.createInstance(),
 		field: f,
@@ -117,7 +116,7 @@ type belongsToFieldInstance struct {
 	field *belongsToField
 }
 
-func (i *belongsToFieldInstance) parentField() field {
+func (i *belongsToFieldInstance) parentField() SchemaField {
 	return i.field
 }
 
@@ -134,11 +133,11 @@ func (i *belongsToFieldInstance) parsePGModel(instance *pgModelInstance) {
 	}
 
 	pgModelInstance := instance.value.Elem().FieldByName(i.field.fieldName).Interface()
-	i.values = []api.SchemaInstance{i.relationSchema.ParseJoinPGModel(pgModelInstance)}
+	i.values = []*SchemaInstance{i.relationSchema.parseJoinPGModel(pgModelInstance)}
 }
 
 // sets the value of the pg relation id field (e.g. UserId) to the id value
-// of the schema instance stored in i.values[0]
+// of the Schema instance stored in i.values[0]
 func (i *belongsToFieldInstance) applyToPGModel(instance *pgModelInstance) {
 	if len(i.values) == 0 {
 		return
@@ -146,7 +145,7 @@ func (i *belongsToFieldInstance) applyToPGModel(instance *pgModelInstance) {
 
 	// extract id field from relation and apply value
 	// to pg id field
-	v := i.values[0].(*schemaInstance)
+	v := i.values[0]
 	var id *int64
 	for _, f := range v.fields {
 		if idField, ok := f.(*idFieldInstance); ok {
@@ -159,5 +158,5 @@ func (i *belongsToFieldInstance) applyToPGModel(instance *pgModelInstance) {
 	instance.value.Elem().FieldByName(i.field.relationIdFieldName()).SetInt(*id)
 
 	// apply relation instance to pg model field
-	instance.value.Elem().FieldByName(i.field.fieldName).Set(reflect.ValueOf(v.ToJoinPGModel()))
+	instance.value.Elem().FieldByName(i.field.fieldName).Set(reflect.ValueOf(v.toJoinPGModel()))
 }

@@ -1,21 +1,18 @@
 package internal
 
 import (
-	"github.com/crushedpixel/jargo/api"
-	"github.com/go-pg/pg"
 	"reflect"
 )
 
-// resource registry
-type ResourceRegistry map[reflect.Type]*resource
+type SchemaRegistry map[reflect.Type]*Schema
 
-func (r ResourceRegistry) RegisterResource(resourceModelType reflect.Type) (resource api.Resource, err error) {
+func (r SchemaRegistry) RegisterSchema(modelType reflect.Type) (schema *Schema, err error) {
 	// internally, jargo panics when parsing an invalid resource.
 	// to be more gracious to the user, we recover from those
 	// and return them as an error value.
 	defer func() {
 		if r := recover(); r != nil {
-			resource = nil
+			schema = nil
 
 			switch x := r.(type) {
 			case error:
@@ -27,41 +24,30 @@ func (r ResourceRegistry) RegisterResource(resourceModelType reflect.Type) (reso
 	}()
 
 	var ok bool
-	if resource, ok = r[resourceModelType]; ok {
+	if schema, ok = r[modelType]; ok {
 		return
 	}
 
-	r.registerResource(resourceModelType)
-	resource = r[resourceModelType]
+	r.registerSchema(modelType)
+	schema = r[modelType]
 	return
 }
 
-// InitializeResources calls the Initialize method on all resources.
-func (r ResourceRegistry) InitializeResources(db *pg.DB) error {
-	for _, resource := range r {
-		err := resource.Initialize(db)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (r ResourceRegistry) registerResource(resourceModelType reflect.Type) {
-	// check if schema is already registered
+func (r SchemaRegistry) registerSchema(modelType reflect.Type) {
+	// check if Schema is already registered
 	// or currently being registered
-	if _, ok := r[resourceModelType]; ok {
+	if _, ok := r[modelType]; ok {
 		return
 	}
 
-	// first, create schema definition including
+	// first, create Schema definition including
 	// joinJsonapiModel and joinPGModel
-	schema := r.newSchemaDefinition(resourceModelType)
+	schema := r.newSchemaDefinition(modelType)
 
 	// set value so the jsonapi and pg join models
 	// can be accessed in r.generateSchemaModels
-	r[resourceModelType] = &resource{schema: schema}
+	r[modelType] = schema
 
-	// create full schema definition including relations
+	// create full Schema definition including relations
 	r.generateSchemaModels(schema)
 }

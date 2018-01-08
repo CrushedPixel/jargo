@@ -6,19 +6,28 @@ import (
 	"reflect"
 )
 
-type field interface {
-	createInstance() fieldInstance
+type SchemaField interface {
+	createInstance() schemaFieldInstance
 
-	jsonapiName() string
+	// JSONAPIName returns the field's JSON API member name
+	JSONAPIName() string
 
-	// pg column to use when selecting this field from the database
-	pgSelectColumn() string
-	// pg column to use when filtering by this field from the database
-	pgFilterColumn() string
+	// PGSelectColumn returns the pg column to use
+	// when selecting this field from the database
+	PGSelectColumn() string
+	// PGFilterColumn returns the pg column to use
+	// when filtering by this field from the database
+	PGFilterColumn() string
 
-	writable() bool
-	sortable() bool
-	filterable() bool
+	// Writable returns whether API users may
+	// change the value of this field.
+	Writable() bool
+	// Sortable returns whether API users may
+	// sort by this field.
+	Sortable() bool
+	// Filterable returns whether API users may
+	// filter by this field.
+	Filterable() bool
 
 	jsonapiFields() []reflect.StructField
 	jsonapiJoinFields() []reflect.StructField
@@ -27,8 +36,8 @@ type field interface {
 	pgJoinFields() []reflect.StructField
 }
 
-type fieldInstance interface {
-	parentField() field
+type schemaFieldInstance interface {
+	parentField() SchemaField
 
 	// parses a resource model instance, setting the field's value.
 	parseResourceModel(*resourceModelInstance)

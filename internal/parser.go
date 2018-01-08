@@ -59,7 +59,7 @@ var (
 )
 
 // parses a schema definition from a resource model type.
-func (r ResourceRegistry) newSchemaDefinition(t reflect.Type) *schema {
+func (r SchemaRegistry) newSchemaDefinition(t reflect.Type) *Schema {
 	if t.Kind() != reflect.Struct {
 		panic(errInvalidModelType)
 	}
@@ -83,7 +83,7 @@ func (r ResourceRegistry) newSchemaDefinition(t reflect.Type) *schema {
 	return schema
 }
 
-func (r ResourceRegistry) generateSchemaModels(schema *schema) {
+func (r SchemaRegistry) generateSchemaModels(schema *Schema) {
 	var jsonapiFields []reflect.StructField
 	var pgFields []reflect.StructField
 	for _, f := range schema.fields {
@@ -97,7 +97,7 @@ func (r ResourceRegistry) generateSchemaModels(schema *schema) {
 
 // parses a struct's id field, retrieving
 // general schema information from the jargo struct tag.
-func parseSchema(t reflect.Type) *schema {
+func parseSchema(t reflect.Type) *Schema {
 	f, ok := t.FieldByName(idFieldName)
 	if !ok {
 		panic(errMissingIdField)
@@ -122,7 +122,7 @@ func parseSchema(t reflect.Type) *schema {
 	defaultName := inflect.Pluralize(singleName)
 	parsed := parser.ParseJargoTagDefaultName(tag, defaultName)
 
-	schema := &schema{
+	schema := &Schema{
 		name:              parsed.Name,
 		table:             parsed.Name,
 		alias:             singleName,
@@ -167,7 +167,7 @@ func parseSchema(t reflect.Type) *schema {
 
 // parses a struct field into a schema field.
 // returns nil, nil for non-attribute fields.
-func (r ResourceRegistry) parseField(schema *schema, f *reflect.StructField) field {
+func (r SchemaRegistry) parseField(schema *Schema, f *reflect.StructField) SchemaField {
 	if f.Name == idFieldName {
 		return newIdField(schema)
 	}

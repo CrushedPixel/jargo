@@ -1,7 +1,6 @@
 package jargo
 
 import (
-	"github.com/crushedpixel/jargo/api"
 	"net/http"
 )
 
@@ -9,7 +8,7 @@ import (
 // Actions related to a specific Resource.
 type Controller struct {
 	namespace  string
-	resource   api.Resource
+	resource   *Resource
 	middleware []HandlerFunc
 	actions    map[route]*Action
 }
@@ -28,14 +27,14 @@ var (
 )
 
 // NewRootController returns a new Controller for a Resource at root level.
-func NewRootController(resource api.Resource) *Controller {
+func NewRootController(resource *Resource) *Controller {
 	return NewController("", resource)
 }
 
 // NewCRUDController returns a new Controller for a Resource
 // and namespace with the default JSON API compliant
 // index, show, create, update and delete Actions.
-func NewCRUDController(namespace string, resource api.Resource) *Controller {
+func NewCRUDController(namespace string, resource *Resource) *Controller {
 	c := NewController(namespace, resource)
 	c.SetShowAction(NewJSONAPIAction(DefaultShowResourceHandler))
 	c.SetIndexAction(NewJSONAPIAction(DefaultIndexResourceHandler))
@@ -47,7 +46,7 @@ func NewCRUDController(namespace string, resource api.Resource) *Controller {
 
 // NewRootController returns a new Controller for a Resource and namespace.
 // The namespace is prepended to the Route path of the Controller's Actions.
-func NewController(namespace string, resource api.Resource) *Controller {
+func NewController(namespace string, resource *Resource) *Controller {
 	return &Controller{
 		namespace: namespace,
 		resource:  resource,
@@ -61,7 +60,7 @@ func (c *Controller) Namespace() string {
 }
 
 // Resource returns the Controller's Resource.
-func (c *Controller) Resource() api.Resource {
+func (c *Controller) Resource() *Resource {
 	return c.resource
 }
 

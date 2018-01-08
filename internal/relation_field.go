@@ -3,7 +3,6 @@ package internal
 import (
 	"errors"
 	"fmt"
-	"github.com/crushedpixel/jargo/api"
 	"gopkg.in/go-playground/validator.v9"
 	"reflect"
 )
@@ -15,13 +14,13 @@ func errInvalidRelationFieldType(p reflect.Type) error {
 type relationField struct {
 	*baseField
 
-	registry ResourceRegistry
+	registry SchemaRegistry
 
 	relationType reflect.Type // struct type of relation
 	collection   bool         // whether it's a to-many-relation
 }
 
-func newRelationField(r ResourceRegistry, schema *schema, f *reflect.StructField) *relationField {
+func newRelationField(r SchemaRegistry, schema *Schema, f *reflect.StructField) *relationField {
 	base := newBaseField(schema, f)
 
 	// validate field type
@@ -60,12 +59,17 @@ func getRelationType(typ reflect.Type) (reflect.Type, bool) {
 	return typ, collection
 }
 
-func (f *relationField) pgSelectColumn() string {
+func (f *belongsToField) Writable() bool {
+	// TODO: ensure user does not set `readonly:false`
+	return false
+}
+
+func (f *relationField) PGSelectColumn() string {
 	return f.fieldName
 }
 
-func (f *relationField) pgFilterColumn() string {
-	panic("unsupported operation")
+func (f *relationField) PGFilterColumn() string {
+	panic(errors.New("unsupported operation"))
 }
 
 // override this function to calculate topLevel jsonapi fields on demand,
@@ -100,8 +104,8 @@ func jsonapiRelationFields(f *relationField) []reflect.StructField {
 	}
 	tag += `"`
 
-	// register relation schema
-	f.registry.registerResource(f.relationType)
+	// register relation Schema
+	f.registry.registerSchema(f.relationType)
 
 	typ := reflect.PtrTo(f.registry[f.relationType].joinJsonapiModelType)
 	if f.collection {
@@ -133,7 +137,7 @@ func (f *relationField) relationJoinPGFieldType() reflect.Type {
 }
 
 func (f *relationField) createInstance() *relationFieldInstance {
-	relation, err := f.registry.RegisterResource(f.relationType)
+	relation, err := f.registry.RegisterSchema(f.relationType)
 	if err != nil {
 		panic(err)
 	}
@@ -146,8 +150,8 @@ func (f *relationField) createInstance() *relationFieldInstance {
 
 type relationFieldInstance struct {
 	field          *relationField
-	relationSchema api.Schema // schema of the related resource
-	values         []api.SchemaInstance
+	relationSchema *Schema // Schema of the related resource
+	values         []*SchemaInstance
 }
 
 func (i *relationFieldInstance) parseResourceModel(instance *resourceModelInstance) {
@@ -159,15 +163,15 @@ func (i *relationFieldInstance) parseResourceModel(instance *resourceModelInstan
 		return
 	}
 
-	i.values = make([]api.SchemaInstance, 0)
+	i.values = make([]*SchemaInstance, 0)
 	val := instance.value.Elem().FieldByName(i.field.fieldName)
 	if i.field.collection {
 		for x := 0; x < val.Len(); x++ {
 			v := val.Index(x) // struct pointer value of related resource model
-			i.values = append(i.values, i.relationSchema.ParseJoinResourceModel(v.Interface()))
+			i.values = append(i.values, i.relationSchema.parseJoinResourceModel(v.Interface()))
 		}
 	} else {
-		i.values = append(i.values, i.relationSchema.ParseJoinResourceModel(val.Interface()))
+		i.values = append(i.values, i.relationSchema.parseJoinResourceModel(val.Interface()))
 	}
 }
 
@@ -183,14 +187,14 @@ func (i *relationFieldInstance) applyToResourceModel(instance *resourceModelInst
 		for x := 0; x < l; x++ {
 			v := i.values[x]
 			if v != nil {
-				values.Index(x).Set(reflect.ValueOf(v.ToJoinResourceModel()))
+				values.Index(x).Set(reflect.ValueOf(v.toJoinResourceModel()))
 			}
 		}
 		val.Set(values)
 	} else {
 		v := i.values[0]
 		if v != nil {
-			val.Set(reflect.ValueOf(v.ToJoinResourceModel()))
+			val.Set(reflect.ValueOf(v.toJoinResourceModel()))
 		}
 	}
 }
@@ -221,15 +225,15 @@ func (i *relationFieldInstance) parseJsonapiModel(instance *jsonapiModelInstance
 		return
 	}
 
-	i.values = make([]api.SchemaInstance, 0)
+	i.values = make([]*SchemaInstance, 0)
 	val := instance.value.Elem().FieldByName(i.field.fieldName)
 	if i.field.collection {
 		for x := 0; x < val.Len(); x++ {
 			v := val.Index(x) // struct pointer value of related resource model
-			i.values = append(i.values, i.relationSchema.ParseJoinJsonapiModel(v.Interface()))
+			i.values = append(i.values, i.relationSchema.parseJoinJsonapiModel(v.Interface()))
 		}
 	} else {
-		i.values = append(i.values, i.relationSchema.ParseJoinJsonapiModel(val.Interface()))
+		i.values = append(i.values, i.relationSchema.parseJoinJsonapiModel(val.Interface()))
 	}
 }
 
@@ -245,14 +249,14 @@ func (i *relationFieldInstance) applyToJsonapiModel(instance *jsonapiModelInstan
 		for x := 0; x < l; x++ {
 			v := i.values[x]
 			if v != nil {
-				values.Index(x).Set(reflect.ValueOf(v.ToJoinJsonapiModel()))
+				values.Index(x).Set(reflect.ValueOf(v.toJoinJsonapiModel()))
 			}
 		}
 		val.Set(values)
 	} else {
 		v := i.values[0]
 		if v != nil {
-			val.Set(reflect.ValueOf(v.ToJoinJsonapiModel()))
+			val.Set(reflect.ValueOf(v.toJoinJsonapiModel()))
 		}
 	}
 }
@@ -281,15 +285,15 @@ func (i *relationFieldInstance) parsePGModel(instance *pgModelInstance) {
 		return
 	}
 
-	i.values = make([]api.SchemaInstance, 0)
+	i.values = make([]*SchemaInstance, 0)
 	val := instance.value.Elem().FieldByName(i.field.fieldName)
 	if i.field.collection {
 		for x := 0; x < val.Len(); x++ {
 			v := val.Index(x) // struct pointer value of related resource model
-			i.values = append(i.values, i.relationSchema.ParseJoinPGModel(v.Interface()))
+			i.values = append(i.values, i.relationSchema.parseJoinPGModel(v.Interface()))
 		}
 	} else {
-		i.values = append(i.values, i.relationSchema.ParseJoinPGModel(val.Interface()))
+		i.values = append(i.values, i.relationSchema.parseJoinPGModel(val.Interface()))
 	}
 }
 
@@ -305,14 +309,14 @@ func (i *relationFieldInstance) applyToPGModel(instance *pgModelInstance) {
 		for x := 0; x < l; x++ {
 			v := i.values[x]
 			if v != nil {
-				values.Index(x).Set(reflect.ValueOf(v.ToJoinPGModel()))
+				values.Index(x).Set(reflect.ValueOf(v.toJoinPGModel()))
 			}
 		}
 		val.Set(values)
 	} else {
 		v := i.values[0]
 		if v != nil {
-			val.Set(reflect.ValueOf(v.ToJoinPGModel()))
+			val.Set(reflect.ValueOf(v.toJoinPGModel()))
 		}
 	}
 }

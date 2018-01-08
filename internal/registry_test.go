@@ -55,13 +55,13 @@ type CircularBelongsTo struct {
 }
 
 func TestRegistry_RegisterSchema(t *testing.T) {
-	r := make(ResourceRegistry)
-	// create schema from struct type
-	s, err := r.RegisterResource(reflect.TypeOf(Basic{}))
+	r := make(SchemaRegistry)
+	// create Schema from struct type
+	s, err := r.RegisterSchema(reflect.TypeOf(Basic{}))
 	require.Nil(t, err)
 	// TODO: test field generation
 
-	// parse resource model instance to schema instance
+	// parse resource model instance to Schema instance
 	b := Basic{
 		Id:   1,
 		Name: "Peter",
@@ -69,7 +69,7 @@ func TestRegistry_RegisterSchema(t *testing.T) {
 	}
 	instance := s.ParseResourceModel(&b)
 
-	// convert schema instance back to resource model instance
+	// convert Schema instance back to resource model instance
 	b1 := instance.ToResourceModel()
 
 	j1 := instance.ToJsonapiModel()
@@ -85,11 +85,11 @@ func TestRegistry_RegisterSchema(t *testing.T) {
 	_ = instance.ToPGModel()
 
 	// test handling of custom types
-	s, err = r.RegisterResource(reflect.TypeOf(CustomType{}))
+	s, err = r.RegisterSchema(reflect.TypeOf(CustomType{}))
 	assert.EqualError(t, err, errInvalidAttrFieldType(reflect.TypeOf(Age(0))).Error())
 
 	// test hasOne relations
-	s, err = r.RegisterResource(reflect.TypeOf(HasOne{}))
+	s, err = r.RegisterSchema(reflect.TypeOf(HasOne{}))
 	require.Nil(t, err)
 
 	h := HasOne{
@@ -103,7 +103,7 @@ func TestRegistry_RegisterSchema(t *testing.T) {
 	jsonapi.MarshalPayloadWithoutIncluded(os.Stdout, j1)
 
 	// test hasMany relations
-	s, err = r.RegisterResource(reflect.TypeOf(HasMany{}))
+	s, err = r.RegisterSchema(reflect.TypeOf(HasMany{}))
 	require.Nil(t, err)
 
 	hm := HasMany{
@@ -117,7 +117,7 @@ func TestRegistry_RegisterSchema(t *testing.T) {
 	jsonapi.MarshalPayloadWithoutIncluded(os.Stdout, j1)
 
 	// test hasSelf relations
-	s, err = r.RegisterResource(reflect.TypeOf(HasSelf{}))
+	s, err = r.RegisterSchema(reflect.TypeOf(HasSelf{}))
 	require.Nil(t, err)
 
 	hs := HasSelf{
@@ -131,7 +131,7 @@ func TestRegistry_RegisterSchema(t *testing.T) {
 	jsonapi.MarshalPayloadWithoutIncluded(os.Stdout, j1)
 
 	// test circular relations
-	s, err = r.RegisterResource(reflect.TypeOf(CircularHas{}))
+	s, err = r.RegisterSchema(reflect.TypeOf(CircularHas{}))
 	require.Nil(t, err)
 
 	hb := CircularBelongsTo{

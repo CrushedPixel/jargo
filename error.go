@@ -1,4 +1,4 @@
-package api
+package jargo
 
 import (
 	"fmt"
@@ -12,20 +12,20 @@ import (
 	"strings"
 )
 
-// An Error is a struct containing
+// An ApiError is a struct containing
 // information about an error that occurred
 // handling a request.
-// Error implements error and margo.Response,
+// ApiError implements error and margo.Response,
 // so it can be returned both as error value in
 // functions and as Response value in HandlerFuncs.
-type Error struct {
+type ApiError struct {
 	Status int
 	Code   string
 	Detail string
 }
 
 // Error satisfies the error interface.
-func (err *Error) Error() string {
+func (err *ApiError) Error() string {
 	return err.Detail
 }
 
@@ -34,14 +34,14 @@ func (err *Error) Error() string {
 // See http://jsonapi.org/format/#errors
 //
 // Satisfies the margo.Response interface.
-func (err *Error) Send(c *gin.Context) error {
+func (err *ApiError) Send(c *gin.Context) error {
 	c.Status(err.Status)
 	c.Header("Content-Type", jsonapi.MediaType)
 	return jsonapi.MarshalErrors(c.Writer, []*jsonapi.ErrorObject{err.ToErrorObject()})
 }
 
-// ToErrorObject converts the Error to a jsonapi.ErrorObject.
-func (err *Error) ToErrorObject() *jsonapi.ErrorObject {
+// ToErrorObject converts the ApiError to a jsonapi.ErrorObject.
+func (err *ApiError) ToErrorObject() *jsonapi.ErrorObject {
 	return &jsonapi.ErrorObject{
 		ID:     uuid.NewV4().String(),
 		Status: strconv.Itoa(err.Status),
@@ -50,10 +50,10 @@ func (err *Error) ToErrorObject() *jsonapi.ErrorObject {
 	}
 }
 
-// NewError returns a new Error from a status code,
+// NewApiError returns a new ApiError from a status code,
 // error code and error detail string.
-func NewError(status int, code string, detail string) *Error {
-	return &Error{
+func NewApiError(status int, code string, detail string) *ApiError {
+	return &ApiError{
 		Status: status,
 		Code:   code,
 		Detail: detail,
@@ -65,8 +65,7 @@ type errorResponse struct {
 }
 
 func (r *errorResponse) Send(c *gin.Context) error {
-	apiError, ok := r.Error.(*Error)
-
+	apiError, ok := r.Error.(*ApiError)
 	if !ok {
 		// if error is not an api error, return internal server error response
 		println(fmt.Sprintf("Internal server error: %s", r.Error.Error())) // TODO use a proper logging library
@@ -81,9 +80,9 @@ func (r *errorResponse) Send(c *gin.Context) error {
 // according to the JSON API spec.
 // See http://jsonapi.org/format/#errors
 //
-// If the underlying error is an instance of Error,
-// sending the Response invokes the Error's Send method.
-// Otherwise, it logs the Error as an internal server error
+// If the underlying error is an instance of ApiError,
+// sending the Response invokes the ApiError's Send method.
+// Otherwise, it logs the ApiError as an internal server error
 // and sends ErrInternalServerError.
 //
 // Satisfies the margo.Response interface.
@@ -91,67 +90,67 @@ func NewErrorResponse(err error) margo.Response {
 	return &errorResponse{Error: err}
 }
 
-// ErrInternalServerError is an Error indicating
+// ErrInternalServerError is an ApiError indicating
 // an unspecified internal error.
-var ErrInternalServerError = NewError(
+var ErrInternalServerError = NewApiError(
 	http.StatusInternalServerError,
 	"INTERNAL_SERVER_ERROR",
 	"internal server error",
 )
 
-var ErrUnsupportedMediaType = NewError(
+var ErrUnsupportedMediaType = NewApiError(
 	http.StatusUnsupportedMediaType,
 	"UNSUPPORTED_MEDIA_TYPE",
 	fmt.Sprintf("media type must be %s", jsonapi.MediaType),
 )
 
-var ErrNotAcceptable = NewError(
+var ErrNotAcceptable = NewApiError(
 	http.StatusNotAcceptable,
 	"NOT_ACCEPTABLE",
 	fmt.Sprintf("accept header must contain %s without any media type parameters", jsonapi.MediaType),
 )
 
-var ErrNotFound = NewError(
+var ErrNotFound = NewApiError(
 	http.StatusNotFound,
 	"RESOURCE_NOT_FOUND",
 	"resource not found",
 )
 
-var ErrForbidden = NewError(
+var ErrForbidden = NewApiError(
 	http.StatusForbidden,
-	"INVALID_QUERY_PARAMS",
+	"FORBIDDEN",
 	"forbidden",
 )
 
-var ErrInvalidId = NewError(
+var ErrInvalidId = NewApiError(
 	http.StatusBadRequest,
 	"INVALID_ID",
 	"invalid id parameter",
 )
 
-func ErrUnauthorized(detail string) *Error {
-	return NewError(
+func ErrUnauthorized(detail string) *ApiError {
+	return NewApiError(
 		http.StatusUnauthorized,
 		"UNAUTHORIZED",
 		detail,
 	)
 }
 
-func ErrInvalidQueryParams(detail string) *Error {
-	return NewError(http.StatusBadRequest,
-		"FORBIDDEN",
+func ErrInvalidQueryParams(detail string) *ApiError {
+	return NewApiError(http.StatusBadRequest,
+		"INVALID_QUERY_PARAMS",
 		detail,
 	)
 }
 
-func ErrInvalidPayload(detail string) *Error {
-	return NewError(http.StatusBadRequest,
+func ErrInvalidPayload(detail string) *ApiError {
+	return NewApiError(http.StatusBadRequest,
 		"INVALID_PAYLOAD",
 		detail,
 	)
 }
 
-func ErrValidationFailed(errors validator.ValidationErrors) *Error {
+func ErrValidationFailed(errors validator.ValidationErrors) *ApiError {
 	var failed []string
 	for _, v := range errors {
 		failed = append(failed, v.Tag())

@@ -12,7 +12,7 @@ type hasField struct {
 	fk           string
 }
 
-func newHasField(r ResourceRegistry, schema *schema, f *reflect.StructField, fk string) field {
+func newHasField(r SchemaRegistry, schema *Schema, f *reflect.StructField, fk string) SchemaField {
 	base := newRelationField(r, schema, f)
 
 	if fk == "" {
@@ -32,6 +32,16 @@ func newHasField(r ResourceRegistry, schema *schema, f *reflect.StructField, fk 
 	// TODO: fail if there are invalid struct tag options
 
 	return field
+}
+
+func (f *hasField) Filterable() bool {
+	// TODO: ensure user does not set `filterable:true`
+	return false
+}
+
+func (f *hasField) Sortable() bool {
+	// TODO: ensure user does not set `sortable:true`
+	return false
 }
 
 // override this function to calculate topLevel pg fields on demand,
@@ -58,7 +68,7 @@ func pgHasFields(f *hasField) []reflect.StructField {
 	return []reflect.StructField{field}
 }
 
-func (f *hasField) createInstance() fieldInstance {
+func (f *hasField) createInstance() schemaFieldInstance {
 	return &hasFieldInstance{
 		relationFieldInstance: f.relationField.createInstance(),
 		field: f,
@@ -70,6 +80,6 @@ type hasFieldInstance struct {
 	field *hasField
 }
 
-func (i *hasFieldInstance) parentField() field {
+func (i *hasFieldInstance) parentField() SchemaField {
 	return i.field
 }

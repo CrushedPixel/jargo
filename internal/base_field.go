@@ -7,7 +7,7 @@ import (
 )
 
 type baseField struct {
-	schema *schema
+	schema *Schema
 
 	fieldName string
 	fieldType reflect.Type
@@ -28,19 +28,19 @@ type baseField struct {
 	pgF      []reflect.StructField
 }
 
-func (f *baseField) jsonapiName() string {
+func (f *baseField) JSONAPIName() string {
 	return f.name
 }
 
-func (f *baseField) writable() bool {
+func (f *baseField) Writable() bool {
 	return f.jargoWritable
 }
 
-func (f *baseField) sortable() bool {
+func (f *baseField) Sortable() bool {
 	return f.jargoSortable
 }
 
-func (f *baseField) filterable() bool {
+func (f *baseField) Filterable() bool {
 	return f.jargoFilterable
 }
 
@@ -60,7 +60,7 @@ func (f *baseField) pgJoinFields() []reflect.StructField {
 	return f.pgF
 }
 
-func newBaseField(schema *schema, f *reflect.StructField) *baseField {
+func newBaseField(schema *Schema, f *reflect.StructField) *baseField {
 	// determine default jsonapi member name.
 	// defaults to dasherized struct field name.
 	defaultName := inflect.Dasherize(f.Name)

@@ -1,8 +1,7 @@
-package internal
+package jargo
 
 import (
 	"errors"
-	"github.com/crushedpixel/jargo/api"
 	"github.com/crushedpixel/margo"
 	"github.com/gin-gonic/gin"
 	"github.com/go-pg/pg"
@@ -25,20 +24,22 @@ const (
 	typeDelete
 )
 
-// implements api.Query
+// A Query is used to communicate with the database.
+// It implements margo.Response so it can be returned
+// from handler functions and executed upon sending.
 type Query struct {
 	*orm.Query
 
 	// final fields
 	typ        queryType
-	resource   api.Resource
+	resource   *Resource
 	collection bool // whether the resource model is a slice
 
 	// user settable
-	fields     api.FieldSet
-	sort       api.SortFields
-	pagination api.Pagination
-	filters    api.Filters
+	fields     *FieldSet
+	sort       *SortFields
+	pagination *Pagination
+	filters    *Filters
 
 	// internal
 	executed       bool
@@ -47,56 +48,26 @@ type Query struct {
 	model          reflect.Value // reference to the pg model
 }
 
-func newQuery(db orm.DB, resource *resource, typ queryType, collection bool) *Query {
-	var model interface{}
-	if collection {
-		val := reflect.ValueOf(resource.NewPGModelCollection())
-		// get pointer to slice as expected by go-pg
-		ptr := reflect.New(val.Type())
-		ptr.Elem().Set(val)
-		model = ptr.Interface()
-	} else {
-		model = resource.NewPGModelInstance()
-	}
-
-	return newQueryWithPGModelInstance(db, resource, typ, collection, model)
-}
-
-func newQueryFromResourceModel(db orm.DB, resource *resource, typ queryType, data interface{}) *Query {
-	collection := resource.IsResourceModelCollection(data)
-	var pgModel interface{}
-	if collection {
-		instances := resource.ParseResourceModelCollection(data)
-		pgInstances := make([]interface{}, len(instances))
-		for i := 0; i < len(instances); i++ {
-			pgInstances = append(pgInstances, instances[i].ToPGModel())
-		}
-
-		pgModel = pgInstances
-	} else {
-		pgModel = resource.ParseResourceModel(data).ToPGModel()
-	}
-
-	return newQueryWithPGModelInstance(db, resource, typ, collection, pgModel)
-}
-
-func newQueryWithPGModelInstance(db orm.DB, resource *resource, typ queryType, collection bool, pgModelInstance interface{}) *Query {
+func newQuery(db orm.DB, resource *Resource, typ queryType, collection bool, pgModelInstance interface{}) *Query {
 	return &Query{
 		Query:      db.Model(pgModelInstance),
 		typ:        typ,
 		resource:   resource,
 		collection: collection,
-		fields:     allFields(resource),
 		model:      reflect.ValueOf(pgModelInstance),
 	}
 }
 
+// Raw returns the wrapped orm.Query.
 func (q *Query) Raw() *orm.Query {
 	return q.Query
 }
 
-func (q *Query) Fields(in api.FieldSet) api.Query {
-	fs := in.(*fieldSet)
+// Fields sets a FieldSet instance
+// to apply on Query execution.
+// FieldSets are also applied to JSON API
+// payloads created in the Send method.
+func (q *Query) Fields(fs *FieldSet) *Query {
 	if fs.resource != q.resource {
 		panic(errMismatchingResource)
 	}
@@ -105,60 +76,59 @@ func (q *Query) Fields(in api.FieldSet) api.Query {
 	return q
 }
 
-func (q *Query) Sort(in api.SortFields) api.Query {
-	if in == nil {
-		q.sort = nil
-	} else {
-		s := in.(*sortFields)
-		if q.typ != typeSelect {
-			panic(errNotSelecting)
-		}
-		if !q.collection {
-			panic(errNoCollection)
-		}
-		if s.resource != q.resource {
-			panic(errMismatchingResource)
-		}
-		q.sort = s
+// Sort sets a SortFields instance
+// to apply on Query execution.
+//
+// Panics if Query is not a Select many Query.
+func (q *Query) Sort(s *SortFields) *Query {
+	if q.typ != typeSelect {
+		panic(errNotSelecting)
 	}
+	if !q.collection {
+		panic(errNoCollection)
+	}
+	if s.resource != q.resource {
+		panic(errMismatchingResource)
+	}
+	q.sort = s
 
 	return q
 }
 
-func (q *Query) Pagination(in api.Pagination) api.Query {
-	if in == nil {
-		q.pagination = nil
-	} else {
-		p := in.(*pagination)
-		if q.typ != typeSelect {
-			panic(errNotSelecting)
-		}
-		if !q.collection {
-			panic(errNoCollection)
-		}
-		q.pagination = p
+// Pagination sets a Pagination instance
+// to apply on Query execution.
+//
+// Panics if Query is not a Select many Query.
+func (q *Query) Pagination(p *Pagination) *Query {
+	if q.typ != typeSelect {
+		panic(errNotSelecting)
 	}
+	if !q.collection {
+		panic(errNoCollection)
+	}
+	q.pagination = p
 
 	return q
 }
 
-func (q *Query) Filters(in api.Filters) api.Query {
-	if in == nil {
-		q.filters = nil
-	} else {
-		f := in.(*filters)
-		if q.typ != typeSelect {
-			panic(errNotSelecting)
-		}
-		if f.resource != q.resource {
-			panic(errMismatchingResource)
-		}
-		q.filters = f
+// Filters sets a Filters instance
+// to apply on Query execution.
+//
+// Panics if Query is not a Select Query.
+func (q *Query) Filters(f *Filters) *Query {
+	if q.typ != typeSelect {
+		panic(errNotSelecting)
 	}
+	if f.resource != q.resource {
+		panic(errMismatchingResource)
+	}
+	q.filters = f
 
 	return q
 }
 
+// Result returns the query result resource model.
+// It executes the query if it hasn't been executed yet.
 func (q *Query) Result() (interface{}, error) {
 	if !q.executed {
 		q.execute()
@@ -171,6 +141,8 @@ func (q *Query) Result() (interface{}, error) {
 	return q.result, nil
 }
 
+// Execute executes the query and
+// returns the resulting resource model instance.
 func (q *Query) Execute() (interface{}, error) {
 	q.execute()
 	if q.executionError != nil {
@@ -185,7 +157,7 @@ func (q *Query) Send(c *gin.Context) error {
 	result, err := q.Result()
 	if err != nil {
 		if err == pg.ErrNoRows {
-			return api.ErrNotFound
+			return ErrNotFound
 		}
 		return err
 	}
@@ -212,18 +184,24 @@ func (q *Query) execute() {
 	switch q.typ {
 	case typeSelect:
 		// apply query modifiers
-		q.fields.ApplyToQuery(q.Query)
+		var fields *FieldSet
+		if q.fields != nil {
+			fields = q.fields
+		} else {
+			fields = q.resource.allFields()
+		}
+		fields.applyToQuery(q.Raw())
 
 		if q.filters != nil {
-			q.filters.ApplyToQuery(q.Query)
+			q.filters.applyToQuery(q.Query)
 		}
 
 		if q.collection {
 			if q.sort != nil {
-				q.sort.ApplyToQuery(q.Query)
+				q.sort.applyToQuery(q.Query)
 			}
 			if q.pagination != nil {
-				q.pagination.ApplyToQuery(q.Query)
+				q.pagination.applyToQuery(q.Query)
 			}
 		}
 
@@ -259,11 +237,11 @@ func (q *Query) execute() {
 		for i := 0; i < m.Elem().Len(); i++ {
 			v := m.Elem().Index(i)
 			if !v.IsNil() {
-				entries = append(entries, q.resource.ParsePGModel(v.Interface()).ToResourceModel())
+				entries = append(entries, q.resource.schema.ParsePGModel(v.Interface()).ToResourceModel())
 			}
 		}
-		q.result = q.resource.NewResourceModelCollection(entries...)
+		q.result = q.resource.schema.NewResourceModelCollection(entries...)
 	} else {
-		q.result = q.resource.ParsePGModel(m.Interface()).ToResourceModel()
+		q.result = q.resource.schema.ParsePGModel(m.Interface()).ToResourceModel()
 	}
 }

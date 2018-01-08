@@ -3,7 +3,6 @@ package jargo
 import (
 	"errors"
 	"fmt"
-	"github.com/crushedpixel/jargo/api"
 	"github.com/crushedpixel/jargo/internal"
 	"github.com/crushedpixel/margo"
 	"github.com/gin-gonic/gin"
@@ -29,10 +28,10 @@ func DefaultErrorHandler(c *gin.Context, r interface{}) {
 	err, ok = r.(error)
 	if !ok {
 		log.Println(fmt.Sprintf("%v", r))
-		err = api.ErrInternalServerError
+		err = ErrInternalServerError
 	}
 
-	res := api.NewErrorResponse(err)
+	res := NewErrorResponse(err)
 	err = res.Send(c)
 	if err != nil {
 		panic(err)
@@ -43,8 +42,11 @@ func DefaultErrorHandler(c *gin.Context, r interface{}) {
 type Application struct {
 	*margo.Application
 
-	db          *pg.DB
-	registry    internal.ResourceRegistry
+	db *pg.DB
+
+	registry  internal.SchemaRegistry
+	resources map[*internal.Schema]*Resource
+
 	controllers []*Controller
 	maxPageSize int
 	validate    *validator.Validate
@@ -64,7 +66,8 @@ func NewApplicationWithValidate(db *pg.DB, validate *validator.Validate) *Applic
 	server.ErrorHandler = DefaultErrorHandler
 	return &Application{
 		Application: server,
-		registry:    make(internal.ResourceRegistry),
+		registry:    make(internal.SchemaRegistry),
+		resources:   make(map[*internal.Schema]*Resource),
 		db:          db,
 		maxPageSize: DefaultMaxPageSize,
 		validate:    validate,
@@ -98,8 +101,8 @@ func (app *Application) AddController(c *Controller) {
 		if len(path) < 1 || path[len(path)-1] != '/' {
 			path += "/"
 		}
-		// append resource member name
-		path += c.Resource().Name()
+		// append Resource member name
+		path += c.Resource().JSONAPIName()
 		// append forward slash to path
 		// if route path doesn't start with one
 		if len(route.path) < 1 || path[0] != '/' {
@@ -126,16 +129,29 @@ func (app *Application) AddController(c *Controller) {
 //
 // Panics if model is not an instance of a properly annotated
 // Resource Model.
-func (app *Application) RegisterResource(model interface{}) (api.Resource, error) {
-	res, err := app.registry.RegisterResource(reflect.TypeOf(model))
+func (app *Application) RegisterResource(model interface{}) (*Resource, error) {
+	s, err := app.registry.RegisterSchema(reflect.TypeOf(model))
 	if err != nil {
 		return nil, err
 	}
-	err = app.registry.InitializeResources(app.DB())
-	if err != nil {
-		return nil, err
+
+	if resource, ok := app.resources[s]; ok {
+		return resource, nil
 	}
-	return res, nil
+
+	for _, schema := range app.registry {
+		if _, ok := app.resources[schema]; !ok {
+			resource := &Resource{schema: schema}
+			err := resource.Initialize(app.DB())
+			if err != nil {
+				return nil, err
+			}
+
+			app.resources[schema] = resource
+		}
+	}
+
+	return app.resources[s], nil
 }
 
 // MaxPageSize returns the maximum number
@@ -157,8 +173,8 @@ func (app *Application) SetMaxPageSize(maxPageSize int) {
 // ParsePagination parses pagination parameters
 // from an URL query according to the JSON API spec.
 // See http://jsonapi.org/format/#fetching-pagination
-func (app *Application) ParsePagination(query url.Values) (api.Pagination, error) {
-	return internal.ParsePagination(query, app.maxPageSize)
+func (app *Application) ParsePagination(query url.Values) (*Pagination, error) {
+	return parsePagination(query, app.maxPageSize)
 }
 
 // Run starts the Application,

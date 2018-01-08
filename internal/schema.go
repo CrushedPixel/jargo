@@ -2,13 +2,16 @@ package internal
 
 import (
 	"errors"
-	"github.com/crushedpixel/jargo/api"
+	"github.com/go-pg/pg"
+	"github.com/go-pg/pg/orm"
+	"github.com/google/jsonapi"
 	"gopkg.in/go-playground/validator.v9"
+	"io"
 	"reflect"
 )
 
-// resource model -> resource schema
-// resource schema instance <-> jsonapi model, pg model, resource model instances
+// resource model -> resource Schema
+// resource Schema instance <-> jsonapi model, pg model, resource model instances
 
 var (
 	errInvalidResourceInstance    = errors.New("instance must be pointer to resource model")
@@ -21,13 +24,12 @@ var (
 	errInvalidJoinPGInstance      = errors.New("instance must be pointer to join pg model")
 )
 
-// implements api.Schema
-type schema struct {
+type Schema struct {
 	name  string // jsonapi member name
 	table string // sql table name
 	alias string // sql table alias
 
-	fields []field
+	fields []SchemaField
 
 	resourceModelType reflect.Type
 	jsonapiModelType  reflect.Type
@@ -40,11 +42,36 @@ type schema struct {
 	joinPGModelType      reflect.Type
 }
 
-func (s *schema) Name() string {
+func (s *Schema) JSONAPIName() string {
 	return s.name
 }
 
-func (s *schema) IsResourceModelCollection(data interface{}) bool {
+func (s *Schema) Fields() []SchemaField {
+	return s.fields
+}
+
+// CreateTable creates the database table
+// for this Schema if it doesn't exist yet.
+func (s *Schema) CreateTable(db *pg.DB) error {
+	err := db.CreateTable(s.NewPGModelInstance(), &orm.CreateTableOptions{IfNotExists: true})
+	if err != nil {
+		return err
+	}
+
+	// call afterCreateTable hooks on fields
+	for _, f := range s.Fields() {
+		if afterHook, ok := f.(afterCreateTableHook); ok {
+			err = afterHook.afterCreateTable(db)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (s *Schema) IsResourceModelCollection(data interface{}) bool {
 	typ := reflect.ValueOf(data).Type()
 	collection := false
 	if typ.Kind() == reflect.Slice {
@@ -63,7 +90,7 @@ func (s *schema) IsResourceModelCollection(data interface{}) bool {
 	return collection
 }
 
-func (s *schema) IsJsonapiModelCollection(data interface{}) bool {
+func (s *Schema) IsJsonapiModelCollection(data interface{}) bool {
 	typ := reflect.ValueOf(data).Type()
 	collection := false
 	if typ.Kind() == reflect.Slice {
@@ -82,7 +109,7 @@ func (s *schema) IsJsonapiModelCollection(data interface{}) bool {
 	return collection
 }
 
-func (s *schema) IsPGModelCollection(data interface{}) bool {
+func (s *Schema) IsPGModelCollection(data interface{}) bool {
 	typ := reflect.ValueOf(data).Type()
 	collection := false
 	if typ.Kind() == reflect.Slice {
@@ -101,11 +128,11 @@ func (s *schema) IsPGModelCollection(data interface{}) bool {
 	return collection
 }
 
-func (s *schema) NewResourceModelInstance() interface{} {
+func (s *Schema) NewResourceModelInstance() interface{} {
 	return reflect.New(s.resourceModelType).Interface()
 }
 
-func (s *schema) NewResourceModelCollection(entries ...interface{}) interface{} {
+func (s *Schema) NewResourceModelCollection(entries ...interface{}) interface{} {
 	l := len(entries)
 	val := reflect.MakeSlice(reflect.SliceOf(reflect.PtrTo(s.resourceModelType)), l, l)
 	for i := 0; i < l; i++ {
@@ -114,15 +141,15 @@ func (s *schema) NewResourceModelCollection(entries ...interface{}) interface{} 
 	return val.Interface()
 }
 
-func (s *schema) NewJsonapiModelInstance() interface{} {
+func (s *Schema) NewJsonapiModelInstance() interface{} {
 	return reflect.New(s.jsonapiModelType).Interface()
 }
 
-func (s *schema) NewPGModelInstance() interface{} {
+func (s *Schema) NewPGModelInstance() interface{} {
 	return reflect.New(s.pgModelType).Interface()
 }
 
-func (s *schema) NewPGModelCollection(entries ...interface{}) interface{} {
+func (s *Schema) NewPGModelCollection(entries ...interface{}) interface{} {
 	l := len(entries)
 	val := reflect.MakeSlice(reflect.SliceOf(reflect.PtrTo(s.pgModelType)), l, l)
 	for i := 0; i < l; i++ {
@@ -131,7 +158,7 @@ func (s *schema) NewPGModelCollection(entries ...interface{}) interface{} {
 	return val.Interface()
 }
 
-func (s *schema) ParseResourceModelCollection(instance interface{}) []api.SchemaInstance {
+func (s *Schema) ParseResourceModelCollection(instance interface{}) []*SchemaInstance {
 	collection := s.IsResourceModelCollection(instance)
 	if !collection {
 		panic(errInvalidResourceCollection)
@@ -142,7 +169,7 @@ func (s *schema) ParseResourceModelCollection(instance interface{}) []api.Schema
 		return nil
 	}
 
-	var schemaInstances []api.SchemaInstance
+	var schemaInstances []*SchemaInstance
 	for i := 0; i < v.Len(); i++ {
 		child := v.Index(i)
 		schemaInstance := s.ParseResourceModel(child.Interface())
@@ -154,7 +181,7 @@ func (s *schema) ParseResourceModelCollection(instance interface{}) []api.Schema
 	return schemaInstances
 }
 
-func (s *schema) ParseResourceModel(instance interface{}) api.SchemaInstance {
+func (s *Schema) ParseResourceModel(instance interface{}) *SchemaInstance {
 	collection := s.IsResourceModelCollection(instance)
 	if collection {
 		panic(errInvalidResourceInstance)
@@ -177,7 +204,7 @@ func (s *schema) ParseResourceModel(instance interface{}) api.SchemaInstance {
 	return i
 }
 
-func (s *schema) ParseJoinResourceModel(instance interface{}) api.SchemaInstance {
+func (s *Schema) parseJoinResourceModel(instance interface{}) *SchemaInstance {
 	v := reflect.ValueOf(instance)
 	if v.Type() != reflect.PtrTo(s.resourceModelType) {
 		panic(errInvalidResourceInstance)
@@ -198,7 +225,7 @@ func (s *schema) ParseJoinResourceModel(instance interface{}) api.SchemaInstance
 	return i
 }
 
-func (s *schema) ParseJsonapiModelCollection(instance interface{}) []api.SchemaInstance {
+func (s *Schema) ParseJsonapiModelCollection(instance interface{}) []*SchemaInstance {
 	collection := s.IsJsonapiModelCollection(instance)
 	if !collection {
 		panic(errInvalidJsonapiCollection)
@@ -209,7 +236,7 @@ func (s *schema) ParseJsonapiModelCollection(instance interface{}) []api.SchemaI
 		return nil
 	}
 
-	var schemaInstances []api.SchemaInstance
+	var schemaInstances []*SchemaInstance
 	for i := 0; i < v.Len(); i++ {
 		child := v.Index(i)
 		schemaInstance := s.ParseJsonapiModel(child.Interface())
@@ -221,7 +248,7 @@ func (s *schema) ParseJsonapiModelCollection(instance interface{}) []api.SchemaI
 	return schemaInstances
 }
 
-func (s *schema) ParseJsonapiModel(instance interface{}) api.SchemaInstance {
+func (s *Schema) ParseJsonapiModel(instance interface{}) *SchemaInstance {
 	collection := s.IsJsonapiModelCollection(instance)
 	if collection {
 		panic(errInvalidJsonapiInstance)
@@ -247,7 +274,7 @@ func (s *schema) ParseJsonapiModel(instance interface{}) api.SchemaInstance {
 	return i
 }
 
-func (s *schema) ParseJoinJsonapiModel(instance interface{}) api.SchemaInstance {
+func (s *Schema) parseJoinJsonapiModel(instance interface{}) *SchemaInstance {
 	v := reflect.ValueOf(instance)
 	if v.Type() != reflect.PtrTo(s.joinJsonapiModelType) {
 		panic(errInvalidJoinJsonapiInstance)
@@ -268,7 +295,7 @@ func (s *schema) ParseJoinJsonapiModel(instance interface{}) api.SchemaInstance 
 	return i
 }
 
-func (s *schema) ParsePGModelCollection(instance interface{}) []api.SchemaInstance {
+func (s *Schema) ParsePGModelCollection(instance interface{}) []*SchemaInstance {
 	collection := s.IsPGModelCollection(instance)
 	if !collection {
 		panic(errInvalidPGCollection)
@@ -279,7 +306,7 @@ func (s *schema) ParsePGModelCollection(instance interface{}) []api.SchemaInstan
 		return nil
 	}
 
-	var schemaInstances []api.SchemaInstance
+	var schemaInstances []*SchemaInstance
 	for i := 0; i < v.Len(); i++ {
 		child := v.Index(i)
 		schemaInstance := s.ParsePGModel(child.Interface())
@@ -291,7 +318,7 @@ func (s *schema) ParsePGModelCollection(instance interface{}) []api.SchemaInstan
 	return schemaInstances
 }
 
-func (s *schema) ParsePGModel(instance interface{}) api.SchemaInstance {
+func (s *Schema) ParsePGModel(instance interface{}) *SchemaInstance {
 	collection := s.IsPGModelCollection(instance)
 	if collection {
 		panic(errInvalidJsonapiInstance)
@@ -317,7 +344,7 @@ func (s *schema) ParsePGModel(instance interface{}) api.SchemaInstance {
 	return i
 }
 
-func (s *schema) ParseJoinPGModel(instance interface{}) api.SchemaInstance {
+func (s *Schema) parseJoinPGModel(instance interface{}) *SchemaInstance {
 	v := reflect.ValueOf(instance)
 	if v.Type() != reflect.PtrTo(s.joinPGModelType) {
 		panic(errInvalidJoinPGInstance)
@@ -338,8 +365,8 @@ func (s *schema) ParseJoinPGModel(instance interface{}) api.SchemaInstance {
 	return i
 }
 
-func (s *schema) createInstance() *schemaInstance {
-	i := &schemaInstance{
+func (s *Schema) createInstance() *SchemaInstance {
+	i := &SchemaInstance{
 		schema: s,
 	}
 	for _, f := range s.fields {
@@ -348,71 +375,45 @@ func (s *schema) createInstance() *schemaInstance {
 	return i
 }
 
-// implements api.SchemaInstance
-type schemaInstance struct {
-	schema *schema
-	fields []fieldInstance
-}
+func (s *Schema) UnmarshalJsonapiPayload(in io.Reader, resourceModelInstance interface{}, validate *validator.Validate) (interface{}, error) {
+	si := s.ParseResourceModel(resourceModelInstance)
 
-func (i *schemaInstance) ToResourceModel() interface{} {
-	instance := i.schema.newResourceModelInstance()
-	for _, f := range i.fields {
-		f.applyToResourceModel(instance)
+	// parse payload into new jsonapi instance
+	jsonapiTargetInstance := s.NewJsonapiModelInstance()
+	err := jsonapi.UnmarshalPayload(in, jsonapiTargetInstance)
+	if err != nil {
+		return nil, err
 	}
-	return instance.value.Interface()
-}
 
-func (i *schemaInstance) ToJoinResourceModel() interface{} {
-	instance := i.schema.newResourceModelInstance()
-	for _, f := range i.fields {
-		f.applyToJoinResourceModel(instance)
+	val := reflect.ValueOf(jsonapiTargetInstance)
+	jmi := &jsonapiModelInstance{
+		schema: s,
+		value:  &val,
 	}
-	return instance.value.Interface()
-}
 
-func (i *schemaInstance) ToJsonapiModel() interface{} {
-	instance := i.schema.newJsonapiModelInstance()
-	for _, f := range i.fields {
-		f.applyToJsonapiModel(instance)
-	}
-	return instance.value.Interface()
-}
+	// copy original Resource model fields to a new target Resource model,
+	// applying writable fields from parsed jsonapi model
+	target := s.newResourceModelInstance()
+	for _, fieldInstance := range si.fields {
+		if fieldInstance.parentField().Writable() {
+			fieldInstance.parseJsonapiModel(jmi)
 
-func (i *schemaInstance) ToJoinJsonapiModel() interface{} {
-	instance := i.schema.newJoinJsonapiModelInstance()
-	for _, f := range i.fields {
-		f.applyToJoinJsonapiModel(instance)
-	}
-	return instance.value.Interface()
-}
-
-func (i *schemaInstance) ToPGModel() interface{} {
-	instance := i.schema.newPGModelInstance()
-	for _, f := range i.fields {
-		f.applyToPGModel(instance)
-	}
-	return instance.value.Interface()
-}
-
-func (i *schemaInstance) ToJoinPGModel() interface{} {
-	instance := i.schema.newJoinPGModelInstance()
-	for _, f := range i.fields {
-		f.applyToJoinPGModel(instance)
-	}
-	return instance.value.Interface()
-}
-
-func (i *schemaInstance) Validate(validate *validator.Validate) error {
-	for _, f := range i.fields {
-		err := f.validate(validate)
-		if err != nil {
-			return err
+			// NOTE: this validates any writable field,
+			// regardless if it has actually been set by the user
+			if validate != nil {
+				err = fieldInstance.validate(validate)
+				if err != nil {
+					return nil, err
+				}
+			}
 		}
+		fieldInstance.applyToResourceModel(target)
 	}
-	return nil
+
+	return target.value.Interface(), nil
 }
 
-func (s *schema) newResourceModelInstance() *resourceModelInstance {
+func (s *Schema) newResourceModelInstance() *resourceModelInstance {
 	v := reflect.New(s.resourceModelType)
 	return &resourceModelInstance{
 		schema: s,
@@ -420,7 +421,7 @@ func (s *schema) newResourceModelInstance() *resourceModelInstance {
 	}
 }
 
-func (s *schema) newJsonapiModelInstance() *jsonapiModelInstance {
+func (s *Schema) newJsonapiModelInstance() *jsonapiModelInstance {
 	v := reflect.New(s.jsonapiModelType)
 	return &jsonapiModelInstance{
 		schema: s,
@@ -428,7 +429,7 @@ func (s *schema) newJsonapiModelInstance() *jsonapiModelInstance {
 	}
 }
 
-func (s *schema) newJoinJsonapiModelInstance() *joinJsonapiModelInstance {
+func (s *Schema) newJoinJsonapiModelInstance() *joinJsonapiModelInstance {
 	v := reflect.New(s.joinJsonapiModelType)
 	return &joinJsonapiModelInstance{
 		schema: s,
@@ -436,7 +437,7 @@ func (s *schema) newJoinJsonapiModelInstance() *joinJsonapiModelInstance {
 	}
 }
 
-func (s *schema) newJoinPGModelInstance() *joinPGModelInstance {
+func (s *Schema) newJoinPGModelInstance() *joinPGModelInstance {
 	v := reflect.New(s.joinPGModelType)
 	return &joinPGModelInstance{
 		schema: s,
@@ -444,7 +445,7 @@ func (s *schema) newJoinPGModelInstance() *joinPGModelInstance {
 	}
 }
 
-func (s *schema) newPGModelInstance() *pgModelInstance {
+func (s *Schema) newPGModelInstance() *pgModelInstance {
 	v := reflect.New(s.pgModelType)
 	return &pgModelInstance{
 		schema: s,
