@@ -9,6 +9,7 @@ import (
 	"net/url"
 )
 
+// TODO: get rid of interfaces altogether
 type Resource interface {
 	Schema
 
