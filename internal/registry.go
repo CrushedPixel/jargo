@@ -60,7 +60,7 @@ func (r ResourceRegistry) registerResource(resourceModelType reflect.Type) {
 
 	// set value so the jsonapi and pg join models
 	// can be accessed in r.generateSchemaModels
-	r[resourceModelType] = &resource{schema}
+	r[resourceModelType] = &resource{schema: schema}
 
 	// create full schema definition including relations
 	r.generateSchemaModels(schema)

@@ -17,12 +17,21 @@ import (
 // implements api.Resource
 type resource struct {
 	*schema
+	initialized bool
 }
 
 func (r *resource) Initialize(db *pg.DB) error {
+	if r.initialized {
+		return nil
+	}
 	// for now, creating the table in the database
 	// is all that's needed to initialize a resource
-	return r.CreateTable(db)
+	err := r.CreateTable(db)
+	if err != nil {
+		return err
+	}
+	r.initialized = true
+	return nil
 }
 
 func (r *resource) ParseJsonapiPayload(in io.Reader, validate *validator.Validate) (interface{}, error) {

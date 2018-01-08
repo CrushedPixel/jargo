@@ -40,6 +40,7 @@ type Resource interface {
 	SelectOne(orm.DB) Query
 	SelectById(db orm.DB, id int64) Query
 
+	// Insert returns an Insert Query
 	Insert(db orm.DB, instances []interface{}) Query
 	InsertOne(db orm.DB, instance interface{}) Query
 

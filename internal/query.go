@@ -13,7 +13,6 @@ import (
 
 var errQueryType = errors.New("invalid query type")
 var errNotSelecting = errors.New("query type must be select")
-var errAlreadyExecuted = errors.New("query has already been executed")
 var errNoCollection = errors.New("query must be a collection")
 var errMismatchingResource = errors.New("resource does not match query resource")
 
@@ -98,9 +97,6 @@ func (q *Query) Raw() *orm.Query {
 
 func (q *Query) Fields(in api.FieldSet) api.Query {
 	fs := in.(*fieldSet)
-	if q.executed {
-		panic(errAlreadyExecuted)
-	}
 	if fs.resource != q.resource {
 		panic(errMismatchingResource)
 	}
@@ -110,52 +106,55 @@ func (q *Query) Fields(in api.FieldSet) api.Query {
 }
 
 func (q *Query) Sort(in api.SortFields) api.Query {
-	s := in.(*sortFields)
-	if q.typ != typeSelect {
-		panic(errNotSelecting)
+	if in == nil {
+		q.sort = nil
+	} else {
+		s := in.(*sortFields)
+		if q.typ != typeSelect {
+			panic(errNotSelecting)
+		}
+		if !q.collection {
+			panic(errNoCollection)
+		}
+		if s.resource != q.resource {
+			panic(errMismatchingResource)
+		}
+		q.sort = s
 	}
-	if q.executed {
-		panic(errAlreadyExecuted)
-	}
-	if !q.collection {
-		panic(errNoCollection)
-	}
-	if s.resource != q.resource {
-		panic(errMismatchingResource)
-	}
-	q.sort = s
 
 	return q
 }
 
 func (q *Query) Pagination(in api.Pagination) api.Query {
-	p := in.(*pagination)
-	if q.typ != typeSelect {
-		panic(errNotSelecting)
+	if in == nil {
+		q.pagination = nil
+	} else {
+		p := in.(*pagination)
+		if q.typ != typeSelect {
+			panic(errNotSelecting)
+		}
+		if !q.collection {
+			panic(errNoCollection)
+		}
+		q.pagination = p
 	}
-	if q.executed {
-		panic(errAlreadyExecuted)
-	}
-	if !q.collection {
-		panic(errNoCollection)
-	}
-	q.pagination = p
 
 	return q
 }
 
 func (q *Query) Filters(in api.Filters) api.Query {
-	f := in.(*filters)
-	if q.typ != typeSelect {
-		panic(errNotSelecting)
+	if in == nil {
+		q.filters = nil
+	} else {
+		f := in.(*filters)
+		if q.typ != typeSelect {
+			panic(errNotSelecting)
+		}
+		if f.resource != q.resource {
+			panic(errMismatchingResource)
+		}
+		q.filters = f
 	}
-	if q.executed {
-		panic(errAlreadyExecuted)
-	}
-	if f.resource != q.resource {
-		panic(errMismatchingResource)
-	}
-	q.filters = f
 
 	return q
 }
@@ -181,7 +180,7 @@ func (q *Query) Execute() (interface{}, error) {
 	return q.result, nil
 }
 
-// satisfies margo.Response
+// Send satisfies margo.Response
 func (q *Query) Send(c *gin.Context) error {
 	result, err := q.Result()
 	if err != nil {
