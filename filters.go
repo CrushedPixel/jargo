@@ -21,7 +21,7 @@ func newFilters(r *Resource, filter map[internal.SchemaField]map[string][]string
 func (f *Filters) applyToQuery(q *orm.Query) {
 	for field, options := range f.filter {
 		andWhereOr(q, field, "=", options["EQ"])
-		andWhereOr(q, field, "<>", options["NE"])
+		andWhereOr(q, field, "<>", options["NOT"])
 		andWhereOr(q, field, "LIKE", options["LIKE"])
 		andWhereOr(q, field, "<", options["LT"])
 		andWhereOr(q, field, "<=", options["LTE"])

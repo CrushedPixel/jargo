@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-var operators = []string{"EQ", "NE", "LIKE", "LT", "LTE", "GT", "GTE"}
+var operators = []string{"EQ", "NOT", "LIKE", "LT", "LTE", "GT", "GTE"}
 
 func errInvalidOperator(op string) error {
 	return errors.New(fmt.Sprintf(`unknown filter operator: %s`, op))
