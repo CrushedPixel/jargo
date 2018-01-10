@@ -114,7 +114,7 @@ func (r *Resource) SelectOne(db orm.DB) *Query {
 // selecting the Resource Instance with the given id.
 func (r *Resource) SelectById(db orm.DB, id int64) *Query {
 	q := r.SelectOne(db)
-	q.Filters(r.idFilter(id))
+	q.Filters(r.IdFilter(id))
 	return q
 }
 
@@ -180,7 +180,7 @@ func (r *Resource) DeleteOne(db orm.DB, instance interface{}) *Query {
 // deleting the Resource Instances with the given id.
 func (r *Resource) DeleteById(db orm.DB, id int64) *Query {
 	q := r.newQuery(db, typeDelete, false)
-	q.Filters(r.idFilter(id))
+	q.Filters(r.IdFilter(id))
 	return q
 }
 

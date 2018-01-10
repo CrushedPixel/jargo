@@ -154,6 +154,16 @@ func (app *Application) RegisterResource(model interface{}) (*Resource, error) {
 	return app.resources[s], nil
 }
 
+// MustRegisterResource calls RegisterResource
+// and panics if it encounters an error.
+func (app *Application) MustRegisterResource(model interface{}) *Resource {
+	r, err := app.RegisterResource(model)
+	if err != nil {
+		panic(err)
+	}
+	return r
+}
+
 // MaxPageSize returns the maximum number
 // of allowed entries per page for paginated results.
 func (app *Application) MaxPageSize() int {

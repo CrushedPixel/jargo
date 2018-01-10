@@ -50,13 +50,15 @@ func (f *Filter) applyToQuery(q *orm.Query, field internal.SchemaField) {
 
 // generates an AND WHERE (xxx OR xxx) clause
 func andWhereOr(q *orm.Query, field internal.SchemaField, op string, values []string) {
-	q.WhereGroup(func(q *orm.Query) (*orm.Query, error) {
-		for _, val := range values {
-			// go-pg does not escape the fields in where clauses,
-			// so we need to do it ourselves
-			f := escapePGColumn(field.PGFilterColumn())
-			q = q.WhereOr(fmt.Sprintf("%s %s ?", f, op), val)
-		}
-		return q, nil
-	})
+	if len(values) > 0 {
+		q.WhereGroup(func(q *orm.Query) (*orm.Query, error) {
+			for _, val := range values {
+				// go-pg does not escape the fields in where clauses,
+				// so we need to do it ourselves
+				f := escapePGColumn(field.PGFilterColumn())
+				q = q.WhereOr(fmt.Sprintf("%s %s ?", f, op), val)
+			}
+			return q, nil
+		})
+	}
 }

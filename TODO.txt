@@ -7,6 +7,7 @@ TODO:
 - more thorough unit testing
 - prevent has/has relations as they can't be modeled in the database
 - add support for many2many relations
+- improve Filters API to allow for OR and AND conjunctions of filter operators and values
 
 Gotchas:
 - only int64 ids are supported
