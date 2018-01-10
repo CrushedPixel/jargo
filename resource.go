@@ -317,48 +317,80 @@ func (r *Resource) ParseSortFields(query url.Values) (*SortFields, error) {
 //
 // Returns ErrInvalidQueryParams when encountering invalid query values.
 func (r *Resource) ParseFilters(query url.Values) (*Filters, error) {
-	parsed, err := parser.ParseFilterParameters(query)
-	if err != nil {
-		return nil, err
+	parsed := parser.ParseFilterParameters(query)
+
+	// convert parsed data into Filter map
+	f := make(map[string]*Filter)
+	for field, filters := range parsed {
+		filter := &Filter{}
+		for op, values := range filters {
+			switch strings.ToUpper(op) {
+			case "EQ":
+				filter.Eq = append(filter.Eq, values...)
+			case "NOT":
+				filter.Not = append(filter.Not, values...)
+			case "LIKE":
+				filter.Like = append(filter.Like, values...)
+			case "LT":
+				filter.Lt = append(filter.Lt, values...)
+			case "LTE":
+				filter.Lte = append(filter.Lte, values...)
+			case "GT":
+				filter.Gt = append(filter.Gt, values...)
+			case "GTE":
+				filter.Gte = append(filter.Gte, values...)
+			default:
+				return nil, ErrInvalidQueryParams(fmt.Sprintf(`unknown filter operator "%s"`, op))
+			}
+		}
+		f[field] = filter
 	}
 
-	filter := make(map[internal.SchemaField]map[string][]string)
-	for fieldName, operations := range parsed {
+	filters, err := r.Filters(f)
+	if err != nil {
+		return nil, ErrInvalidQueryParams(err.Error())
+	}
+	return filters, nil
+}
+
+// Filters returns a new Filters instance for a map of
+// JSON API field names and Filter instances.
+//
+// Returns an error if an entry of fields
+// is not a valid JSON API field name for this resource
+// or a filter operator is not supported.
+func (r *Resource) Filters(filters map[string]*Filter) (*Filters, error) {
+	f := make(map[internal.SchemaField]*Filter)
+	for fieldName, filter := range filters {
 		// find resource field with matching jsonapi name
 		var field internal.SchemaField
-		for _, f := range r.schema.Fields() {
-			if f.JSONAPIName() == fieldName {
-				field = f
+		for _, rf := range r.schema.Fields() {
+			if rf.JSONAPIName() == fieldName {
+				field = rf
 				break
 			}
 		}
 		if field == nil {
-			return nil, ErrInvalidQueryParams(fmt.Sprintf(`unknown filter parameter: "%s"`, fieldName))
+			return nil, fmt.Errorf(`unknown filter parameter: "%s"`, fieldName)
 		}
 		if !field.Filterable() {
-			return nil, ErrInvalidQueryParams(fmt.Sprintf(`filtering by "%s" is disabled`, fieldName))
+			return nil, fmt.Errorf(`filtering by "%s" is disabled`, fieldName)
 		}
 
-		filter[field] = operations
+		f[field] = filter
 	}
 
-	return newFilters(r, filter), nil
+	return newFilters(r, f), nil
 }
 
-// idFilter returns a Filters instance filtering by the id field
-func (r *Resource) idFilter(id int64) *Filters {
-	var idField internal.SchemaField
-	for _, field := range r.schema.Fields() {
-		if field.JSONAPIName() == internal.IdFieldJsonapiName {
-			idField = field
-		}
-	}
-	if idField == nil {
-		panic(errors.New("id field not found"))
+// IdFilter returns a Filters instance filtering by the id field
+func (r *Resource) IdFilter(id int64) *Filters {
+	f, err := r.Filters(map[string]*Filter{internal.IdFieldJsonapiName: {Eq: []string{strconv.FormatInt(id, 10)}}})
+	if err != nil {
+		panic(err)
 	}
 
-	filter := map[internal.SchemaField]map[string][]string{idField: {"EQ": {strconv.FormatInt(id, 10)}}}
-	return newFilters(r, filter)
+	return f
 }
 
 // Response returns a margo.Response that sends a

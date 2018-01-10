@@ -58,11 +58,6 @@ func newQuery(db orm.DB, resource *Resource, typ queryType, collection bool, pgM
 	}
 }
 
-// Raw returns the wrapped orm.Query.
-func (q *Query) Raw() *orm.Query {
-	return q.Query
-}
-
 // Fields sets a FieldSet instance
 // to apply on Query execution.
 // FieldSets are also applied to JSON API
@@ -190,7 +185,7 @@ func (q *Query) execute() {
 		} else {
 			fields = q.resource.allFields()
 		}
-		fields.applyToQuery(q.Raw())
+		fields.applyToQuery(q.Query)
 
 		if q.filters != nil {
 			q.filters.applyToQuery(q.Query)

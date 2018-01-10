@@ -15,4 +15,7 @@ Gotchas:
 
 Ideas:
 - add websocket support, mirroring all REST endpoints and adding PubSub capabilities
-- add authentication system to avoid having to write one for every new app
+- cache select query results in the context, making subsequent queries for the same resource
+  without a resource altering query between them return a cached result.
+  the default show/index handlers should use this cache, avoiding duplicate queries
+  if the library user e.g. does some access validation requiring the model in a middleware.
