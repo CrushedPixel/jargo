@@ -192,9 +192,14 @@ func (q *Query) execute() {
 		}
 
 		if q.collection {
+			var sort *SortFields
 			if q.sort != nil {
-				q.sort.applyToQuery(q.Query)
+				sort = q.sort
+			} else {
+				sort = q.resource.SortById()
 			}
+			sort.applyToQuery(q.Query)
+
 			if q.pagination != nil {
 				q.pagination.applyToQuery(q.Query)
 			}

@@ -272,24 +272,21 @@ func (r *Resource) allFields() *FieldSet {
 //
 // Returns ErrInvalidQueryParams when encountering invalid query values.
 func (r *Resource) ParseSortFields(query url.Values) (*SortFields, error) {
-	fields := parser.ParseSortParameters(query)
+	sort, err := r.SortFields(parser.ParseSortParameters(query))
+	if err != nil {
+		return nil, ErrInvalidQueryParams(err.Error())
+	}
+	return sort, nil
+}
 
-	sort := make(map[internal.SchemaField]bool)
-	for _, fieldName := range fields {
-		// skip empty sort parameters
-		if len(fieldName) < 1 {
-			continue
-		}
-
-		// if parameter is prefixed with '-', order is descending
-		var asc bool
-		if fieldName[0] == '-' {
-			asc = false
-			fieldName = fieldName[1:]
-		} else {
-			asc = true
-		}
-
+// SortFields returns a SortField instance for a map of
+// JSON API fields names and sort direction (true being ascending).
+//
+// Returns an error if a field is not
+// a valid JSON API field name for this resource.
+func (r *Resource) SortFields(sort map[string]bool) (*SortFields, error) {
+	s := make(map[internal.SchemaField]bool)
+	for fieldName, asc := range sort {
 		// find resource field with matching jsonapi name
 		var field internal.SchemaField
 		for _, rf := range r.schema.Fields() {
@@ -305,10 +302,20 @@ func (r *Resource) ParseSortFields(query url.Values) (*SortFields, error) {
 			return nil, errors.New(fmt.Sprintf(`sorting by "%s" is disabled`, fieldName))
 		}
 
-		sort[field] = asc
+		s[field] = asc
 	}
 
-	return newSortFields(r, sort), nil
+	return newSortFields(r, s), nil
+}
+
+// SortById returns a SortFields instance
+// sorting by the id field in descending order.
+func (r *Resource) SortById() *SortFields {
+	sort, err := r.SortFields(map[string]bool{"id": false})
+	if err != nil {
+		panic(err)
+	}
+	return sort
 }
 
 // ParseFilters parses filter query parameters according to JSON API spec,
@@ -353,10 +360,10 @@ func (r *Resource) ParseFilters(query url.Values) (*Filters, error) {
 	return filters, nil
 }
 
-// Filters returns a new Filters instance for a map of
+// Filters returns a Filters instance for a map of
 // JSON API field names and Filter instances.
 //
-// Returns an error if an entry of fields
+// Returns an error if a field
 // is not a valid JSON API field name for this resource
 // or a filter operator is not supported.
 func (r *Resource) Filters(filters map[string]*Filter) (*Filters, error) {

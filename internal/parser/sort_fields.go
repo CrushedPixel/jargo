@@ -5,11 +5,26 @@ import (
 	"strings"
 )
 
-func ParseSortParameters(query url.Values) []string {
-	values := make([]string, 0)
+func ParseSortParameters(query url.Values) map[string]bool {
+	values := make(map[string]bool)
 	if sort, ok := query["sort"]; ok {
 		for _, v := range sort {
-			values = append(values, strings.Split(v, ",")...)
+			for _, fieldName := range strings.Split(v, ",") {
+				// skip empty sort parameters
+				if len(fieldName) < 1 {
+					continue
+				}
+
+				asc := true
+				if fieldName[0] == '-' {
+					// if parameter is prefixed with a hyphen,
+					// order is descending
+					asc = false
+					fieldName = fieldName[1:]
+				}
+
+				values[fieldName] = asc
+			}
 		}
 	}
 
