@@ -151,15 +151,18 @@ func (q *Query) Execute() (interface{}, error) {
 func (q *Query) Send(c *gin.Context) error {
 	result, err := q.Result()
 	if err != nil {
-		if err == pg.ErrNoRows {
-			return ErrNotFound
-		}
 		return err
 	}
 
 	var response margo.Response
 	switch q.typ {
-	case typeSelect, typeInsert, typeUpdate:
+	case typeSelect:
+		if !q.collection && q.result == nil {
+			response = ErrNotFound
+		} else {
+			response = q.resource.Response(result, q.fields)
+		}
+	case typeInsert, typeUpdate:
 		var status int
 		if q.typ == typeInsert {
 			status = http.StatusCreated
@@ -206,20 +209,23 @@ func (q *Query) execute() {
 		}
 
 		q.executionError = q.Select()
-		break
+
+		// handle pg.ErrNoRows
+		if q.executionError == pg.ErrNoRows {
+			q.executionError = nil
+			q.result = nil
+			return
+		}
 	case typeInsert:
 		_, q.executionError = q.Insert()
-		break
 	case typeUpdate:
 		_, q.executionError = q.Update()
-		break
 	case typeDelete:
 		var result orm.Result
 		result, q.executionError = q.Delete()
 		if q.executionError == nil && result.RowsAffected() == 0 {
 			q.executionError = pg.ErrNoRows
 		}
-		break
 	default:
 		panic(errQueryType)
 	}

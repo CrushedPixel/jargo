@@ -1,8 +1,8 @@
 package internal
 
 import (
-	"github.com/go-pg/pg"
 	"fmt"
+	"github.com/go-pg/pg"
 )
 
 type updatedAtField struct {
@@ -24,7 +24,7 @@ const dropTriggerQuery = `
 DROP TRIGGER IF EXISTS jargo_updated_at_trigger_%s ON "%s"
 `
 
-const createTriggerQueryFormat = `
+const createTriggerQuery = `
 CREATE TRIGGER jargo_updated_at_trigger_%s
 BEFORE UPDATE ON "%s"
 FOR EACH ROW EXECUTE PROCEDURE jargo_updated_at_trigger_%s_func();
@@ -42,7 +42,7 @@ func (f *updatedAtField) afterCreateTable(db *pg.DB) error {
 			return err
 		}
 
-		_, err = tx.Exec(fmt.Sprintf(createTriggerQueryFormat, f.column, f.schema.table, f.column))
+		_, err = tx.Exec(fmt.Sprintf(createTriggerQuery, f.column, f.schema.table, f.column))
 		if err != nil {
 			return err
 		}
