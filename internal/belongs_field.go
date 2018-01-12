@@ -191,20 +191,22 @@ func (i *belongsToFieldInstance) applyToJoinPGModel(instance *joinPGModelInstanc
 		panic(errMismatchingSchema)
 	}
 
-	// extract id field from relation and apply value
-	// to pg id field
-	v := i.values[0]
-	var id *int64
-	for _, f := range v.fields {
-		if idField, ok := f.(*idFieldInstance); ok {
-			id = &idField.value
+	if len(i.values) > 0 {
+		// extract id field from relation and apply value
+		// to pg id field
+		v := i.values[0]
+		var id *int64
+		for _, f := range v.fields {
+			if idField, ok := f.(*idFieldInstance); ok {
+				id = &idField.value
+			}
 		}
-	}
-	if id == nil {
-		panic(errors.New("id field of related resource not found"))
-	}
+		if id == nil {
+			panic(errors.New("id field of related resource not found"))
+		}
 
-	instance.value.Elem().FieldByName(i.field.relationIdFieldName()).SetInt(*id)
+		instance.value.Elem().FieldByName(i.field.relationIdFieldName()).SetInt(*id)
+	}
 }
 
 func (i *belongsToFieldInstance) applyToJoinResourceModel(instance *resourceModelInstance) {
