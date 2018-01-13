@@ -139,6 +139,9 @@ func (i *belongsToFieldInstance) parsePGModel(instance *pgModelInstance) {
 // sets the value of the pg relation id field (e.g. UserId) to the id value
 // of the Schema instance stored in i.values[0]
 func (i *belongsToFieldInstance) applyToPGModel(instance *pgModelInstance) {
+	if i.field.schema != instance.schema {
+		panic(errMismatchingSchema)
+	}
 	if len(i.values) == 0 {
 		return
 	}
@@ -146,6 +149,11 @@ func (i *belongsToFieldInstance) applyToPGModel(instance *pgModelInstance) {
 	// extract id field from relation and apply value
 	// to pg id field
 	v := i.values[0]
+	// relations may be nil
+	if v == nil {
+		return
+	}
+
 	var id *int64
 	for _, f := range v.fields {
 		if idField, ok := f.(*idFieldInstance); ok {
@@ -155,6 +163,7 @@ func (i *belongsToFieldInstance) applyToPGModel(instance *pgModelInstance) {
 	if id == nil {
 		panic(errors.New("id field of related resource not found"))
 	}
+
 	instance.value.Elem().FieldByName(i.field.relationIdFieldName()).SetInt(*id)
 
 	// apply relation instance to pg model field
@@ -190,34 +199,46 @@ func (i *belongsToFieldInstance) applyToJoinPGModel(instance *joinPGModelInstanc
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-
-	if len(i.values) > 0 {
-		// extract id field from relation and apply value
-		// to pg id field
-		v := i.values[0]
-		var id *int64
-		for _, f := range v.fields {
-			if idField, ok := f.(*idFieldInstance); ok {
-				id = &idField.value
-			}
-		}
-		if id == nil {
-			panic(errors.New("id field of related resource not found"))
-		}
-
-		instance.value.Elem().FieldByName(i.field.relationIdFieldName()).SetInt(*id)
+	if len(i.values) == 0 {
+		return
 	}
+
+	// extract id field from relation and apply value
+	// to pg id field
+	v := i.values[0]
+	// relations may be nil
+	if v == nil {
+		return
+	}
+
+	var id *int64
+	for _, f := range v.fields {
+		if idField, ok := f.(*idFieldInstance); ok {
+			id = &idField.value
+		}
+	}
+	if id == nil {
+		panic(errors.New("id field of related resource not found"))
+	}
+
+	instance.value.Elem().FieldByName(i.field.relationIdFieldName()).SetInt(*id)
 }
 
 func (i *belongsToFieldInstance) applyToJoinResourceModel(instance *resourceModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-
-	if len(i.values) > 0 {
-		v := i.values[0]
-		rmi := v.toJoinResourceModel()
-
-		instance.value.Elem().FieldByName(i.field.fieldName).Set(reflect.ValueOf(rmi))
+	if len(i.values) == 0 {
+		return
 	}
+
+	v := i.values[0]
+	// relations may be nil
+	if v == nil {
+		return
+	}
+
+	rmi := v.toJoinResourceModel()
+
+	instance.value.Elem().FieldByName(i.field.fieldName).Set(reflect.ValueOf(rmi))
 }
