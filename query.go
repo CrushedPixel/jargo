@@ -209,13 +209,6 @@ func (q *Query) execute() {
 		}
 
 		q.executionError = q.Select()
-
-		// handle pg.ErrNoRows
-		if q.executionError == pg.ErrNoRows {
-			q.executionError = nil
-			q.result = nil
-			return
-		}
 	case typeInsert:
 		_, q.executionError = q.Insert()
 	case typeUpdate:
@@ -233,6 +226,13 @@ func (q *Query) execute() {
 	q.executed = true
 
 	if q.executionError != nil {
+		// handle pg.ErrNoRows
+		if q.executionError == pg.ErrNoRows {
+			q.executionError = nil
+			q.result = nil
+			return
+		}
+
 		return
 	}
 

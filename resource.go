@@ -118,20 +118,20 @@ func (r *Resource) SelectById(db orm.DB, id int64) *Query {
 	return q
 }
 
-// Insert returns a new Insert Many Query
-// inserting the Resource Model Instances provided.
-//
-// Panics if instances is not a Slice of Resource Model Instances.
-func (r *Resource) Insert(db orm.DB, instances []interface{}) *Query {
-	return r.newQueryFromResourceData(db, typeInsert, true, instances)
-}
-
-// Insert returns a new Insert One Query
+// InsertInstance returns a new Insert One Query
 // inserting the Resource Model Instance provided.
 //
 // Panics if instance is not a Resource Model Instance.
-func (r *Resource) InsertOne(db orm.DB, instance interface{}) *Query {
+func (r *Resource) InsertInstance(db orm.DB, instance interface{}) *Query {
 	return r.newQueryFromResourceData(db, typeInsert, false, instance)
+}
+
+// InsertCollection returns a new Insert Many Query
+// inserting the Resource Model Collection provided.
+//
+// Panics if instances is not a Slice of Resource Model Instances.
+func (r *Resource) InsertCollection(db orm.DB, instances []interface{}) *Query {
+	return r.newQueryFromResourceData(db, typeInsert, true, instances)
 }
 
 func (r *Resource) updateQuery(db orm.DB, collection bool, data interface{}) *Query {
@@ -144,40 +144,38 @@ func (r *Resource) updateQuery(db orm.DB, collection bool, data interface{}) *Qu
 	return q
 }
 
-// Update returns a new Update Many Query
-// updating the Resource Model Instances provided.
-//
-// Panics if instances is not a Slice of Resource Model Instances.
-func (r *Resource) Update(db orm.DB, instances []interface{}) *Query {
-	return r.updateQuery(db, true, instances)
-}
-
-// Update returns a new Update One Query
-// updating the Resource Model Instance provided.
+// Update returns a new Update Query
+// updating the values of the Resource Model Instance provided.
 //
 // Panics if instance is not a Resource Model Instance.
-func (r *Resource) UpdateOne(db orm.DB, instance interface{}) *Query {
+func (r *Resource) UpdateInstance(db orm.DB, instance interface{}) *Query {
 	return r.updateQuery(db, false, instance)
 }
 
-// Delete returns a new Delete Many Query
-// deleting the Resource Model Instances provided.
+// Update returns a new Update Many Query
+// updating the values of the Resource Model Collection provided.
 //
 // Panics if instances is not a Slice of Resource Model Instances.
-func (r *Resource) Delete(db orm.DB, instances []interface{}) *Query {
-	return r.newQueryFromResourceData(db, typeDelete, true, instances)
+func (r *Resource) UpdateCollection(db orm.DB, instances []interface{}) *Query {
+	return r.updateQuery(db, true, instances)
 }
 
-// DeleteOne returns a new Delete One Query
-// deleting the Resource Model Instance provided.
+// Delete returns a new Delete Query.
+func (r *Resource) Delete(db orm.DB) *Query {
+	return r.newQuery(db, typeDelete, true)
+}
+
+// DeleteInstance returns a new Delete Query
+// deleting the Resource Instance provided
+// (by id field).
 //
 // Panics if instance is not a Resource Model Instance.
-func (r *Resource) DeleteOne(db orm.DB, instance interface{}) *Query {
+func (r *Resource) DeleteInstance(db orm.DB, instance interface{}) *Query {
 	return r.newQueryFromResourceData(db, typeDelete, false, instance)
 }
 
-// Delete returns a new Delete One Query
-// deleting the Resource Instances with the given id.
+// DeleteById returns a new Delete Query
+// deleting the Resource Instance with the given id.
 func (r *Resource) DeleteById(db orm.DB, id int64) *Query {
 	q := r.newQuery(db, typeDelete, false)
 	q.Filters(r.IdFilter(id))

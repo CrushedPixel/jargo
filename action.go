@@ -136,7 +136,7 @@ func DefaultCreateResourceHandler(c *Context) margo.Response {
 		return NewErrorResponse(err)
 	}
 
-	return c.Resource().InsertOne(c.DB(), m).
+	return c.Resource().InsertInstance(c.DB(), m).
 		Fields(fields)
 }
 
@@ -155,7 +155,7 @@ func DefaultUpdateResourceHandler(c *Context) margo.Response {
 		return NewErrorResponse(err)
 	}
 
-	return c.Resource().UpdateOne(c.DB(), m).
+	return c.Resource().UpdateInstance(c.DB(), m).
 		Fields(fields)
 }
 
