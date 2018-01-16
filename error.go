@@ -25,8 +25,8 @@ type ApiError struct {
 }
 
 // Error satisfies the error interface.
-func (err *ApiError) Error() string {
-	return err.Detail
+func (e *ApiError) Error() string {
+	return e.Detail
 }
 
 // Send writes an error payload to the response body
@@ -34,19 +34,24 @@ func (err *ApiError) Error() string {
 // See http://jsonapi.org/format/#errors
 //
 // Satisfies the margo.Response interface.
-func (err *ApiError) Send(c *gin.Context) error {
-	c.Status(err.Status)
+func (e *ApiError) Send(c *gin.Context) error {
+	c.Status(e.Status)
 	c.Header("Content-Type", jsonapi.MediaType)
-	return jsonapi.MarshalErrors(c.Writer, []*jsonapi.ErrorObject{err.ToErrorObject()})
+	return jsonapi.MarshalErrors(c.Writer, []*jsonapi.ErrorObject{e.ToErrorObject()})
 }
 
 // ToErrorObject converts the ApiError to a jsonapi.ErrorObject.
-func (err *ApiError) ToErrorObject() *jsonapi.ErrorObject {
+func (e *ApiError) ToErrorObject() *jsonapi.ErrorObject {
+	u, err := uuid.NewV4()
+	if err != nil {
+		panic(err)
+	}
+
 	return &jsonapi.ErrorObject{
-		ID:     uuid.NewV4().String(),
-		Status: strconv.Itoa(err.Status),
-		Code:   err.Code,
-		Detail: err.Detail,
+		ID:     u.String(),
+		Status: strconv.Itoa(e.Status),
+		Code:   e.Code,
+		Detail: e.Detail,
 	}
 }
 
