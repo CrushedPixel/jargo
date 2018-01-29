@@ -20,8 +20,8 @@ type route struct {
 
 var (
 	showRoute   = route{http.MethodGet, "/:id"}
-	indexRoute  = route{http.MethodGet, "/"}
-	createRoute = route{http.MethodPost, "/"}
+	indexRoute  = route{http.MethodGet, ""}
+	createRoute = route{http.MethodPost, ""}
 	updateRoute = route{http.MethodPatch, "/:id"}
 	deleteRoute = route{http.MethodDelete, "/:id"}
 )
@@ -108,25 +108,25 @@ func (c *Controller) SetShowAction(action *Action) {
 }
 
 // IndexAction returns the Controller's index Action.
-// Shortcut for Action(http.MethodGet, "/")
+// Shortcut for Action(http.MethodGet, "")
 func (c *Controller) IndexAction() *Action {
 	return c.actions[indexRoute]
 }
 
 // SetIndexAction sets the Controller's index Action.
-// Shortcut for SetAction(http.MethodGet, "/")
+// Shortcut for SetAction(http.MethodGet, "")
 func (c *Controller) SetIndexAction(action *Action) {
 	c.actions[indexRoute] = action
 }
 
 // CreateAction returns the Controller's create Action.
-// Shortcut for Action(http.MethodPost, "/")
+// Shortcut for Action(http.MethodPost, "")
 func (c *Controller) CreateAction() *Action {
 	return c.actions[createRoute]
 }
 
 // SetCreateAction sets the Controller's create Action.
-// Shortcut for SetAction(http.MethodPost, "/")
+// Shortcut for SetAction(http.MethodPost, "")
 func (c *Controller) SetCreateAction(action *Action) {
 	c.actions[createRoute] = action
 }

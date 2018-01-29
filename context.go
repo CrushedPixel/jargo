@@ -181,10 +181,10 @@ func parseUpdateRequest(c *Context) (interface{}, error) {
 
 	instance, err := c.Resource().SelectById(c.DB(), id).Result()
 	if err != nil {
-		if err == pg.ErrNoRows {
-			return nil, ErrNotFound
-		}
 		return nil, err
+	}
+	if instance == nil {
+		return nil, ErrNotFound
 	}
 
 	return c.Resource().ParseJsonapiUpdatePayload(c.Request.Body, instance, c.Application().Validate())
