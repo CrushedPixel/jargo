@@ -13,6 +13,7 @@ import (
 	"github.com/json-iterator/go"
 	"github.com/go-pg/pg/orm"
 	"github.com/crushedpixel/jargo/internal"
+	"github.com/google/jsonapi"
 )
 
 const (
@@ -73,6 +74,8 @@ const (
 	MsgConnectionDisallowed = "CONNECTION_DISALLOWED"
 
 	subscribeChannelName = "subscribe"
+	deletedChannelName   = "deleted"
+	updatedChannelName   = "updated"
 
 	MsgOk              = `{"status":"ok"}`
 	MsgInvalidResource = `{"error":"INVALID_RESOURCE"}`
@@ -151,6 +154,9 @@ func NewRealtime(app *Application, path string) *Realtime {
 		MaySubscribe: defaultMaySubscribeFunc,
 
 		connectingSockets: make(chan *glue.Socket, 0),
+
+		subscriptions: make(map[*glue.Socket]map[*Resource][]int64),
+		subscriptionsMutex: &sync.Mutex{},
 	}
 
 	s.OnNewSocket(r.onNewSocket)
@@ -252,6 +258,7 @@ func (r *Realtime) handleRowUpdates(channel <-chan *pg.Notification) {
 			// of this resource (through relationships)
 			affected := make(map[*Resource][]int64)
 
+			var modifiedInstance *internal.SchemaInstance
 			if payload.Type == "INSERT" || payload.Type == "DELETE" {
 				var recordPayload string
 				if payload.Type == "INSERT" {
@@ -267,8 +274,8 @@ func (r *Realtime) handleRowUpdates(channel <-chan *pg.Notification) {
 
 				// get all resources this resource was/is now
 				// related to and add them to the affected map
-				s := resource.schema.ParsePGModel(instance)
-				for schema, ids := range s.GetRelationIds() {
+				modifiedInstance = resource.schema.ParsePGModel(instance)
+				for schema, ids := range modifiedInstance.GetRelationIds() {
 					// get resource for schema
 					for _, res := range r.app.resources {
 						if res.schema == schema {
@@ -287,7 +294,8 @@ func (r *Realtime) handleRowUpdates(channel <-chan *pg.Notification) {
 				if err != nil {
 					panic(err)
 				}
-				newRelations := resource.schema.ParsePGModel(newInstance).GetRelationIds()
+				modifiedInstance = resource.schema.ParsePGModel(newInstance)
+				newRelations := modifiedInstance.GetRelationIds()
 
 				// create a changeset of all of the resources' relations
 				changeset := make(map[*internal.Schema][]int64)
@@ -319,7 +327,40 @@ func (r *Realtime) handleRowUpdates(channel <-chan *pg.Notification) {
 				panic(errors.New("unknown trigger event type"))
 			}
 
-			// TODO: send updated resources to subscribed clients as JSON API payload
+			// send updated resource to subscribed clients as JSON API payload
+			sockets := r.subscribers(resource, payload.Id)
+			if len(sockets) > 0 {
+				if payload.Type == "DELETED" {
+					err := sendResourceDeleted(sockets, resource, payload.Id)
+					if err != nil {
+						panic(err)
+					}
+				} else {
+					err := sendResourceUpdated(sockets, resource, payload.Id, modifiedInstance)
+					if err != nil {
+						panic(err)
+					}
+				}
+			}
+
+			// send updates for all other affected resources to subscribed clients
+			for resource, ids := range affected {
+				for _, id := range ids {
+					sockets := r.subscribers(resource, id)
+					if len(sockets) > 0 {
+						// fetch updated resource instance from database
+						m, err := resource.SelectById(r.app.DB(), id).Result()
+						if err != nil {
+							panic(err)
+						}
+						instance := resource.schema.ParseResourceModel(m)
+						err = sendResourceUpdated(sockets, resource, payload.Id, instance)
+						if err != nil {
+							panic(err)
+						}
+					}
+				}
+			}
 
 			break
 		case <-r.release:
@@ -392,4 +433,77 @@ func (r *Realtime) onSubscribeRead(socket *glue.Socket, messageId string, data s
 	r.subscriptionsMutex.Unlock()
 
 	return cement.CodeOk, MsgOk
+}
+
+// subscribers returns all sockets that are subscribed to a resource instance.
+func (r *Realtime) subscribers(resource *Resource, id int64) []*glue.Socket {
+	var sockets []*glue.Socket
+	r.subscriptionsMutex.Lock()
+	for socket, subscriptions := range r.subscriptions {
+		for _, i := range subscriptions[resource] {
+			if id == i {
+				sockets = append(sockets, socket)
+			}
+		}
+	}
+	r.subscriptionsMutex.Unlock()
+	return sockets
+}
+
+type resourceDeletedPayload struct {
+	Model string `json:"model"`
+	Id    int64  `json:"id,string"`
+}
+
+func sendResourceDeleted(sockets []*glue.Socket, resource *Resource, id int64) error {
+	b, err := jsoniter.ConfigDefault.Marshal(&resourceDeletedPayload{
+		Model: resource.JSONAPIName(),
+		Id:    id,
+	})
+	if err != nil {
+		return err
+	}
+	str := string(b)
+	for _, socket := range sockets {
+		channel := socket.Channel(deletedChannelName)
+		channel.DiscardRead()
+		channel.Write(str)
+	}
+	return nil
+}
+
+type resourceUpdatedPayload struct {
+	Model   string `json:"model"`
+	Id      int64  `json:"id,string"`
+	Payload string `json:"payload"`
+}
+
+func sendResourceUpdated(sockets []*glue.Socket, resource *Resource, id int64, instance *internal.SchemaInstance) error {
+	p, err := jsonapi.Marshal(instance.ToJsonapiModel())
+	if err != nil {
+		return err
+	}
+	payload := p.(*jsonapi.OnePayload)
+	payload.Included = nil
+
+	resourceBytes, err := jsoniter.ConfigDefault.Marshal(p)
+	if err != nil {
+		return err
+	}
+
+	b, err := jsoniter.ConfigDefault.Marshal(&resourceUpdatedPayload{
+		Model:   resource.JSONAPIName(),
+		Id:      id,
+		Payload: string(resourceBytes),
+	})
+	if err != nil {
+		return err
+	}
+	str := string(b)
+	for _, socket := range sockets {
+		channel := socket.Channel(updatedChannelName)
+		channel.DiscardRead()
+		channel.Write(str)
+	}
+	return nil
 }
