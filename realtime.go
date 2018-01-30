@@ -155,7 +155,7 @@ func NewRealtime(app *Application, path string) *Realtime {
 
 		connectingSockets: make(chan *glue.Socket, 0),
 
-		subscriptions: make(map[*glue.Socket]map[*Resource][]int64),
+		subscriptions:      make(map[*glue.Socket]map[*Resource][]int64),
 		subscriptionsMutex: &sync.Mutex{},
 	}
 
@@ -255,9 +255,12 @@ func (r *Realtime) handleRowUpdates(channel <-chan *pg.Notification) {
 			}
 
 			// map of all resources affected by the change
-			// of this resource (through relationships)
 			affected := make(map[*Resource][]int64)
+			// add the resource that was directly modified
+			affected[resource] = []int64{payload.Id}
 
+			// add all resources that were affected by the resources
+			// relationships being modified
 			var modifiedInstance *internal.SchemaInstance
 			if payload.Type == "INSERT" || payload.Type == "DELETE" {
 				var recordPayload string
@@ -327,23 +330,7 @@ func (r *Realtime) handleRowUpdates(channel <-chan *pg.Notification) {
 				panic(errors.New("unknown trigger event type"))
 			}
 
-			// send updated resource to subscribed clients as JSON API payload
-			sockets := r.subscribers(resource, payload.Id)
-			if len(sockets) > 0 {
-				if payload.Type == "DELETED" {
-					err := sendResourceDeleted(sockets, resource, payload.Id)
-					if err != nil {
-						panic(err)
-					}
-				} else {
-					err := sendResourceUpdated(sockets, resource, payload.Id, modifiedInstance)
-					if err != nil {
-						panic(err)
-					}
-				}
-			}
-
-			// send updates for all other affected resources to subscribed clients
+			// send updates for all affected resources to subscribed clients
 			for resource, ids := range affected {
 				for _, id := range ids {
 					sockets := r.subscribers(resource, id)
