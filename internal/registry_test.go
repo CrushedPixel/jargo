@@ -8,6 +8,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"github.com/json-iterator/go"
 )
 
 type Age int
@@ -150,7 +151,7 @@ func TestRegistry_RegisterSchema(t *testing.T) {
 	jsonapi.MarshalPayloadWithoutIncluded(os.Stdout, j1)
 
 	p1 := instance.ToResourceModel()
-	bytes, err := json.Marshal(p1)
+	bytes, err := jsoniter.ConfigDefault.Marshal(p1)
 	require.Nil(t, err)
 	println(string(bytes))
 
@@ -171,7 +172,7 @@ func TestRegistry_RegisterSchema(t *testing.T) {
 	jsonapi.MarshalPayloadWithoutIncluded(os.Stdout, j1)
 
 	p1 = instance.ToPGModel()
-	bytes, err = json.Marshal(p1)
+	bytes, err = jsoniter.ConfigDefault.Marshal(p1)
 	require.Nil(t, err)
 	println(string(bytes))
 }
