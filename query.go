@@ -12,6 +12,7 @@ import (
 
 var errQueryType = errors.New("invalid query type")
 var errNotSelecting = errors.New("query type must be select")
+var errNotSelectingOrDeleting = errors.New("query type must be select or delete")
 var errNoCollection = errors.New("query must be a collection")
 var errMismatchingResource = errors.New("resource does not match query resource")
 
@@ -111,8 +112,8 @@ func (q *Query) Pagination(p *Pagination) *Query {
 //
 // Panics if Query is not a Select Query.
 func (q *Query) Filters(f *Filters) *Query {
-	if q.typ != typeSelect {
-		panic(errNotSelecting)
+	if q.typ != typeSelect && q.typ != typeDelete {
+		panic(errNotSelectingOrDeleting)
 	}
 	if f.resource != q.resource {
 		panic(errMismatchingResource)
@@ -171,7 +172,11 @@ func (q *Query) Send(c *gin.Context) error {
 		}
 		response = q.resource.ResponseWithStatusCode(result, q.fields, status)
 	case typeDelete:
-		response = margo.Empty(http.StatusNoContent)
+		if !q.collection && q.result == nil {
+			response = ErrNotFound
+		} else {
+			response = margo.Empty(http.StatusNoContent)
+		}
 	}
 
 	return response.Send(c)
@@ -214,6 +219,10 @@ func (q *Query) execute() {
 	case typeUpdate:
 		_, q.executionError = q.Update()
 	case typeDelete:
+		if q.filters != nil {
+			q.filters.applyToQuery(q.Query)
+		}
+
 		var result orm.Result
 		result, q.executionError = q.Delete()
 		if q.executionError == nil && result.RowsAffected() == 0 {
