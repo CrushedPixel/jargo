@@ -255,11 +255,9 @@ func (r *Realtime) handleRowUpdates(channel <-chan *pg.Notification) {
 			}
 
 			// map of all resources affected by the change
-			affected := make(map[*Resource][]int64)
-			// add the resource that was directly modified
-			affected[resource] = []int64{payload.Id}
+			updated := make(map[*Resource][]int64)
 
-			// add all resources that were affected by the resources
+			// add all resources that were updated by the resources'
 			// relationships being modified
 			var modifiedInstance *internal.SchemaInstance
 			if payload.Type == "INSERT" || payload.Type == "DELETE" {
@@ -276,13 +274,13 @@ func (r *Realtime) handleRowUpdates(channel <-chan *pg.Notification) {
 				}
 
 				// get all resources this resource was/is now
-				// related to and add them to the affected map
+				// related to and add them to the updated map
 				modifiedInstance = resource.schema.ParsePGModel(instance)
 				for schema, ids := range modifiedInstance.GetRelationIds() {
 					// get resource for schema
 					for _, res := range r.app.resources {
 						if res.schema == schema {
-							affected[res] = ids
+							updated[res] = ids
 						}
 					}
 				}
@@ -317,12 +315,12 @@ func (r *Realtime) handleRowUpdates(channel <-chan *pg.Notification) {
 					changeset[schema] = append(changeset[schema], added...)
 				}
 
-				// apply changeset to affected map
+				// apply changeset to updated map
 				for schema, ids := range changeset {
 					// get resource for schema
 					for _, res := range r.app.resources {
 						if res.schema == schema {
-							affected[res] = ids
+							updated[res] = ids
 						}
 					}
 				}
@@ -330,8 +328,18 @@ func (r *Realtime) handleRowUpdates(channel <-chan *pg.Notification) {
 				panic(errors.New("unknown trigger event type"))
 			}
 
-			// send updates for all affected resources to subscribed clients
-			for resource, ids := range affected {
+			if payload.Type == "DELETE" {
+				sockets := r.subscribers(resource, payload.Id)
+				if len(sockets) > 0 {
+					sendResourceDeleted(sockets, resource, payload.Id)
+				}
+			} else {
+				// add resource to map of resources that were updated
+				updated[resource] = append(updated[resource], payload.Id)
+			}
+
+			// send updates for all updated resources to subscribed clients
+			for resource, ids := range updated {
 				for _, id := range ids {
 					sockets := r.subscribers(resource, id)
 					if len(sockets) > 0 {
