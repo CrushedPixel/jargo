@@ -1,0 +1,395 @@
+package jargo
+
+import (
+	"github.com/desertbit/glue"
+	"net/http"
+	"time"
+	"errors"
+	"encoding/json"
+	"github.com/crushedpixel/cement"
+	"sync"
+	"fmt"
+	"github.com/go-pg/pg"
+	"github.com/json-iterator/go"
+	"github.com/go-pg/pg/orm"
+	"github.com/crushedpixel/jargo/internal"
+)
+
+const (
+	triggerFunctionName = "jargo_realtime_notify"
+	notifyChannel       = "jargo_realtime"
+)
+
+const triggerFunctionQuery = `
+CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    PERFORM pg_notify('%s', json_build_object('table', TG_TABLE_NAME,
+      'id', NEW.id, 'type', TG_OP,
+      'new', row_to_json(NEW)::text
+    )::text);
+  ELSIF TG_OP = 'DELETE' THEN
+    PERFORM pg_notify('%s', json_build_object('table', TG_TABLE_NAME,
+      'id', OLD.id, 'type', TG_OP,
+      'old', row_to_json(OLD)::text
+    )::text);
+  ELSIF TG_OP = 'UPDATE' THEN
+    PERFORM pg_notify('%s', json_build_object('table', TG_TABLE_NAME,
+      'id', OLD.id, 'type', TG_OP,
+      'old', row_to_json(OLD)::text,
+      'new', row_to_json(NEW)::text
+    )::text);
+  ELSE
+    RAISE EXCEPTION 'Invalid Trigger Operation: %%', TG_OP;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+`
+
+// notificationPayload is a struct representation
+// of the json payload sent to jargo_realtime listeners
+type notificationPayload struct {
+	// The table name of the modified record
+	Table string `json:"table"`
+	// The id of the modified record
+	Id int64 `json:"id"`
+	// Type of the action made to the row
+	Type string `json:"type"`
+	// The original record, json-encoded
+	OldRecord string `json:"old"`
+	// The modified record, json-encoded
+	NewRecord string `json:"new"`
+}
+
+const (
+	// MsgConnectionTimeout is sent to the client
+	// if they don't send a connection message
+	// before Realtime.ConnectionMessageTimeout is exceeded.
+	MsgConnectionTimeout = "CONNECTION_TIMEOUT"
+
+	// MsgConnectionDisallowed is sent to the client
+	// if Realtime.HandleConnection returns false.
+	MsgConnectionDisallowed = "CONNECTION_DISALLOWED"
+
+	subscribeChannelName = "subscribe"
+
+	MsgOk              = `{"status":"ok"}`
+	MsgInvalidResource = `{"error":"INVALID_RESOURCE"}`
+	MsgAccessDenied    = `{"error":"ACCESS_DENIED"}`
+)
+
+type Realtime struct {
+	*glue.Server
+	Path string
+
+	app *Application
+
+	// ConnectionMessageTimeout is the time
+	// to wait for the connection message.
+	// Defaults to 10s.
+	ConnectionMessageTimeout time.Duration
+
+	// HandleConnection is is the HandleConnectionFunc
+	// to be invoked when a new socket connection
+	// has sent their connection message.
+	// If it returns true, the connection is allowed, otherwise
+	// it is immediately closed.
+	// Defaults to a function always returning true.
+	HandleConnection HandleConnectionFunc
+
+	MaySubscribe MaySubscribeFunc
+
+	// subscriptions is a map containing all subscriptions
+	// for a socket.
+	subscriptions map[*glue.Socket]map[*Resource][]int64
+	// subscriptionsMutex is the mutex protecting subscriptions
+	subscriptionsMutex *sync.Mutex
+
+	// connectingSockets is the channel to which
+	// all sockets that have just connected are written.
+	connectingSockets chan *glue.Socket
+
+	// release is the channel that signals internal goroutines
+	// to finish execution when closed
+	release chan *struct{}
+
+	// started is used to assure Start() is only called
+	// once on each Realtime instance.
+	started bool
+}
+
+type HandleConnectionFunc func(socket *glue.Socket, message string) bool
+type MaySubscribeFunc func(socket *glue.Socket, resource *Resource, id int64) bool
+
+func defaultHandleConnectionFunc(*glue.Socket, string) bool {
+	return true
+}
+
+func defaultMaySubscribeFunc(*glue.Socket, *Resource, int64) bool {
+	return true
+}
+
+func NewRealtime(app *Application, path string) *Realtime {
+	s := glue.NewServer(glue.Options{
+		HTTPSocketType: glue.HTTPSocketTypeNone,
+		HTTPHandleURL:  path,
+		CheckOrigin: func(r *http.Request) bool {
+			return true // TODO
+		},
+	})
+
+	r := &Realtime{
+		Server: s,
+		Path:   path,
+
+		app: app,
+
+		ConnectionMessageTimeout: 10 * time.Second,
+		HandleConnection:         defaultHandleConnectionFunc,
+
+		MaySubscribe: defaultMaySubscribeFunc,
+
+		connectingSockets: make(chan *glue.Socket, 0),
+	}
+
+	s.OnNewSocket(r.onNewSocket)
+
+	return r
+}
+
+func (r *Realtime) onNewSocket(s *glue.Socket) {
+	r.connectingSockets <- s
+}
+
+func (r *Realtime) Start() error {
+	if r.started {
+		panic(errors.New("a Realtime instance may only be started once"))
+	}
+
+	r.started = true
+	r.release = make(chan *struct{}, 0)
+
+	// create trigger function calling notify
+	_, err := r.app.DB().Exec(fmt.Sprintf(triggerFunctionQuery,
+		triggerFunctionName, notifyChannel, notifyChannel, notifyChannel,
+	))
+	if err != nil {
+		return err
+	}
+
+	// create triggers on database tables
+	for _, resource := range r.app.resources {
+		err := resource.schema.CreateRealtimeTriggers(r.app.DB(), triggerFunctionName)
+		if err != nil {
+			return err
+		}
+	}
+
+	// create notification channel for database trigger
+	notificationChannel := r.app.DB().Listen(notifyChannel).Channel()
+
+	go r.handleConnectingSockets()
+	go r.handleRowUpdates(notificationChannel)
+	return nil
+}
+
+func (r *Realtime) Release() {
+	r.Server.Release()
+	close(r.release)
+}
+
+func (r *Realtime) handleConnectingSockets() {
+	for {
+		select {
+		case socket := <-r.connectingSockets:
+			message, err := socket.Read(r.ConnectionMessageTimeout)
+			if err != nil {
+				if err != glue.ErrSocketClosed {
+					// no connection message received
+					socket.Write(MsgConnectionTimeout)
+					socket.Close()
+				}
+				break
+			}
+			if !r.HandleConnection(socket, message) {
+				// connection disallowed
+				socket.Write(MsgConnectionDisallowed)
+				socket.Close()
+				break
+			}
+
+			r.initSocketConnection(socket)
+		case <-r.release:
+			// closing the release channel escapes the for loop
+			return
+		}
+	}
+}
+
+func (r *Realtime) handleRowUpdates(channel <-chan *pg.Notification) {
+	for {
+		select {
+		case notification := <-channel:
+			payload := &notificationPayload{}
+			err := json.Unmarshal([]byte(notification.Payload), payload)
+			if err != nil {
+				panic(err)
+			}
+
+			var resource *Resource
+			for _, res := range r.app.resources {
+				if res.schema.Table() == payload.Table {
+					resource = res
+					break
+				}
+			}
+			if resource == nil {
+				panic(errors.New("resource for table name not found"))
+			}
+
+			// map of all resources affected by the change
+			// of this resource (through relationships)
+			affected := make(map[*Resource][]int64)
+
+			if payload.Type == "INSERT" || payload.Type == "DELETE" {
+				var recordPayload string
+				if payload.Type == "INSERT" {
+					recordPayload = payload.NewRecord
+				} else {
+					recordPayload = payload.OldRecord
+				}
+
+				instance, err := decodeJsonRecord(resource, recordPayload)
+				if err != nil {
+					panic(err)
+				}
+
+				// get all resources this resource was/is now
+				// related to and add them to the affected map
+				s := resource.schema.ParsePGModel(instance)
+				for schema, ids := range s.GetRelationIds() {
+					// get resource for schema
+					for _, res := range r.app.resources {
+						if res.schema == schema {
+							affected[res] = ids
+						}
+					}
+				}
+			} else if payload.Type == "UPDATE" {
+				oldInstance, err := decodeJsonRecord(resource, payload.OldRecord)
+				if err != nil {
+					panic(err)
+				}
+				oldRelations := resource.schema.ParsePGModel(oldInstance).GetRelationIds()
+
+				newInstance, err := decodeJsonRecord(resource, payload.NewRecord)
+				if err != nil {
+					panic(err)
+				}
+				newRelations := resource.schema.ParsePGModel(newInstance).GetRelationIds()
+
+				// create a changeset of all of the resources' relations
+				changeset := make(map[*internal.Schema][]int64)
+
+				// get all relations that were removed
+				for schema, oldIds := range oldRelations {
+					newIds := newRelations[schema]
+					removed := difference(oldIds, newIds)
+					changeset[schema] = append(changeset[schema], removed...)
+				}
+
+				// get all relations that were added
+				for schema, newIds := range newRelations {
+					oldIds := oldRelations[schema]
+					added := difference(newIds, oldIds)
+					changeset[schema] = append(changeset[schema], added...)
+				}
+
+				// apply changeset to affected map
+				for schema, ids := range changeset {
+					// get resource for schema
+					for _, res := range r.app.resources {
+						if res.schema == schema {
+							affected[res] = ids
+						}
+					}
+				}
+			} else {
+				panic(errors.New("unknown trigger event type"))
+			}
+
+			// TODO: send updated resources to subscribed clients as JSON API payload
+
+			break
+		case <-r.release:
+			// closing the release channel escapes the for loop
+			return
+		}
+	}
+}
+
+// decodeJsonRecord parses a json-encoded record into a pg model instance
+func decodeJsonRecord(resource *Resource, payload string) (interface{}, error) {
+	instance := resource.schema.NewPGModelInstance()
+	model, err := orm.NewModel(instance)
+	if err != nil {
+		return nil, err
+	}
+
+	it := jsoniter.ParseString(jsoniter.ConfigDefault, payload)
+	record := it.ReadAny()
+	for i, key := range record.Keys() {
+		model.ScanColumn(i, key, []byte(record.Get(key).ToString()))
+	}
+
+	return instance, nil
+}
+
+func (r *Realtime) initSocketConnection(socket *glue.Socket) {
+	subscribeChannel := socket.Channel(subscribeChannelName)
+	subscribeChannel.OnRead(cement.Glue(subscribeChannel, r.onSubscribeRead))
+}
+
+type subscribePayload struct {
+	Model string `json:"model"`
+	Id    int64  `json:"id,string"`
+}
+
+func (r *Realtime) onSubscribeRead(socket *glue.Socket, messageId string, data string) (int, string) {
+	payload := &subscribePayload{}
+	err := json.Unmarshal([]byte(data), payload)
+	if err != nil {
+		return cement.CodeError, cement.MsgInvalidPayload
+	}
+
+	// get resource with from application's registry
+	var resource *Resource
+	for schema, r := range r.app.resources {
+		if payload.Model == schema.JSONAPIName() {
+			resource = r
+			break
+		}
+	}
+	if resource == nil {
+		return cement.CodeError, MsgInvalidResource
+	}
+
+	// call MaySubscribe hook
+	if !r.MaySubscribe(socket, resource, payload.Id) {
+		return cement.CodeError, MsgAccessDenied
+	}
+
+	// subscribe client to resource
+	r.subscriptionsMutex.Lock()
+	s, ok := r.subscriptions[socket]
+	if !ok {
+		s = make(map[*Resource][]int64)
+		r.subscriptions[socket] = s
+	}
+
+	s[resource] = append(s[resource], payload.Id)
+	r.subscriptionsMutex.Unlock()
+
+	return cement.CodeOk, MsgOk
+}

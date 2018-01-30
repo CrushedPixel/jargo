@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/url"
 	"reflect"
+	"net/http"
 )
 
 // DefaultMaxPageSize is the default maximum number
@@ -41,6 +42,8 @@ func DefaultErrorHandler(c *gin.Context, r interface{}) {
 // Application is the central component of jargo.
 type Application struct {
 	*margo.Application
+
+	Realtime *Realtime
 
 	db *pg.DB
 
@@ -189,6 +192,18 @@ func (app *Application) ParsePagination(query url.Values) (*Pagination, error) {
 
 // Run starts the Application,
 // serving HTTP requests on the specified address.
-func (app *Application) Run(addr ...string) error {
-	return app.Application.Run(addr...)
+func (app *Application) Run(address string) error {
+	mux := http.NewServeMux()
+	mux.Handle("/", app.Application)
+
+	if app.Realtime != nil {
+		err := app.Realtime.Start()
+		if err != nil {
+			return err
+		}
+		defer app.Realtime.Release()
+		mux.Handle(app.Realtime.Path, app.Realtime)
+	}
+
+	return http.ListenAndServe(address, mux)
 }

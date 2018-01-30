@@ -8,6 +8,7 @@ import (
 	"gopkg.in/go-playground/validator.v9"
 	"io"
 	"reflect"
+	"fmt"
 )
 
 // resource model -> resource Schema
@@ -23,6 +24,17 @@ var (
 	errInvalidPGCollection        = errors.New("collection must be slice of pointers to pg model")
 	errInvalidJoinPGInstance      = errors.New("instance must be pointer to join pg model")
 )
+
+const realtimeTriggerQuery = `
+DROP TRIGGER IF EXISTS jargo_%s_notify_update ON "%s";
+CREATE TRIGGER jargo_%s_notify_update AFTER UPDATE ON "%s" FOR EACH ROW EXECUTE PROCEDURE %s();
+
+DROP TRIGGER IF EXISTS jargo_%s_notify_insert ON "%s";
+CREATE TRIGGER jargo_%s_notify_insert AFTER INSERT ON "%s" FOR EACH ROW EXECUTE PROCEDURE %s();
+
+DROP TRIGGER IF EXISTS jargo_%s_notify_delete ON "%s";
+CREATE TRIGGER jargo_%s_notify_delete AFTER DELETE ON "%s" FOR EACH ROW EXECUTE PROCEDURE %s();
+`
 
 type Schema struct {
 	name  string // jsonapi member name
@@ -44,6 +56,10 @@ type Schema struct {
 
 func (s *Schema) JSONAPIName() string {
 	return s.name
+}
+
+func (s *Schema) Table() string {
+	return s.table
 }
 
 func (s *Schema) Fields() []SchemaField {
@@ -69,6 +85,15 @@ func (s *Schema) CreateTable(db *pg.DB) error {
 	}
 
 	return nil
+}
+
+func (s *Schema) CreateRealtimeTriggers(db *pg.DB, functionName string) error {
+	_, err := db.Exec(fmt.Sprintf(realtimeTriggerQuery,
+		s.table, s.table, s.table, s.table, functionName, // UPDATE
+		s.table, s.table, s.table, s.table, functionName, // INSERT
+		s.table, s.table, s.table, s.table, functionName, // DELETE
+	))
+	return err
 }
 
 func (s *Schema) IsResourceModelCollection(data interface{}) bool {
