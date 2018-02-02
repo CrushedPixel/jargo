@@ -82,6 +82,22 @@ const (
 	MsgAccessDenied    = `{"error":"ACCESS_DENIED"}`
 )
 
+type subscribePayload struct {
+	Model string `json:"model"`
+	Id    int64  `json:"id,string"`
+}
+
+type resourceDeletedPayload struct {
+	Model string `json:"model"`
+	Id    int64  `json:"id,string"`
+}
+
+type resourceUpdatedPayload struct {
+	Model   string `json:"model"`
+	Id      int64  `json:"id,string"`
+	Payload string `json:"payload"`
+}
+
 type Realtime struct {
 	*glue.Server
 	Path string
@@ -387,11 +403,6 @@ func (r *Realtime) initSocketConnection(socket *glue.Socket) {
 	subscribeChannel.OnRead(cement.Glue(subscribeChannel, r.onSubscribeRead))
 }
 
-type subscribePayload struct {
-	Model string `json:"model"`
-	Id    int64  `json:"id,string"`
-}
-
 func (r *Realtime) onSubscribeRead(socket *glue.Socket, messageId string, data string) (int, string) {
 	payload := &subscribePayload{}
 	err := json.Unmarshal([]byte(data), payload)
@@ -445,11 +456,6 @@ func (r *Realtime) subscribers(resource *Resource, id int64) []*glue.Socket {
 	return sockets
 }
 
-type resourceDeletedPayload struct {
-	Model string `json:"model"`
-	Id    int64  `json:"id,string"`
-}
-
 func sendResourceDeleted(sockets []*glue.Socket, resource *Resource, id int64) error {
 	b, err := jsoniter.ConfigDefault.Marshal(&resourceDeletedPayload{
 		Model: resource.JSONAPIName(),
@@ -465,12 +471,6 @@ func sendResourceDeleted(sockets []*glue.Socket, resource *Resource, id int64) e
 		channel.Write(str)
 	}
 	return nil
-}
-
-type resourceUpdatedPayload struct {
-	Model   string `json:"model"`
-	Id      int64  `json:"id,string"`
-	Payload string `json:"payload"`
 }
 
 func sendResourceUpdated(sockets []*glue.Socket, resource *Resource, id int64, instance *internal.SchemaInstance) error {
