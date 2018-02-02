@@ -2,55 +2,24 @@ package jargo
 
 import (
 	"errors"
-	"fmt"
 	"github.com/crushedpixel/jargo/internal"
-	"github.com/crushedpixel/margo"
-	"github.com/gin-gonic/gin"
 	"github.com/go-pg/pg"
 	"gopkg.in/go-playground/validator.v9"
-	"log"
-	"net/url"
 	"reflect"
-	"net/http"
 )
 
 // DefaultMaxPageSize is the default maximum number
 // of allowed entries per page.
 const DefaultMaxPageSize = 25
 
-// DefaultErrorHandler is the default error handler.
-// It sends errors to the client using NewErrorResponse.
-// If the recovered value is not an error, it sends
-// ErrInternalServerError.
-func DefaultErrorHandler(c *gin.Context, r interface{}) {
-	var err error
-	var ok bool
-
-	err, ok = r.(error)
-	if !ok {
-		log.Println(fmt.Sprintf("%v", r))
-		err = ErrInternalServerError
-	}
-
-	res := NewErrorResponse(err)
-	err = res.Send(c)
-	if err != nil {
-		panic(err)
-	}
-}
-
 // Application is the central component of jargo.
 type Application struct {
-	*margo.Application
-
-	Realtime *Realtime
-
 	db *pg.DB
 
 	registry  internal.SchemaRegistry
 	resources map[*internal.Schema]*Resource
 
-	controllers []*Controller
+	controllers map[*Resource]*Controller
 	maxPageSize int
 	validate    *validator.Validate
 }
@@ -65,10 +34,7 @@ func NewApplication(db *pg.DB) *Application {
 // NewApplicationWithErrorHandler returns a new Application
 // using the given pg handle and Validate instance.
 func NewApplicationWithValidate(db *pg.DB, validate *validator.Validate) *Application {
-	server := margo.NewApplication()
-	server.ErrorHandler = DefaultErrorHandler
 	return &Application{
-		Application: server,
 		registry:    make(internal.SchemaRegistry),
 		resources:   make(map[*internal.Schema]*Resource),
 		db:          db,
@@ -92,37 +58,7 @@ func (app *Application) Validate() *validator.Validate {
 // AddController registers a Controller's Actions
 // with the Application.
 func (app *Application) AddController(c *Controller) {
-	for route, action := range c.actions {
-		if action == nil {
-			continue
-		}
 
-		// generate endpoint path
-		path := c.Namespace()
-		// append forward slash to path
-		// if namespace doesn't end with one
-		if len(path) < 1 || path[len(path)-1] != '/' {
-			path += "/"
-		}
-		// append Resource member name
-		path += c.Resource().JSONAPIName()
-		// append forward slash to path
-		// if route path doesn't start with one
-		if len(route.path) < 1 || path[0] != '/' {
-			path += "/"
-		}
-		// append route path to path
-		path += route.path
-
-		// register an endpoint for each action
-		app.Endpoint(margo.NewEndpoint(
-			route.method,
-			path,
-			// first, call controller-level middleware
-			HandlerChain(c.handlers(app)).ToMargoHandler(),
-			// call action handlers
-			action.Handlers().ToMargoHandler()))
-	}
 }
 
 // RegisterResource registers and initializes a Resource
@@ -183,27 +119,32 @@ func (app *Application) SetMaxPageSize(maxPageSize int) {
 	app.maxPageSize = maxPageSize
 }
 
-// ParsePagination parses pagination parameters
-// from an URL query according to the JSON API spec.
-// See http://jsonapi.org/format/#fetching-pagination
-func (app *Application) ParsePagination(query url.Values) (*Pagination, error) {
-	return parsePagination(query, app.maxPageSize)
-}
-
-// Run starts the Application,
-// serving HTTP requests on the specified address.
-func (app *Application) Run(address string) error {
-	mux := http.NewServeMux()
-	mux.Handle("/", app.Application)
-
-	if app.Realtime != nil {
-		err := app.Realtime.Start()
-		if err != nil {
-			return err
+// Handle handles a request and returns a response.
+func (app *Application) Handle(request Request) Response {
+	// get Resource for JSON API resource name
+	var resource *Resource
+	for _, r := range app.resources {
+		if r.JSONAPIName() == request.Resource() {
+			resource = r
+			break
 		}
-		defer app.Realtime.Release()
-		mux.Handle(app.Realtime.Path, app.Realtime)
 	}
 
-	return http.ListenAndServe(address, mux)
+	if resource == nil {
+		return ErrNotFound
+	}
+
+	// based on request's action type,
+	// forward request to action handler
+	controller, ok := app.controllers[resource]
+	if !ok {
+		return ErrNotFound
+	}
+
+	context := &Context{
+		application: app,
+		resource:    resource,
+		data:        make(map[string]interface{}),
+	}
+	return controller.Handle(context, request)
 }

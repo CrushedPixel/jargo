@@ -2,19 +2,19 @@ package jargo
 
 import (
 	"errors"
-	"github.com/crushedpixel/margo"
-	"github.com/gin-gonic/gin"
 	"github.com/go-pg/pg"
 	"github.com/go-pg/pg/orm"
 	"net/http"
 	"reflect"
 )
 
-var errQueryType = errors.New("invalid query type")
-var errNotSelecting = errors.New("query type must be select")
-var errNotSelectingOrDeleting = errors.New("query type must be select or delete")
-var errNoCollection = errors.New("query must be a collection")
-var errMismatchingResource = errors.New("resource does not match query resource")
+var (
+	errQueryType              = errors.New("invalid query type")
+	errNotSelecting           = errors.New("query type must be select")
+	errNotSelectingOrDeleting = errors.New("query type must be select or delete")
+	errNoCollection           = errors.New("query must be a collection")
+	errMismatchingResource    = errors.New("resource does not match query resource")
+)
 
 type queryType int
 
@@ -26,7 +26,7 @@ const (
 )
 
 // A Query is used to communicate with the database.
-// It implements margo.Response so it can be returned
+// It implements Response so it can be returned
 // from handler functions and executed upon sending.
 type Query struct {
 	*orm.Query
@@ -47,6 +47,7 @@ type Query struct {
 	executionError error
 	result         interface{}   // the resource model
 	model          reflect.Value // reference to the pg model
+	response       Response      // the Response for the execution result
 }
 
 func newQuery(db orm.DB, resource *Resource, typ queryType, collection bool, pgModelInstance interface{}) *Query {
@@ -124,7 +125,7 @@ func (q *Query) Filters(f *Filters) *Query {
 }
 
 // Result returns the query result resource model.
-// It executes the query if it hasn't been executed yet.
+// Executes the query if it hasn't been executed yet.
 func (q *Query) Result() (interface{}, error) {
 	if !q.executed {
 		q.execute()
@@ -148,38 +149,50 @@ func (q *Query) Execute() (interface{}, error) {
 	return q.result, nil
 }
 
-// Send satisfies margo.Response
-func (q *Query) Send(c *gin.Context) error {
-	result, err := q.Result()
-	if err != nil {
-		return err
+// Response returns the Response for the query's execution result.
+// Executes the query if it hasn't been executed yet.
+func (q *Query) Response() Response {
+	if q.response == nil {
+		result, err := q.Result()
+		if err != nil {
+			q.response = ErrorResponse(err)
+		} else {
+			switch q.typ {
+			case typeSelect:
+				if !q.collection && q.result == nil {
+					q.response = ErrNotFound
+				} else {
+					q.response = q.resource.Response(result, q.fields)
+				}
+			case typeInsert, typeUpdate:
+				var status int
+				if q.typ == typeInsert {
+					status = http.StatusCreated
+				} else {
+					status = http.StatusOK
+				}
+				q.response = q.resource.ResponseWithStatusCode(result, q.fields, status)
+			case typeDelete:
+				if !q.collection && q.result == nil {
+					q.response = ErrNotFound
+				} else {
+					q.response = NewResponse(http.StatusNoContent, "")
+				}
+			}
+		}
 	}
 
-	var response margo.Response
-	switch q.typ {
-	case typeSelect:
-		if !q.collection && q.result == nil {
-			response = ErrNotFound
-		} else {
-			response = q.resource.Response(result, q.fields)
-		}
-	case typeInsert, typeUpdate:
-		var status int
-		if q.typ == typeInsert {
-			status = http.StatusCreated
-		} else {
-			status = http.StatusOK
-		}
-		response = q.resource.ResponseWithStatusCode(result, q.fields, status)
-	case typeDelete:
-		if !q.collection && q.result == nil {
-			response = ErrNotFound
-		} else {
-			response = margo.Empty(http.StatusNoContent)
-		}
-	}
+	return q.response
+}
 
-	return response.Send(c)
+// Status satisfies Response
+func (q *Query) Status() int {
+	return q.Response().Status()
+}
+
+// Payload satisfies Response
+func (q *Query) Payload() (string, error) {
+	return q.Response().Payload()
 }
 
 func (q *Query) execute() {

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/crushedpixel/jargo/internal"
 	"github.com/crushedpixel/jargo/internal/parser"
-	"github.com/crushedpixel/margo"
 	"github.com/go-pg/pg"
 	"github.com/go-pg/pg/orm"
 	"gopkg.in/go-playground/validator.v9"
@@ -398,33 +397,33 @@ func (r *Resource) IdFilter(id int64) *Filters {
 	return f
 }
 
-// Response returns a margo.Response that sends a
+// Response returns a Response that sends a
 // Resource Model Instance according to JSON API spec,
 // using the FieldSet provided.
 //
 // Panics if data is not a Resource Model Instance
 // or Slice of Resource Model Instances.
-func (r *Resource) Response(data interface{}, fieldSet *FieldSet) margo.Response {
+func (r *Resource) Response(data interface{}, fieldSet *FieldSet) Response {
 	return r.ResponseWithStatusCode(data, fieldSet, http.StatusOK)
 }
 
-// ResponseAllFields returns a margo.Response that sends a
+// ResponseAllFields returns a Response sending a
 // Resource Model Instance according to JSON API spec,
 // including all model fields.
 //
 // Panics if data is not a Resource Model Instance
 // or Slice of Resource Model Instances.
-func (r *Resource) ResponseAllFields(data interface{}) margo.Response {
+func (r *Resource) ResponseAllFields(data interface{}) Response {
 	return r.Response(data, nil)
 }
 
-// ResponseWithStatusCode returns a margo.Response that sends a
+// ResponseWithStatusCode returns a Response sending a
 // Resource Model Instance according to JSON API spec,
 // setting the status code and using the FieldSet provided.
 //
 // Panics if data is not a Resource Model Instance
 // or Slice of Resource Model Instances.
-func (r *Resource) ResponseWithStatusCode(data interface{}, fieldSet *FieldSet, status int) margo.Response {
+func (r *Resource) ResponseWithStatusCode(data interface{}, fieldSet *FieldSet, status int) Response {
 	if data == nil {
 		panic(errors.New("resource response data is nil"))
 	}
@@ -448,5 +447,10 @@ func (r *Resource) ResponseWithStatusCode(data interface{}, fieldSet *FieldSet, 
 		jsonapiModelData = instance.ToJsonapiModel()
 	}
 
-	return newResourceResponse(jsonapiModelData, collection, fieldSet, status)
+	return &resourceResponse{
+		data:       jsonapiModelData,
+		collection: collection,
+		fieldSet:   fieldSet,
+		status:     status,
+	}
 }
