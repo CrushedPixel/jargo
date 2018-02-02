@@ -74,3 +74,19 @@ func (i *SchemaInstance) Validate(validate *validator.Validate) error {
 	}
 	return nil
 }
+
+// GetRelationIds returns all direct (belongsTo) relations
+// to other resource schemas.
+func (i *SchemaInstance) GetRelationIds() map[*Schema][]int64 {
+	m := make(map[*Schema][]int64)
+
+	for _, f := range i.fields {
+		if b, ok := f.(*belongsToFieldInstance); ok {
+			if id, ok := b.relationId(); ok {
+				m[b.relationSchema] = append(m[b.relationSchema], id)
+			}
+		}
+	}
+
+	return m
+}

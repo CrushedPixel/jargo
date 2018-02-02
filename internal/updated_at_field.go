@@ -9,7 +9,7 @@ type updatedAtField struct {
 	*attrField
 }
 
-const triggerFunctionQuery = `
+const updatedAtTriggerQuery = `
 CREATE OR REPLACE FUNCTION jargo_updated_at_trigger_%s_func()
 RETURNS TRIGGER AS
 $$
@@ -18,35 +18,19 @@ BEGIN
   RETURN NEW;
 END
 $$ LANGUAGE plpgsql;
-`
 
-const dropTriggerQuery = `
-DROP TRIGGER IF EXISTS jargo_updated_at_trigger_%s ON "%s"
-`
+DROP TRIGGER IF EXISTS jargo_updated_at_trigger_%s ON "%s";
 
-const createTriggerQuery = `
 CREATE TRIGGER jargo_updated_at_trigger_%s
 BEFORE UPDATE ON "%s"
 FOR EACH ROW EXECUTE PROCEDURE jargo_updated_at_trigger_%s_func();
 `
 
 func (f *updatedAtField) afterCreateTable(db *pg.DB) error {
-	return db.RunInTransaction(func(tx *pg.Tx) error {
-		_, err := tx.Exec(fmt.Sprintf(triggerFunctionQuery, f.column, f.column))
-		if err != nil {
-			return err
-		}
-
-		_, err = tx.Exec(fmt.Sprintf(dropTriggerQuery, f.column, f.schema.table))
-		if err != nil {
-			return err
-		}
-
-		_, err = tx.Exec(fmt.Sprintf(createTriggerQuery, f.column, f.schema.table, f.column))
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
+	_, err := db.Exec(fmt.Sprintf(updatedAtTriggerQuery,
+		f.column, f.column,                 // CREATE FUNCTION statement
+		f.column, f.schema.table,           // DROP TRIGGER statement
+		f.column, f.schema.table, f.column, // CREATE TRIGGER statement
+	))
+	return err
 }

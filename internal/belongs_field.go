@@ -120,8 +120,11 @@ func (i *belongsToFieldInstance) parentField() SchemaField {
 	return i.field
 }
 
-// parses the value of the pg relation struct field (e.g. *User) and stores it
-// in i.values[0]
+// parsePGModel parses the value of the pg relation struct field
+// (e.g. *User) and stores it in i.values[0].
+// If the relation struct field is nil, but the relation id field (e.g. UserId)
+// is not zero, stores a new instance of the relation type with the id field set
+// in i.values[0].
 func (i *belongsToFieldInstance) parsePGModel(instance *pgModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
@@ -132,8 +135,26 @@ func (i *belongsToFieldInstance) parsePGModel(instance *pgModelInstance) {
 		return
 	}
 
+	var schemaInstance *SchemaInstance
 	pgModelInstance := instance.value.Elem().FieldByName(i.field.fieldName).Interface()
-	i.values = []*SchemaInstance{i.relationSchema.parseJoinPGModel(pgModelInstance)}
+	schemaInstance = i.relationSchema.parseJoinPGModel(pgModelInstance)
+
+	// if relation struct field is nil, but id field isn't,
+	// create a new instance of the model and set its id field
+	if schemaInstance == nil {
+		id := instance.value.Elem().FieldByName(i.field.relationIdFieldName()).Int()
+		if id != 0 {
+			schemaInstance = i.relationSchema.createInstance()
+			// set id field
+			for _, f := range schemaInstance.fields {
+				if idField, ok := f.(*idFieldInstance); ok {
+					idField.value = id
+				}
+			}
+		}
+	}
+
+	i.values = []*SchemaInstance{schemaInstance}
 }
 
 // sets the value of the pg relation id field (e.g. UserId) to the id value
@@ -142,32 +163,13 @@ func (i *belongsToFieldInstance) applyToPGModel(instance *pgModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	if len(i.values) == 0 {
+	id, ok := i.relationId()
+	if !ok {
 		return
 	}
-
-	// extract id field from relation and apply value
-	// to pg id field
-	v := i.values[0]
-	// relations may be nil
-	if v == nil {
-		return
-	}
-
-	var id *int64
-	for _, f := range v.fields {
-		if idField, ok := f.(*idFieldInstance); ok {
-			id = &idField.value
-		}
-	}
-	if id == nil {
-		panic(errors.New("id field of related resource not found"))
-	}
-
-	instance.value.Elem().FieldByName(i.field.relationIdFieldName()).SetInt(*id)
-
+	instance.value.Elem().FieldByName(i.field.relationIdFieldName()).SetInt(id)
 	// apply relation instance to pg model field
-	instance.value.Elem().FieldByName(i.field.fieldName).Set(reflect.ValueOf(v.toJoinPGModel()))
+	instance.value.Elem().FieldByName(i.field.fieldName).Set(reflect.ValueOf(i.values[0].toJoinPGModel()))
 }
 
 func (i *belongsToFieldInstance) parseJoinPGModel(instance *joinPGModelInstance) {
@@ -199,29 +201,12 @@ func (i *belongsToFieldInstance) applyToJoinPGModel(instance *joinPGModelInstanc
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	if len(i.values) == 0 {
+
+	id, ok := i.relationId()
+	if !ok {
 		return
 	}
-
-	// extract id field from relation and apply value
-	// to pg id field
-	v := i.values[0]
-	// relations may be nil
-	if v == nil {
-		return
-	}
-
-	var id *int64
-	for _, f := range v.fields {
-		if idField, ok := f.(*idFieldInstance); ok {
-			id = &idField.value
-		}
-	}
-	if id == nil {
-		panic(errors.New("id field of related resource not found"))
-	}
-
-	instance.value.Elem().FieldByName(i.field.relationIdFieldName()).SetInt(*id)
+	instance.value.Elem().FieldByName(i.field.relationIdFieldName()).SetInt(id)
 }
 
 func (i *belongsToFieldInstance) applyToJoinResourceModel(instance *resourceModelInstance) {
@@ -241,4 +226,29 @@ func (i *belongsToFieldInstance) applyToJoinResourceModel(instance *resourceMode
 	rmi := v.toJoinResourceModel()
 
 	instance.value.Elem().FieldByName(i.field.fieldName).Set(reflect.ValueOf(rmi))
+}
+
+// relationId returns the id value of the relation.
+func (i *belongsToFieldInstance) relationId() (int64, bool) {
+	if len(i.values) == 0 {
+		return 0, false
+	}
+
+	// extract id field from relation
+	v := i.values[0]
+	// relations may be nil
+	if v == nil {
+		return 0, false
+	}
+
+	var id *int64
+	for _, f := range v.fields {
+		if idField, ok := f.(*idFieldInstance); ok {
+			id = &idField.value
+		}
+	}
+	if id == nil {
+		panic(errors.New("id field of related resource not found"))
+	}
+	return *id, true
 }

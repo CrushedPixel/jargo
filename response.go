@@ -1,11 +1,11 @@
 package jargo
 
 import (
-	"encoding/json"
 	"errors"
 	"github.com/crushedpixel/margo"
 	"github.com/gin-gonic/gin"
 	"github.com/google/jsonapi"
+	"github.com/json-iterator/go"
 )
 
 var errDataNil = errors.New("resource response data is nil")
@@ -45,7 +45,7 @@ func (r *resourceResponse) Send(c *gin.Context) error {
 			r.fieldSet.applyToJsonapiNode(node)
 		}
 
-		bytes, err = json.Marshal(payload)
+		bytes, err = jsoniter.ConfigDefault.Marshal(payload)
 		if err != nil {
 			return err
 		}
@@ -54,7 +54,7 @@ func (r *resourceResponse) Send(c *gin.Context) error {
 		payload.Included = nil
 		r.fieldSet.applyToJsonapiNode(payload.Data)
 
-		bytes, err = json.Marshal(payload)
+		bytes, err = jsoniter.ConfigDefault.Marshal(payload)
 		if err != nil {
 			return err
 		}
