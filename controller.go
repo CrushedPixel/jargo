@@ -1,18 +1,14 @@
 package jargo
 
-import "errors"
-
-var errNoResponse = errors.New("the last HandlerFunc returned a nil Response")
-
 // A HandlerFunc is a function handling a request.
-type HandlerFunc func(context *Context, request Request) Response
+type HandlerFunc func(context *Context) Response
 
 // A Controller is responsible for all
 // Actions related to a specific Resource.
 type Controller struct {
 	resource   *Resource
 	middleware []HandlerFunc
-	actions    map[ActionType][]HandlerFunc
+	Actions    map[ActionType][]HandlerFunc
 }
 
 // NewCRUDController returns a new Controller for a Resource
@@ -32,27 +28,8 @@ func NewCRUDController(resource *Resource) *Controller {
 func NewController(resource *Resource) *Controller {
 	return &Controller{
 		resource: resource,
-		actions:  make(map[ActionType][]HandlerFunc),
+		Actions:  make(map[ActionType][]HandlerFunc),
 	}
-}
-
-func (c *Controller) Handle(context *Context, request Request) Response {
-	handlers, ok := c.actions[request.ActionType()]
-	if !ok {
-		return ErrNotFound // TODO
-	}
-
-	allHandlers := append(c.middleware, handlers...)
-
-	var response Response
-	for _, handler := range allHandlers {
-		response = handler(context, request)
-		if response != nil {
-			return response
-		}
-	}
-
-	return ErrorResponse(errNoResponse)
 }
 
 // Use adds handler functions to be run
@@ -67,9 +44,9 @@ func (c *Controller) Use(middleware ...HandlerFunc) {
 // for the action type are cleared.
 func (c *Controller) SetAction(actionType ActionType, handlers ...HandlerFunc) {
 	if len(handlers) > 0 {
-		c.actions[actionType] = handlers
+		c.Actions[actionType] = handlers
 	} else {
-		delete(c.actions, actionType)
+		delete(c.Actions, actionType)
 	}
 }
 

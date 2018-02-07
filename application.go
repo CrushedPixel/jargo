@@ -12,14 +12,17 @@ import (
 // of allowed entries per page.
 const DefaultMaxPageSize = 25
 
+var errNoResponse = errors.New("the last HandlerFunc returned a nil Response")
+
 // Application is the central component of jargo.
 type Application struct {
 	db *pg.DB
 
+	Controllers map[*Resource]*Controller
+
 	registry  internal.SchemaRegistry
 	resources map[*internal.Schema]*Resource
 
-	controllers map[*Resource]*Controller
 	maxPageSize int
 	validate    *validator.Validate
 }
@@ -53,12 +56,6 @@ func (app *Application) DB() *pg.DB {
 // used to validate create and update requests.
 func (app *Application) Validate() *validator.Validate {
 	return app.validate
-}
-
-// AddController registers a Controller's Actions
-// with the Application.
-func (app *Application) AddController(c *Controller) {
-
 }
 
 // RegisterResource registers and initializes a Resource
@@ -119,32 +116,64 @@ func (app *Application) SetMaxPageSize(maxPageSize int) {
 	app.maxPageSize = maxPageSize
 }
 
-// Handle handles a request and returns a response.
-func (app *Application) Handle(request Request) Response {
+// Handle handles a request and returns response http status and payload.
+func (app *Application) Handle(request *Request) (int, string) {
+	res := app.handle(request)
+	payload, err := res.Payload()
+	if err != nil {
+		// handle error on payload creation
+		println("jargo: Error resolving payload", err.Error()) // TODO: proper logging
+		if p, ok := err.(Response); ok {
+			res = p
+		} else {
+			res = ErrInternalServerError
+		}
+		payload, _ = res.Payload()
+	}
+
+	return res.Status(), payload
+}
+
+func (app *Application) handle(request *Request) Response {
 	// get Resource for JSON API resource name
 	var resource *Resource
 	for _, r := range app.resources {
-		if r.JSONAPIName() == request.Resource() {
+		if r.JSONAPIName() == request.ResourceName {
 			resource = r
 			break
 		}
 	}
-
 	if resource == nil {
 		return ErrNotFound
 	}
 
-	// based on request's action type,
-	// forward request to action handler
-	controller, ok := app.controllers[resource]
+	// get controller for request resource
+	controller, ok := app.Controllers[resource]
+	if !ok {
+		return ErrNotFound
+	}
+	// get controller action handlers for requested action
+	handlers, ok := controller.Actions[request.ActionType]
 	if !ok {
 		return ErrNotFound
 	}
 
-	context := &Context{
-		application: app,
-		resource:    resource,
-		data:        make(map[string]interface{}),
+	// create context object
+	context, err := NewContext(app, resource, request)
+	if err != nil {
+		return ErrorResponse(err)
 	}
-	return controller.Handle(context, request)
+
+	// prepend controller middleware to action handlers
+	allHandlers := append(controller.middleware, handlers...)
+	// execute action handlers
+	var response Response
+	for _, handler := range allHandlers {
+		response = handler(context)
+		if response != nil {
+			return response
+		}
+	}
+
+	return ErrorResponse(errNoResponse)
 }

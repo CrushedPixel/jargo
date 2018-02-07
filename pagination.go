@@ -22,12 +22,7 @@ func (p *Pagination) applyToQuery(q *orm.Query) {
 	q.Offset(p.Number * p.Size).Limit(p.Size)
 }
 
-func parsePagination(query url.Values, maxPageSize int) (*Pagination, error) {
-	parsed := parser.ParsePageParameters(query)
-	return newPagination(parsed, maxPageSize)
-}
-
-func newPagination(values map[string]string, maxPageSize int) (*Pagination, error) {
+func ParsePagination(values map[string]string, maxPageSize int) (*Pagination, error) {
 	p := &Pagination{
 		Number: 0,
 		Size:   maxPageSize,
