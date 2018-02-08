@@ -45,7 +45,7 @@ func DefaultShowResourceHandler(c *Context) Response {
 func DefaultCreateResourceHandler(c *Context) Response {
 	m, err := ParseCreatePayload(c)
 	if err != nil {
-		return ErrorResponse(err)
+		return NewErrorResponse(err)
 	}
 
 	return c.Resource().InsertInstance(c.DB(), m).
@@ -59,7 +59,7 @@ func DefaultCreateResourceHandler(c *Context) Response {
 func DefaultUpdateResourceHandler(c *Context) Response {
 	m, err := ParseUpdatePayload(c)
 	if err != nil {
-		return ErrorResponse(err)
+		return NewErrorResponse(err)
 	}
 
 	return c.Resource().UpdateInstance(c.DB(), m).

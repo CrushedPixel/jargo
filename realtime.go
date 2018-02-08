@@ -1,19 +1,19 @@
 package jargo
 
 import (
-	"github.com/desertbit/glue"
-	"net/http"
-	"time"
-	"errors"
 	"encoding/json"
-	"github.com/crushedpixel/cement"
-	"sync"
+	"errors"
 	"fmt"
-	"github.com/go-pg/pg"
-	"github.com/json-iterator/go"
-	"github.com/go-pg/pg/orm"
+	"github.com/crushedpixel/cement"
 	"github.com/crushedpixel/jargo/internal"
+	"github.com/desertbit/glue"
+	"github.com/go-pg/pg"
+	"github.com/go-pg/pg/orm"
 	"github.com/google/jsonapi"
+	"github.com/json-iterator/go"
+	"net/http"
+	"sync"
+	"time"
 )
 
 const (
@@ -184,7 +184,16 @@ func (r *Realtime) onNewSocket(s *glue.Socket) {
 	r.connectingSockets <- s
 }
 
-func (r *Realtime) Start() error {
+func (r *Realtime) Run() error {
+	err := r.start()
+	if err != nil {
+		return err
+	}
+	defer r.close()
+	return r.Server.Run()
+}
+
+func (r *Realtime) start() error {
 	if r.started {
 		panic(errors.New("a Realtime instance may only be started once"))
 	}
@@ -216,7 +225,7 @@ func (r *Realtime) Start() error {
 	return nil
 }
 
-func (r *Realtime) Release() {
+func (r *Realtime) close() {
 	r.Server.Release()
 	close(r.release)
 }

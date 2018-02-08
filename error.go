@@ -68,7 +68,7 @@ func NewApiError(status int, code string, detail string) *ApiError {
 	}
 }
 
-// ErrorResponse returns a Response containing
+// NewErrorResponse returns a Response containing
 // an error payload according to the JSON API spec.
 // See http://jsonapi.org/format/#errors
 //
@@ -76,7 +76,7 @@ func NewApiError(status int, code string, detail string) *ApiError {
 // the error itself is returned.
 // Otherwise, it logs the error as an internal server error
 // and returns ErrInternalServerError.
-func ErrorResponse(err error) Response {
+func NewErrorResponse(err error) Response {
 	apiError, ok := err.(*ApiError)
 	if !ok {
 		// if error is not an api error, return internal server error response

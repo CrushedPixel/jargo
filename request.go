@@ -1,6 +1,8 @@
 package jargo
 
-import "io"
+import (
+	"io"
+)
 
 type ActionType int8
 
@@ -49,4 +51,8 @@ type Request struct {
 	// sent by the client.
 	// Only valid for Create and Update actions.
 	Payload io.Reader
+
+	// Header is a map of key-value pairs
+	// sent with the request.
+	Header map[string][]string
 }

@@ -3,6 +3,7 @@ package jargo
 import (
 	"bytes"
 	"github.com/go-pg/pg"
+	"net/http"
 	"strconv"
 )
 
@@ -17,6 +18,7 @@ type Context struct {
 	pagination *Pagination
 	sort       *SortFields
 
+	header  http.Header
 	payload string
 
 	data map[string]interface{}
@@ -123,6 +125,10 @@ func (c *Context) SortFields() *SortFields {
 
 func (c *Context) Payload() string {
 	return c.payload
+}
+
+func (c *Context) Header() http.Header {
+	return c.header
 }
 
 func (c *Context) Get(key string) interface{} {

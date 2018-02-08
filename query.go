@@ -155,7 +155,7 @@ func (q *Query) Response() Response {
 	if q.response == nil {
 		result, err := q.Result()
 		if err != nil {
-			q.response = ErrorResponse(err)
+			q.response = NewErrorResponse(err)
 		} else {
 			switch q.typ {
 			case typeSelect:

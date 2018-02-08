@@ -18,7 +18,7 @@ var errNoResponse = errors.New("the last HandlerFunc returned a nil Response")
 type Application struct {
 	db *pg.DB
 
-	Controllers map[*Resource]*Controller
+	controllers map[*Resource]*Controller
 
 	registry  internal.SchemaRegistry
 	resources map[*internal.Schema]*Resource
@@ -100,6 +100,14 @@ func (app *Application) MustRegisterResource(model interface{}) *Resource {
 	return r
 }
 
+func (app *Application) AddController(c *Controller) {
+	app.controllers[c.resource] = c
+}
+
+func (app *Application) Controllers() map[*Resource]*Controller {
+	return app.controllers
+}
+
 // MaxPageSize returns the maximum number
 // of allowed entries per page for paginated results.
 func (app *Application) MaxPageSize() int {
@@ -148,7 +156,7 @@ func (app *Application) handle(request *Request) Response {
 	}
 
 	// get controller for request resource
-	controller, ok := app.Controllers[resource]
+	controller, ok := app.controllers[resource]
 	if !ok {
 		return ErrNotFound
 	}
@@ -161,7 +169,7 @@ func (app *Application) handle(request *Request) Response {
 	// create context object
 	context, err := NewContext(app, resource, request)
 	if err != nil {
-		return ErrorResponse(err)
+		return NewErrorResponse(err)
 	}
 
 	// prepend controller middleware to action handlers
@@ -175,5 +183,5 @@ func (app *Application) handle(request *Request) Response {
 		}
 	}
 
-	return ErrorResponse(errNoResponse)
+	return NewErrorResponse(errNoResponse)
 }
