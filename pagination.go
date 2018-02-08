@@ -2,9 +2,7 @@ package jargo
 
 import (
 	"fmt"
-	"github.com/crushedpixel/jargo/internal/parser"
 	"github.com/go-pg/pg/orm"
-	"net/url"
 	"strconv"
 )
 

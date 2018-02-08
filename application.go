@@ -2,6 +2,7 @@ package jargo
 
 import (
 	"errors"
+	"github.com/crushedpixel/ferry"
 	"github.com/crushedpixel/jargo/internal"
 	"github.com/go-pg/pg"
 	"gopkg.in/go-playground/validator.v9"
@@ -38,9 +39,10 @@ func NewApplication(db *pg.DB) *Application {
 // using the given pg handle and Validate instance.
 func NewApplicationWithValidate(db *pg.DB, validate *validator.Validate) *Application {
 	return &Application{
+		db:          db,
+		controllers: make(map[*Resource]*Controller),
 		registry:    make(internal.SchemaRegistry),
 		resources:   make(map[*internal.Schema]*Resource),
-		db:          db,
 		maxPageSize: DefaultMaxPageSize,
 		validate:    validate,
 	}
@@ -104,10 +106,6 @@ func (app *Application) AddController(c *Controller) {
 	app.controllers[c.resource] = c
 }
 
-func (app *Application) Controllers() map[*Resource]*Controller {
-	return app.controllers
-}
-
 // MaxPageSize returns the maximum number
 // of allowed entries per page for paginated results.
 func (app *Application) MaxPageSize() int {
@@ -124,64 +122,33 @@ func (app *Application) SetMaxPageSize(maxPageSize int) {
 	app.maxPageSize = maxPageSize
 }
 
-// Handle handles a request and returns response http status and payload.
-func (app *Application) Handle(request *Request) (int, string) {
-	res := app.handle(request)
-	payload, err := res.Payload()
-	if err != nil {
-		// handle error on payload creation
-		println("jargo: Error resolving payload", err.Error()) // TODO: proper logging
-		if p, ok := err.(Response); ok {
-			res = p
-		} else {
-			res = ErrInternalServerError
+func (app *Application) Bridge(f *ferry.Ferry, namespace string) {
+	// prepend slash to namespace
+	if len(namespace) < 1 || namespace[0] != '/' {
+		namespace = "/" + namespace
+	}
+	// remove trailing slash from namespace
+	if namespace[len(namespace)-1] == '/' {
+		namespace = namespace[:len(namespace)-1]
+	}
+
+	for resource, controller := range app.controllers {
+		prefix := namespace + "/" + resource.JSONAPIName()
+
+		if len(controller.indexAction) > 0 {
+			f.GET(prefix, controller.indexAction.toFerry(app, controller))
 		}
-		payload, _ = res.Payload()
-	}
-
-	return res.Status(), payload
-}
-
-func (app *Application) handle(request *Request) Response {
-	// get Resource for JSON API resource name
-	var resource *Resource
-	for _, r := range app.resources {
-		if r.JSONAPIName() == request.ResourceName {
-			resource = r
-			break
+		if len(controller.showAction) > 0 {
+			f.GET(prefix+"/{id}", controller.showAction.toFerry(app, controller))
 		}
-	}
-	if resource == nil {
-		return ErrNotFound
-	}
-
-	// get controller for request resource
-	controller, ok := app.controllers[resource]
-	if !ok {
-		return ErrNotFound
-	}
-	// get controller action handlers for requested action
-	handlers, ok := controller.Actions[request.ActionType]
-	if !ok {
-		return ErrNotFound
-	}
-
-	// create context object
-	context, err := NewContext(app, resource, request)
-	if err != nil {
-		return NewErrorResponse(err)
-	}
-
-	// prepend controller middleware to action handlers
-	allHandlers := append(controller.middleware, handlers...)
-	// execute action handlers
-	var response Response
-	for _, handler := range allHandlers {
-		response = handler(context)
-		if response != nil {
-			return response
+		if len(controller.createAction) > 0 {
+			f.POST(prefix, controller.createAction.toFerry(app, controller))
+		}
+		if len(controller.updateAction) > 0 {
+			f.PATCH(prefix+"/{id}", controller.updateAction.toFerry(app, controller))
+		}
+		if len(controller.deleteAction) > 0 {
+			f.DELETE(prefix+"/{id}", controller.deleteAction.toFerry(app, controller))
 		}
 	}
-
-	return NewErrorResponse(errNoResponse)
 }

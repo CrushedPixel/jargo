@@ -76,7 +76,7 @@ func NewApiError(status int, code string, detail string) *ApiError {
 // the error itself is returned.
 // Otherwise, it logs the error as an internal server error
 // and returns ErrInternalServerError.
-func NewErrorResponse(err error) Response {
+func NewErrorResponse(err error) *ApiError {
 	apiError, ok := err.(*ApiError)
 	if !ok {
 		// if error is not an api error, return internal server error response
