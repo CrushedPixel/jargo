@@ -4,13 +4,20 @@ package jargo
 // Actions related to a specific Resource.
 type Controller struct {
 	resource   *Resource
-	middleware []MiddlewareFunc
+	middleware []HandlerFunc
 
 	indexAction  indexHandlerChain
 	showAction   showHandlerChain
 	createAction createHandlerChain
 	updateAction updateHandlerChain
 	deleteAction deleteHandlerChain
+
+	customActions map[route]handlerChain
+}
+
+type route struct {
+	method string
+	path   string
 }
 
 // NewCRUDController returns a new Controller for a Resource
@@ -29,13 +36,14 @@ func NewCRUDController(resource *Resource) *Controller {
 // NewController returns a new Controller for a Resource.
 func NewController(resource *Resource) *Controller {
 	return &Controller{
-		resource: resource,
+		resource:      resource,
+		customActions: make(map[route]handlerChain),
 	}
 }
 
 // Use adds handler functions to be run
 // before the Controller's action handlers.
-func (c *Controller) Use(middleware ...MiddlewareFunc) {
+func (c *Controller) Use(middleware ...HandlerFunc) {
 	c.middleware = append(c.middleware, middleware...)
 }
 
@@ -62,4 +70,8 @@ func (c *Controller) SetUpdateAction(handlers ...UpdateHandlerFunc) {
 // SetDeleteAction sets the Controller's Delete Action.
 func (c *Controller) SetDeleteAction(handlers ...DeleteHandlerFunc) {
 	c.deleteAction = handlers
+}
+
+func (c *Controller) SetAction(method string, path string, handlers ...HandlerFunc) {
+	c.customActions[route{method: method, path: path}] = handlers
 }

@@ -1,7 +1,6 @@
 package jargo
 
 import (
-	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -13,7 +12,7 @@ var (
 	pageParamRegex   = regexp.MustCompile(`^page\[([^][]+)]$`)
 )
 
-func parseFieldParameters(query url.Values) map[string][]string {
+func ParseFieldParameters(query map[string][]string) map[string][]string {
 	fields := make(map[string][]string)
 	for k, v := range query {
 		res := fieldsParamRegex.FindAllStringSubmatch(k, -1)
@@ -35,7 +34,7 @@ func parseFieldParameters(query url.Values) map[string][]string {
 	return fields
 }
 
-func parseFilterParameters(query url.Values) map[string]map[string][]string {
+func ParseFilterParameters(query map[string][]string) map[string]map[string][]string {
 	// map[field]map[operator][]values
 	filters := make(map[string]map[string][]string)
 	for k, v := range query {
@@ -72,7 +71,7 @@ func parseFilterParameters(query url.Values) map[string]map[string][]string {
 	return filters
 }
 
-func parsePageParameters(query url.Values) map[string]string {
+func ParsePageParameters(query map[string][]string) map[string]string {
 	fields := make(map[string]string)
 	for k, v := range query {
 		res := pageParamRegex.FindAllStringSubmatch(k, -1)
@@ -86,7 +85,7 @@ func parsePageParameters(query url.Values) map[string]string {
 	return fields
 }
 
-func parseSortParameters(query url.Values) map[string]bool {
+func ParseSortParameters(query map[string][]string) map[string]bool {
 	values := make(map[string]bool)
 	if sort, ok := query["sort"]; ok {
 		for _, v := range sort {
@@ -112,7 +111,7 @@ func parseSortParameters(query url.Values) map[string]bool {
 	return values
 }
 
-func parseResourceId(idStr string) (int64, error) {
+func ParseResourceId(idStr string) (int64, error) {
 	id, err := strconv.ParseInt(idStr, 10, 0)
 	if err != nil {
 		return 0, ErrInvalidId
@@ -120,23 +119,23 @@ func parseResourceId(idStr string) (int64, error) {
 	return id, nil
 }
 
-func parseIndexRequest(c *Context) (*IndexRequest, error) {
-	fieldSet, err := c.Resource().ParseFieldSet(parseFieldParameters(c.QueryParams))
+func ParseIndexRequest(c *Context) (*IndexRequest, error) {
+	fieldSet, err := c.Resource().ParseFieldSet(ParseFieldParameters(c.QueryParams))
 	if err != nil {
 		return nil, err
 	}
 
-	filters, err := c.Resource().ParseFilters(parseFilterParameters(c.QueryParams))
+	filters, err := c.Resource().ParseFilters(ParseFilterParameters(c.QueryParams))
 	if err != nil {
 		return nil, err
 	}
 
-	sort, err := c.Resource().ParseSortFields(parseSortParameters(c.QueryParams))
+	sort, err := c.Resource().ParseSortFields(ParseSortParameters(c.QueryParams))
 	if err != nil {
 		return nil, err
 	}
 
-	pagination, err := ParsePagination(parsePageParameters(c.QueryParams), c.Application().MaxPageSize())
+	pagination, err := ParsePagination(ParsePageParameters(c.QueryParams), c.Application().MaxPageSize())
 	if err != nil {
 		return nil, err
 	}
@@ -150,13 +149,13 @@ func parseIndexRequest(c *Context) (*IndexRequest, error) {
 	return req, nil
 }
 
-func parseShowRequest(c *Context) (*ShowRequest, error) {
-	fieldSet, err := c.Resource().ParseFieldSet(parseFieldParameters(c.QueryParams))
+func ParseShowRequest(c *Context) (*ShowRequest, error) {
+	fieldSet, err := c.Resource().ParseFieldSet(ParseFieldParameters(c.QueryParams))
 	if err != nil {
 		return nil, err
 	}
 
-	resourceId, err := parseResourceId(c.PathParams["id"])
+	resourceId, err := ParseResourceId(c.PathParams["id"])
 	if err != nil {
 		return nil, err
 	}
@@ -168,8 +167,8 @@ func parseShowRequest(c *Context) (*ShowRequest, error) {
 	return req, nil
 }
 
-func parseCreateRequest(c *Context) (*CreateRequest, error) {
-	fieldSet, err := c.Resource().ParseFieldSet(parseFieldParameters(c.QueryParams))
+func ParseCreateRequest(c *Context) (*CreateRequest, error) {
+	fieldSet, err := c.Resource().ParseFieldSet(ParseFieldParameters(c.QueryParams))
 	if err != nil {
 		return nil, err
 	}
@@ -181,13 +180,13 @@ func parseCreateRequest(c *Context) (*CreateRequest, error) {
 	return req, nil
 }
 
-func parseUpdateRequest(c *Context) (*UpdateRequest, error) {
-	fieldSet, err := c.Resource().ParseFieldSet(parseFieldParameters(c.QueryParams))
+func ParseUpdateRequest(c *Context) (*UpdateRequest, error) {
+	fieldSet, err := c.Resource().ParseFieldSet(ParseFieldParameters(c.QueryParams))
 	if err != nil {
 		return nil, err
 	}
 
-	resourceId, err := parseResourceId(c.PathParams["id"])
+	resourceId, err := ParseResourceId(c.PathParams["id"])
 	if err != nil {
 		return nil, err
 	}
@@ -200,8 +199,8 @@ func parseUpdateRequest(c *Context) (*UpdateRequest, error) {
 	return req, nil
 }
 
-func parseDeleteRequest(c *Context) (*DeleteRequest, error) {
-	resourceId, err := parseResourceId(c.PathParams["id"])
+func ParseDeleteRequest(c *Context) (*DeleteRequest, error) {
+	resourceId, err := ParseResourceId(c.PathParams["id"])
 	if err != nil {
 		return nil, err
 	}

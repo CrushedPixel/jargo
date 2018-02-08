@@ -43,6 +43,11 @@ func (e *ApiError) Payload() (string, error) {
 	return buf.String(), nil
 }
 
+// Body satisfies the ferry.Response interface.
+func (e *ApiError) Response() (int, string) {
+	return responseToFerry(e).Response()
+}
+
 // ToErrorObject converts the ApiError to a jsonapi.ErrorObject.
 func (e *ApiError) ToErrorObject() *jsonapi.ErrorObject {
 	u, err := uuid.NewV4()

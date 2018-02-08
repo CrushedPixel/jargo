@@ -150,5 +150,11 @@ func (app *Application) Bridge(f *ferry.Ferry, namespace string) {
 		if len(controller.deleteAction) > 0 {
 			f.DELETE(prefix+"/{id}", controller.deleteAction.toFerry(app, controller))
 		}
+
+		for route, handlers := range controller.customActions {
+			if len(handlers) > 0 {
+				f.Handle(route.method, route.path, handlers.toFerry(app, controller))
+			}
+		}
 	}
 }

@@ -2,8 +2,9 @@ package jargo
 
 import "github.com/crushedpixel/ferry"
 
-// A MiddlewareFunc is a function that can be executed for any request type.
-type MiddlewareFunc func(context *Context) Response
+// A HandlerFunc is a function handling a generic jargo request.
+type HandlerFunc func(context *Context) Response
+type handlerChain []HandlerFunc
 
 // An IndexHandlerFunc is a function handling an index request.
 type IndexHandlerFunc func(context *Context, request *IndexRequest) Response
@@ -25,8 +26,28 @@ type updateHandlerChain []UpdateHandlerFunc
 type DeleteHandlerFunc func(context *Context, request *DeleteRequest) Response
 type deleteHandlerChain []DeleteHandlerFunc
 
+func (c handlerChain) toFerry(app *Application, cont *Controller) ferry.HandlerFunc {
+	return func(ctx *ferry.Context) ferry.Response {
+		context := &Context{
+			Context:     ctx,
+			application: app,
+			resource:    cont.resource,
+		}
+
+		// execute middleware and handlers
+		for _, m := range append(cont.middleware, c...) {
+			res := m(context)
+			if res != nil {
+				return responseToFerry(res)
+			}
+		}
+
+		panic("last handler in chain did not return a value")
+	}
+}
+
 func (c indexHandlerChain) toFerry(app *Application, cont *Controller) ferry.HandlerFunc {
-	return func(ctx *ferry.Context) *ferry.Response {
+	return func(ctx *ferry.Context) ferry.Response {
 		context := &Context{
 			Context:     ctx,
 			application: app,
@@ -42,9 +63,9 @@ func (c indexHandlerChain) toFerry(app *Application, cont *Controller) ferry.Han
 		}
 
 		// create IndexRequest instance from request
-		req, err := parseIndexRequest(context)
+		req, err := ParseIndexRequest(context)
 		if err != nil {
-			return responseToFerry(NewErrorResponse(err))
+			return NewErrorResponse(err)
 		}
 
 		// execute handlers
@@ -60,7 +81,7 @@ func (c indexHandlerChain) toFerry(app *Application, cont *Controller) ferry.Han
 }
 
 func (c showHandlerChain) toFerry(app *Application, cont *Controller) ferry.HandlerFunc {
-	return func(ctx *ferry.Context) *ferry.Response {
+	return func(ctx *ferry.Context) ferry.Response {
 		context := &Context{
 			Context:     ctx,
 			application: app,
@@ -76,9 +97,9 @@ func (c showHandlerChain) toFerry(app *Application, cont *Controller) ferry.Hand
 		}
 
 		// create ShowRequest instance from request
-		req, err := parseShowRequest(context)
+		req, err := ParseShowRequest(context)
 		if err != nil {
-			return responseToFerry(NewErrorResponse(err))
+			return NewErrorResponse(err)
 		}
 
 		// execute handlers
@@ -94,7 +115,7 @@ func (c showHandlerChain) toFerry(app *Application, cont *Controller) ferry.Hand
 }
 
 func (c createHandlerChain) toFerry(app *Application, cont *Controller) ferry.HandlerFunc {
-	return func(ctx *ferry.Context) *ferry.Response {
+	return func(ctx *ferry.Context) ferry.Response {
 		context := &Context{
 			Context:     ctx,
 			application: app,
@@ -110,9 +131,9 @@ func (c createHandlerChain) toFerry(app *Application, cont *Controller) ferry.Ha
 		}
 
 		// create CreateRequest instance from request
-		req, err := parseCreateRequest(context)
+		req, err := ParseCreateRequest(context)
 		if err != nil {
-			return responseToFerry(NewErrorResponse(err))
+			return NewErrorResponse(err)
 		}
 
 		// execute handlers
@@ -128,7 +149,7 @@ func (c createHandlerChain) toFerry(app *Application, cont *Controller) ferry.Ha
 }
 
 func (c updateHandlerChain) toFerry(app *Application, cont *Controller) ferry.HandlerFunc {
-	return func(ctx *ferry.Context) *ferry.Response {
+	return func(ctx *ferry.Context) ferry.Response {
 		context := &Context{
 			Context:     ctx,
 			application: app,
@@ -144,9 +165,9 @@ func (c updateHandlerChain) toFerry(app *Application, cont *Controller) ferry.Ha
 		}
 
 		// create UpdateRequest instance from request
-		req, err := parseUpdateRequest(context)
+		req, err := ParseUpdateRequest(context)
 		if err != nil {
-			return responseToFerry(NewErrorResponse(err))
+			return NewErrorResponse(err)
 		}
 
 		// execute handlers
@@ -162,7 +183,7 @@ func (c updateHandlerChain) toFerry(app *Application, cont *Controller) ferry.Ha
 }
 
 func (c deleteHandlerChain) toFerry(app *Application, cont *Controller) ferry.HandlerFunc {
-	return func(ctx *ferry.Context) *ferry.Response {
+	return func(ctx *ferry.Context) ferry.Response {
 		context := &Context{
 			Context:     ctx,
 			application: app,
@@ -178,9 +199,9 @@ func (c deleteHandlerChain) toFerry(app *Application, cont *Controller) ferry.Ha
 		}
 
 		// create DeleteRequest instance from request
-		req, err := parseDeleteRequest(context)
+		req, err := ParseDeleteRequest(context)
 		if err != nil {
-			return responseToFerry(NewErrorResponse(err))
+			return NewErrorResponse(err)
 		}
 
 		// execute handlers
@@ -195,7 +216,7 @@ func (c deleteHandlerChain) toFerry(app *Application, cont *Controller) ferry.Ha
 	}
 }
 
-func responseToFerry(res Response) *ferry.Response {
+func responseToFerry(res Response) ferry.Response {
 	payload, err := res.Payload()
 	if err != nil {
 		res = NewErrorResponse(err)
@@ -205,8 +226,5 @@ func responseToFerry(res Response) *ferry.Response {
 		}
 	}
 
-	return &ferry.Response{
-		Status:  res.Status(),
-		Payload: payload,
-	}
+	return ferry.NewResponse(res.Status(), payload)
 }
