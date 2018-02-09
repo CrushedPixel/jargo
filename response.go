@@ -2,11 +2,38 @@ package jargo
 
 import (
 	"errors"
-	"github.com/crushedpixel/margo"
-	"github.com/gin-gonic/gin"
 	"github.com/google/jsonapi"
 	"github.com/json-iterator/go"
 )
+
+type Response interface {
+	// Status returns the HTTP Status
+	// for the response.
+	Status() int
+	// Payload returns the JSON API payload
+	// to send to the client.
+	Payload() (string, error)
+}
+
+type response struct {
+	status  int
+	payload string
+}
+
+func (r *response) Status() int {
+	return r.status
+}
+
+func (r *response) Payload() (string, error) {
+	return r.payload, nil
+}
+
+func NewResponse(status int, payload string) Response {
+	return &response{
+		status:  status,
+		payload: payload,
+	}
+}
 
 var errDataNil = errors.New("resource response data is nil")
 
@@ -18,23 +45,18 @@ type resourceResponse struct {
 	status   int
 }
 
-func newResourceResponse(jsonapiModelData interface{}, collection bool, fieldSet *FieldSet, status int) margo.Response {
-	return &resourceResponse{
-		data:       jsonapiModelData,
-		collection: collection,
-		fieldSet:   fieldSet,
-		status:     status,
-	}
+func (r *resourceResponse) Status() int {
+	return r.status
 }
 
-func (r *resourceResponse) Send(c *gin.Context) error {
+func (r *resourceResponse) Payload() (string, error) {
 	if r.data == nil {
-		return errDataNil
+		return "", errDataNil
 	}
 
 	p, err := jsonapi.Marshal(r.data)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	var bytes []byte
@@ -47,7 +69,7 @@ func (r *resourceResponse) Send(c *gin.Context) error {
 
 		bytes, err = jsoniter.ConfigDefault.Marshal(payload)
 		if err != nil {
-			return err
+			return "", err
 		}
 	} else {
 		payload := p.(*jsonapi.OnePayload)
@@ -56,12 +78,9 @@ func (r *resourceResponse) Send(c *gin.Context) error {
 
 		bytes, err = jsoniter.ConfigDefault.Marshal(payload)
 		if err != nil {
-			return err
+			return "", err
 		}
 	}
 
-	c.Status(r.status)
-	c.Header("Content-Type", jsonapi.MediaType)
-	_, err = c.Writer.Write(bytes)
-	return err
+	return string(bytes), nil
 }

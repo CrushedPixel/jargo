@@ -1,9 +1,8 @@
 package jargo
 
 import (
+	"bytes"
 	"fmt"
-	"github.com/crushedpixel/margo"
-	"github.com/gin-gonic/gin"
 	"github.com/google/jsonapi"
 	"github.com/satori/go.uuid"
 	"gopkg.in/go-playground/validator.v9"
@@ -15,29 +14,38 @@ import (
 // An ApiError is a struct containing
 // information about an error that occurred
 // handling a request.
-// ApiError implements error and margo.Response,
+// ApiError implements error and Response,
 // so it can be returned both as error value in
 // functions and as Response value in HandlerFuncs.
 type ApiError struct {
-	Status int
-	Code   string
-	Detail string
+	status int
+	code   string
+	detail string
 }
 
 // Error satisfies the error interface.
 func (e *ApiError) Error() string {
-	return e.Detail
+	return e.detail
 }
 
-// Send writes an error payload to the response body
-// according to the JSON API spec.
-// See http://jsonapi.org/format/#errors
-//
-// Satisfies the margo.Response interface.
-func (e *ApiError) Send(c *gin.Context) error {
-	c.Status(e.Status)
-	c.Header("Content-Type", jsonapi.MediaType)
-	return jsonapi.MarshalErrors(c.Writer, []*jsonapi.ErrorObject{e.ToErrorObject()})
+// Status satisfies the Response interface.
+func (e *ApiError) Status() int {
+	return e.status
+}
+
+// Payload satisfies the Response interface.
+func (e *ApiError) Payload() (string, error) {
+	buf := new(bytes.Buffer)
+	err := jsonapi.MarshalErrors(buf, []*jsonapi.ErrorObject{e.ToErrorObject()})
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+// Body satisfies the ferry.Response interface.
+func (e *ApiError) Response() (int, string) {
+	return responseToFerry(e).Response()
 }
 
 // ToErrorObject converts the ApiError to a jsonapi.ErrorObject.
@@ -49,9 +57,9 @@ func (e *ApiError) ToErrorObject() *jsonapi.ErrorObject {
 
 	return &jsonapi.ErrorObject{
 		ID:     u.String(),
-		Status: strconv.Itoa(e.Status),
-		Code:   e.Code,
-		Detail: e.Detail,
+		Status: strconv.Itoa(e.status),
+		Code:   e.code,
+		Detail: e.detail,
 	}
 }
 
@@ -59,40 +67,29 @@ func (e *ApiError) ToErrorObject() *jsonapi.ErrorObject {
 // error code and error detail string.
 func NewApiError(status int, code string, detail string) *ApiError {
 	return &ApiError{
-		Status: status,
-		Code:   code,
-		Detail: detail,
+		status: status,
+		code:   code,
+		detail: detail,
 	}
 }
 
-type errorResponse struct {
-	Error error
-}
-
-func (r *errorResponse) Send(c *gin.Context) error {
-	apiError, ok := r.Error.(*ApiError)
-	if !ok {
-		// if error is not an api error, return internal server error response
-		println(fmt.Sprintf("Internal server error: %s", r.Error.Error())) // TODO use a proper logging library
-		apiError = ErrInternalServerError
-	}
-
-	return apiError.Send(c)
-}
-
-// NewErrorResponse returns a margo.Response writing
-// an error payload to the response body
-// according to the JSON API spec.
+// NewErrorResponse returns a Response containing
+// an error payload according to the JSON API spec.
 // See http://jsonapi.org/format/#errors
 //
 // If the underlying error is an instance of ApiError,
-// sending the Response invokes the ApiError's Send method.
-// Otherwise, it logs the ApiError as an internal server error
-// and sends ErrInternalServerError.
-//
-// Satisfies the margo.Response interface.
-func NewErrorResponse(err error) margo.Response {
-	return &errorResponse{Error: err}
+// the error itself is returned.
+// Otherwise, it logs the error as an internal server error
+// and returns ErrInternalServerError.
+func NewErrorResponse(err error) *ApiError {
+	apiError, ok := err.(*ApiError)
+	if !ok {
+		// if error is not an api error, return internal server error response
+		println(fmt.Sprintf("Internal server error: %s", err.Error())) // TODO use a proper logging library
+		apiError = ErrInternalServerError
+	}
+
+	return apiError
 }
 
 // ErrInternalServerError is an ApiError indicating

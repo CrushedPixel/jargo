@@ -4,14 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/crushedpixel/jargo/internal"
-	"github.com/crushedpixel/jargo/internal/parser"
-	"github.com/crushedpixel/margo"
 	"github.com/go-pg/pg"
 	"github.com/go-pg/pg/orm"
 	"gopkg.in/go-playground/validator.v9"
 	"io"
 	"net/http"
-	"net/url"
 	"reflect"
 	"strconv"
 	"strings"
@@ -223,14 +220,11 @@ func (r *Resource) newQueryFromResourceData(db orm.DB, typ queryType, collection
 	return newQuery(db, r, typ, collection, pgModel)
 }
 
-// ParseFieldSet parses field query parameters according to JSON API spec,
-// returning the resulting FieldSet for this Resource.
-// http://jsonapi.org/format/#fetching-sparse-fieldsets
+// ParseFieldSet returns a FieldSet for this Resource
+// from a map of field parameters.
 //
 // Returns ErrInvalidQueryParams when encountering invalid query values.
-func (r *Resource) ParseFieldSet(query url.Values) (*FieldSet, error) {
-	parsed := parser.ParseFieldParameters(query)
-
+func (r *Resource) ParseFieldSet(parsed map[string][]string) (*FieldSet, error) {
 	var schemaFields []internal.SchemaField
 	// check if user specified to filter this resource's fields
 	if fields, ok := parsed[r.JSONAPIName()]; ok {
@@ -264,25 +258,12 @@ func (r *Resource) allFields() *FieldSet {
 	return newFieldSet(r, r.schema.Fields())
 }
 
-// ParseSortFields parses sort query parameters according to JSON API spec,
-// returning the resulting SortFields for this Resource.
-// http://jsonapi.org/format/#fetching-sorting
-//
-// Returns ErrInvalidQueryParams when encountering invalid query values.
-func (r *Resource) ParseSortFields(query url.Values) (*SortFields, error) {
-	sort, err := r.SortFields(parser.ParseSortParameters(query))
-	if err != nil {
-		return nil, ErrInvalidQueryParams(err.Error())
-	}
-	return sort, nil
-}
-
 // SortFields returns a SortField instance for a map of
 // JSON API fields names and sort direction (true being ascending).
 //
 // Returns an error if a field is not
 // a valid JSON API field name for this resource.
-func (r *Resource) SortFields(sort map[string]bool) (*SortFields, error) {
+func (r *Resource) ParseSortFields(sort map[string]bool) (*SortFields, error) {
 	s := make(map[internal.SchemaField]bool)
 	for fieldName, asc := range sort {
 		// find resource field with matching jsonapi name
@@ -309,7 +290,7 @@ func (r *Resource) SortFields(sort map[string]bool) (*SortFields, error) {
 // SortById returns a SortFields instance
 // sorting by the id field in descending order.
 func (r *Resource) SortById() *SortFields {
-	sort, err := r.SortFields(map[string]bool{"id": false})
+	sort, err := r.ParseSortFields(map[string]bool{"id": false})
 	if err != nil {
 		panic(err)
 	}
@@ -321,9 +302,7 @@ func (r *Resource) SortById() *SortFields {
 // http://jsonapi.org/format/#fetching-filtering
 //
 // Returns ErrInvalidQueryParams when encountering invalid query values.
-func (r *Resource) ParseFilters(query url.Values) (*Filters, error) {
-	parsed := parser.ParseFilterParameters(query)
-
+func (r *Resource) ParseFilters(parsed map[string]map[string][]string) (*Filters, error) {
 	// convert parsed data into Filter map
 	f := make(map[string]*Filter)
 	for field, filters := range parsed {
@@ -398,33 +377,33 @@ func (r *Resource) IdFilter(id int64) *Filters {
 	return f
 }
 
-// Response returns a margo.Response that sends a
+// Response returns a Response that sends a
 // Resource Model Instance according to JSON API spec,
 // using the FieldSet provided.
 //
 // Panics if data is not a Resource Model Instance
 // or Slice of Resource Model Instances.
-func (r *Resource) Response(data interface{}, fieldSet *FieldSet) margo.Response {
+func (r *Resource) Response(data interface{}, fieldSet *FieldSet) Response {
 	return r.ResponseWithStatusCode(data, fieldSet, http.StatusOK)
 }
 
-// ResponseAllFields returns a margo.Response that sends a
+// ResponseAllFields returns a Response sending a
 // Resource Model Instance according to JSON API spec,
 // including all model fields.
 //
 // Panics if data is not a Resource Model Instance
 // or Slice of Resource Model Instances.
-func (r *Resource) ResponseAllFields(data interface{}) margo.Response {
+func (r *Resource) ResponseAllFields(data interface{}) Response {
 	return r.Response(data, nil)
 }
 
-// ResponseWithStatusCode returns a margo.Response that sends a
+// ResponseWithStatusCode returns a Response sending a
 // Resource Model Instance according to JSON API spec,
 // setting the status code and using the FieldSet provided.
 //
 // Panics if data is not a Resource Model Instance
 // or Slice of Resource Model Instances.
-func (r *Resource) ResponseWithStatusCode(data interface{}, fieldSet *FieldSet, status int) margo.Response {
+func (r *Resource) ResponseWithStatusCode(data interface{}, fieldSet *FieldSet, status int) Response {
 	if data == nil {
 		panic(errors.New("resource response data is nil"))
 	}
@@ -448,5 +427,10 @@ func (r *Resource) ResponseWithStatusCode(data interface{}, fieldSet *FieldSet, 
 		jsonapiModelData = instance.ToJsonapiModel()
 	}
 
-	return newResourceResponse(jsonapiModelData, collection, fieldSet, status)
+	return &resourceResponse{
+		data:       jsonapiModelData,
+		collection: collection,
+		fieldSet:   fieldSet,
+		status:     status,
+	}
 }
