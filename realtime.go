@@ -17,12 +17,14 @@ import (
 )
 
 const (
-	triggerFunctionName = "jargo_realtime_notify"
-	notifyChannel       = "jargo_realtime"
+	triggerFunctionName     = "jargo_realtime_notify"
+	notificationChannelName = "jargo_realtime"
 )
 
-const triggerFunctionQuery = `
-CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+// triggerFunctionQuery is a query creating a trigger function
+// that notifies the notification channel whenever a row is inserted, updated or deleted.
+var triggerFunctionQuery = fmt.Sprintf(`
+CREATE OR REPLACE FUNCTION %s() RETURNS TRIGGER AS $$
 BEGIN
   IF TG_OP = 'INSERT' THEN
     PERFORM pg_notify('%s', json_build_object('table', TG_TABLE_NAME,
@@ -46,7 +48,11 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-`
+`,
+	triggerFunctionName,
+	notificationChannelName,
+	notificationChannelName,
+	notificationChannelName)
 
 // notificationPayload is a struct representation
 // of the json payload sent to jargo_realtime listeners
@@ -82,25 +88,34 @@ const (
 	MsgAccessDenied    = `{"error":"ACCESS_DENIED"}`
 )
 
+// subscribePayload is a struct representing the JSON payload
+// sent by Realtime clients when subscribing to a resource.
 type subscribePayload struct {
+	// Model is the JSON API member name of the resource type to subscribe to
 	Model string `json:"model"`
-	Id    int64  `json:"id,string"`
+	// Id is the id of the resource to subscribe to
+	Id int64 `json:"id,string"`
 }
 
+// resourceDeletedPayload is a struct representing the JSON payload
+// to send to Realtime clients when a resource was deleted.
 type resourceDeletedPayload struct {
 	Model string `json:"model"`
 	Id    int64  `json:"id,string"`
 }
 
+// resourceUpdatedPayload is a struct representing the JSON payload
+// to send to Realtime clients when a resource was inserted or updated.
 type resourceUpdatedPayload struct {
 	Model   string `json:"model"`
 	Id      int64  `json:"id,string"`
 	Payload string `json:"payload"`
 }
 
+// A Realtime instance allows clients to subscribe to
+// resource instances via websocket.
 type Realtime struct {
 	*glue.Server
-	Path string
 
 	app *Application
 
@@ -149,10 +164,13 @@ func defaultMaySubscribeFunc(*glue.Socket, *Resource, int64) bool {
 	return true
 }
 
-func NewRealtime(app *Application, path string) *Realtime {
+// NewRealtime returns a new Realtime instance for an Application and namespace
+// using the default HandleConnection and MaySubscribe handlers,
+// which allow all connections and subscriptions.
+func NewRealtime(app *Application, namespace string) *Realtime {
 	s := glue.NewServer(glue.Options{
 		HTTPSocketType: glue.HTTPSocketTypeNone,
-		HTTPHandleURL:  path,
+		HTTPHandleURL:  namespace,
 		CheckOrigin: func(r *http.Request) bool {
 			return true // TODO
 		},
@@ -160,7 +178,6 @@ func NewRealtime(app *Application, path string) *Realtime {
 
 	r := &Realtime{
 		Server: s,
-		Path:   path,
 
 		app: app,
 
@@ -184,6 +201,8 @@ func (r *Realtime) onNewSocket(s *glue.Socket) {
 	r.connectingSockets <- s
 }
 
+// Run starts the Realtime server and listens for incoming socket connections.
+// This is a blocking method.
 func (r *Realtime) Run() error {
 	err := r.start()
 	if err != nil {
@@ -202,9 +221,7 @@ func (r *Realtime) start() error {
 	r.release = make(chan *struct{}, 0)
 
 	// create trigger function calling notify
-	_, err := r.app.DB().Exec(fmt.Sprintf(triggerFunctionQuery,
-		triggerFunctionName, notifyChannel, notifyChannel, notifyChannel,
-	))
+	_, err := r.app.DB().Exec(triggerFunctionQuery)
 	if err != nil {
 		return err
 	}
@@ -218,7 +235,7 @@ func (r *Realtime) start() error {
 	}
 
 	// create notification channel for database trigger
-	notificationChannel := r.app.DB().Listen(notifyChannel).Channel()
+	notificationChannel := r.app.DB().Listen(notificationChannelName).Channel()
 
 	go r.handleConnectingSockets()
 	go r.handleRowUpdates(notificationChannel)

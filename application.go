@@ -102,6 +102,7 @@ func (app *Application) MustRegisterResource(model interface{}) *Resource {
 	return r
 }
 
+// AddController registers a Controller with the Application.
 func (app *Application) AddController(c *Controller) {
 	app.controllers[c.resource] = c
 }
@@ -122,6 +123,14 @@ func (app *Application) SetMaxPageSize(maxPageSize int) {
 	app.maxPageSize = maxPageSize
 }
 
+// BridgeRoot registers all of the application's controller's actions
+// with a Ferry instance at root level.
+func (app *Application) BridgeRoot(f *ferry.Ferry) {
+	app.Bridge(f, "")
+}
+
+// Bridge registers all of the application's controller's actions
+// with a Ferry instance.
 func (app *Application) Bridge(f *ferry.Ferry, namespace string) {
 	// prepend slash to namespace
 	if len(namespace) < 1 || namespace[0] != '/' {

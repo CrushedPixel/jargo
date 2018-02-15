@@ -2,13 +2,13 @@ package internal
 
 import (
 	"errors"
+	"fmt"
 	"github.com/go-pg/pg"
 	"github.com/go-pg/pg/orm"
 	"github.com/google/jsonapi"
 	"gopkg.in/go-playground/validator.v9"
 	"io"
 	"reflect"
-	"fmt"
 )
 
 // resource model -> resource Schema
@@ -26,14 +26,8 @@ var (
 )
 
 const realtimeTriggerQuery = `
-DROP TRIGGER IF EXISTS jargo_%s_notify_update ON "%s";
-CREATE TRIGGER jargo_%s_notify_update AFTER UPDATE ON "%s" FOR EACH ROW EXECUTE PROCEDURE %s();
-
-DROP TRIGGER IF EXISTS jargo_%s_notify_insert ON "%s";
-CREATE TRIGGER jargo_%s_notify_insert AFTER INSERT ON "%s" FOR EACH ROW EXECUTE PROCEDURE %s();
-
-DROP TRIGGER IF EXISTS jargo_%s_notify_delete ON "%s";
-CREATE TRIGGER jargo_%s_notify_delete AFTER DELETE ON "%s" FOR EACH ROW EXECUTE PROCEDURE %s();
+DROP TRIGGER IF EXISTS jargo_%s_notify ON "%s";
+CREATE TRIGGER jargo_%s_notify AFTER INSERT OR UPDATE OR DELETE ON "%s" FOR EACH ROW EXECUTE PROCEDURE %s();
 `
 
 type Schema struct {
