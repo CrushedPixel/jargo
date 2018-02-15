@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/c9s/inflect"
-	"github.com/crushedpixel/jargo/internal/parser"
 	"reflect"
 )
 
@@ -120,7 +119,7 @@ func parseSchema(t reflect.Type) *Schema {
 	// "UserProfile" => "user_profile", "user_profiles"
 	singleName := inflect.Underscore(t.Name())
 	defaultName := inflect.Pluralize(singleName)
-	parsed := parser.ParseJargoTagDefaultName(tag, defaultName)
+	parsed := parseJargoTagDefaultName(tag, defaultName)
 
 	schema := &Schema{
 		name:              parsed.Name,
@@ -173,7 +172,7 @@ func (r SchemaRegistry) parseField(schema *Schema, f *reflect.StructField) Schem
 	}
 
 	// determine field type from jargo tag
-	parsed := parser.ParseJargoTag(f.Tag.Get(jargoFieldTag))
+	parsed := parseJargoTag(f.Tag.Get(jargoFieldTag))
 
 	typ := attribute
 	var val string

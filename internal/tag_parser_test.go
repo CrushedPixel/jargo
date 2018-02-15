@@ -1,4 +1,4 @@
-package parser
+package internal
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -6,10 +6,10 @@ import (
 )
 
 func TestParseJargoTag(t *testing.T) {
-	p := ParseJargoTag("")
+	p := parseJargoTag("")
 	assert.Equal(t, p.Name, "")
 
-	p = ParseJargoTag("myName,key0,key1:value1,key2:value2,key3:")
+	p = parseJargoTag("myName,key0,key1:value1,key2:value2,key3:")
 	assert.NotNil(t, p, "Parsed tag is nil")
 
 	assert.Equal(t, p.Name, "myName", "Parsed name is incorrect")
@@ -21,10 +21,10 @@ func TestParseJargoTag(t *testing.T) {
 }
 
 func TestParseJargoTagDefaultName(t *testing.T) {
-	p := ParseJargoTagDefaultName("", "default")
+	p := parseJargoTagDefaultName("", "default")
 	assert.Equal(t, p.Name, "default")
 
-	p = ParseJargoTagDefaultName("myName", "default")
+	p = parseJargoTagDefaultName("myName", "default")
 	assert.Equal(t, p.Name, "myName")
 }
 

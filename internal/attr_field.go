@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/c9s/inflect"
-	"github.com/crushedpixel/jargo/internal/parser"
 	"gopkg.in/go-playground/validator.v9"
 	"reflect"
 	"time"
@@ -63,7 +62,7 @@ func newAttrField(schema *Schema, f *reflect.StructField) SchemaField {
 		panic(errInvalidAttrFieldType(typ))
 	}
 
-	parsed := parser.ParseJargoTag(f.Tag.Get(jargoFieldTag))
+	parsed := parseJargoTag(f.Tag.Get(jargoFieldTag))
 
 	var createdAt, updatedAt bool
 

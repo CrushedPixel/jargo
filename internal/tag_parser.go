@@ -1,4 +1,4 @@
-package parser
+package internal
 
 import (
 	"strings"
@@ -9,8 +9,8 @@ type JargoTag struct {
 	Options map[string]string
 }
 
-func ParseJargoTagDefaultName(tag string, defaultName string) *JargoTag {
-	parsed := ParseJargoTag(tag)
+func parseJargoTagDefaultName(tag string, defaultName string) *JargoTag {
+	parsed := parseJargoTag(tag)
 	if parsed.Name == "" {
 		parsed.Name = defaultName
 	}
@@ -18,7 +18,7 @@ func ParseJargoTagDefaultName(tag string, defaultName string) *JargoTag {
 	return parsed
 }
 
-func ParseJargoTag(tag string) *JargoTag {
+func parseJargoTag(tag string) *JargoTag {
 	spl := strings.Split(tag, ",")
 	parsed := &JargoTag{
 		Name:    spl[0],

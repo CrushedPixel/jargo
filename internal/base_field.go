@@ -2,7 +2,6 @@ package internal
 
 import (
 	"github.com/c9s/inflect"
-	"github.com/crushedpixel/jargo/internal/parser"
 	"reflect"
 )
 
@@ -64,7 +63,7 @@ func newBaseField(schema *Schema, f *reflect.StructField) *baseField {
 	// determine default jsonapi member name.
 	// defaults to dasherized struct field name.
 	defaultName := inflect.Dasherize(f.Name)
-	parsed := parser.ParseJargoTagDefaultName(f.Tag.Get(jargoFieldTag), defaultName)
+	parsed := parseJargoTagDefaultName(f.Tag.Get(jargoFieldTag), defaultName)
 
 	field := &baseField{
 		schema:          schema,
