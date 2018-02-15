@@ -153,7 +153,7 @@ func (app *Application) Bridge(f *ferry.Ferry, namespace string) {
 
 		for route, handlers := range controller.customActions {
 			if len(handlers) > 0 {
-				f.Handle(route.method, route.path, handlers.toFerry(app, controller))
+				f.Handle(route.method, prefix+route.path, handlers.toFerry(app, controller))
 			}
 		}
 	}

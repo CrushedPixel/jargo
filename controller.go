@@ -73,5 +73,9 @@ func (c *Controller) SetDeleteAction(handlers ...DeleteHandlerFunc) {
 }
 
 func (c *Controller) SetAction(method string, path string, handlers ...HandlerFunc) {
+	// ensure leading slash in path unless path is empty
+	if len(path) > 0 && path[0] != '/' {
+		path = "/" + path
+	}
 	c.customActions[route{method: method, path: path}] = handlers
 }
