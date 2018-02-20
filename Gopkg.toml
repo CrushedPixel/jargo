@@ -11,8 +11,8 @@
   name = "github.com/crushedpixel/ferry"
 
 [[constraint]]
+  branch = "master"
   name = "github.com/desertbit/glue"
-  version = "1.9.1"
 
 [[constraint]]
   name = "github.com/go-pg/pg"

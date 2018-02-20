@@ -2,12 +2,6 @@
 
 
 [[projects]]
-  name = "github.com/sirupsen/logrus"
-  packages = ["."]
-  revision = "d682213848ed68c0a260ca37d6dd5ace8423f5ba"
-  version = "v1.0.4"
-
-[[projects]]
   name = "github.com/blang/semver"
   packages = ["."]
   revision = "2ee87856327ba09384cabd113bc6b5d174e9ec0f"
@@ -29,7 +23,7 @@
   branch = "master"
   name = "github.com/crushedpixel/ferry"
   packages = ["."]
-  revision = "91658517e29e92ba68751ff6bb41bba50d458008"
+  revision = "6d542a26f55d632a929d8f366ec7783e235c48e4"
 
 [[projects]]
   name = "github.com/davecgh/go-spew"
@@ -38,6 +32,7 @@
   version = "v1.1.0"
 
 [[projects]]
+  branch = "master"
   name = "github.com/desertbit/glue"
   packages = [
     ".",
@@ -49,8 +44,7 @@
     "log",
     "utils"
   ]
-  revision = "a9786adb7e2ca6cdecbcf2bbfadd8a8bdbd9c5a7"
-  version = "1.9.1"
+  revision = "09c14070c2b18be76289ee6e7745772d39377776"
 
 [[projects]]
   name = "github.com/go-pg/pg"
@@ -113,8 +107,8 @@
 [[projects]]
   name = "github.com/json-iterator/go"
   packages = ["."]
-  revision = "28452fcdec4e44348d2af0d91d1e9e38da3a9e0a"
-  version = "1.0.5"
+  revision = "e7c7f3b33712573affdcc7a107218e7926b9a05b"
+  version = "1.0.6"
 
 [[projects]]
   name = "github.com/pmezard/go-difflib"
@@ -129,6 +123,12 @@
   revision = "36e9d2ebbde5e3f13ab2e25625fd453271d6522e"
 
 [[projects]]
+  name = "github.com/sirupsen/logrus"
+  packages = ["."]
+  revision = "d682213848ed68c0a260ca37d6dd5ace8423f5ba"
+  version = "v1.0.4"
+
+[[projects]]
   name = "github.com/stretchr/testify"
   packages = [
     "assert",
@@ -141,7 +141,7 @@
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
-  revision = "650f4a345ab4e5b245a3034b110ebc7299e68186"
+  revision = "432090b8f568c018896cd8a0fb0345872bbac6ce"
 
 [[projects]]
   branch = "master"
@@ -161,6 +161,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "5741af67cd4facd71ccc9553b7446c2d6a142df42e14f7f854647ff2a9883184"
+  inputs-digest = "4d13b2d172559da96f063de31fda9ac964c2a20cf36ea0e3a80b90a9a0c5769c"
   solver-name = "gps-cdcl"
   solver-version = 1
