@@ -167,18 +167,8 @@ func defaultMaySubscribeFunc(*glue.Socket, *Resource, int64) bool {
 // NewRealtime returns a new Realtime instance for an Application and namespace
 // using the default HandleConnection and MaySubscribe handlers,
 // which allow all connections and subscriptions.
-func NewRealtime(app *Application, namespace string) *Realtime {
-	s := glue.NewServer(glue.Options{
-		HTTPSocketType: glue.HTTPSocketTypeNone,
-		HTTPHandleURL:  namespace,
-		CheckOrigin: func(r *http.Request) bool {
-			return true // TODO
-		},
-	})
-
-	r := &Realtime{
-		Server: s,
-
+func NewRealtime(app *Application) *Realtime {
+	return &Realtime{
 		app: app,
 
 		ConnectionMessageTimeout: 10 * time.Second,
@@ -191,25 +181,30 @@ func NewRealtime(app *Application, namespace string) *Realtime {
 		subscriptions:      make(map[*glue.Socket]map[*Resource][]int64),
 		subscriptionsMutex: &sync.Mutex{},
 	}
-
-	s.OnNewSocket(r.onNewSocket)
-
-	return r
 }
 
 func (r *Realtime) onNewSocket(s *glue.Socket) {
 	r.connectingSockets <- s
 }
 
-// Run starts the Realtime server and listens for incoming socket connections.
-// This is a blocking method.
-func (r *Realtime) Run() error {
-	err := r.start()
-	if err != nil {
-		return err
-	}
-	defer r.close()
-	return r.Server.Run()
+// Bridge registers the Realtime instance with a ServeMux under the given namespace.
+// It also starts all internal handlers.
+func (r *Realtime) Bridge(mux *http.ServeMux, namespace string) {
+	namespace = normalizeNamespace(namespace)
+
+	s := glue.NewServer(glue.Options{
+		HTTPHandleURL: namespace,
+		CheckOrigin: func(r *http.Request) bool {
+			return true // TODO add a way to specify a CheckOrigin function?
+		},
+	})
+
+	s.OnNewSocket(r.onNewSocket)
+	r.Server = s
+
+	r.start()
+
+	mux.Handle(namespace, s)
 }
 
 func (r *Realtime) start() error {
@@ -242,7 +237,9 @@ func (r *Realtime) start() error {
 	return nil
 }
 
-func (r *Realtime) close() {
+// Release releases all internal handlers.
+// Should be called after serving is done.
+func (r *Realtime) Release() {
 	r.Server.Release()
 	close(r.release)
 }
