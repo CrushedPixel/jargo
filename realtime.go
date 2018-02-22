@@ -21,6 +21,11 @@ const (
 	notificationChannelName = "jargo_realtime"
 )
 
+var (
+	errAlreadyRunning = errors.New("realtime instance is already running")
+	errNotRunning     = errors.New("realtime instance must be started to be able to handle http requests")
+)
+
 // triggerFunctionQuery is a query creating a trigger function
 // that notifies the notification channel whenever a row is inserted, updated or deleted.
 var triggerFunctionQuery = fmt.Sprintf(`
@@ -119,6 +124,9 @@ type Realtime struct {
 
 	app *Application
 
+	// namespace is the namespace on which to listen for requests.
+	namespace string
+
 	// ConnectionMessageTimeout is the time
 	// to wait for the connection message.
 	// Defaults to 10s.
@@ -148,9 +156,9 @@ type Realtime struct {
 	// to finish execution when closed
 	release chan *struct{}
 
-	// started is used to assure Start() is only called
-	// once on each Realtime instance.
-	started bool
+	// running indicates whether the Realtime instance
+	// is currently able to handle requests.
+	running bool
 }
 
 type HandleConnectionFunc func(socket *glue.Socket, message string) bool
@@ -167,8 +175,8 @@ func defaultMaySubscribeFunc(*glue.Socket, *Resource, int64) bool {
 // NewRealtime returns a new Realtime instance for an Application and namespace
 // using the default HandleConnection and MaySubscribe handlers,
 // which allow all connections and subscriptions.
-func NewRealtime(app *Application) *Realtime {
-	return &Realtime{
+func NewRealtime(app *Application, namespace string) *Realtime {
+	r := &Realtime{
 		app: app,
 
 		ConnectionMessageTimeout: 10 * time.Second,
@@ -181,19 +189,59 @@ func NewRealtime(app *Application) *Realtime {
 		subscriptions:      make(map[*glue.Socket]map[*Resource][]int64),
 		subscriptionsMutex: &sync.Mutex{},
 	}
+	r.SetNamespace(namespace)
+	return r
 }
 
-func (r *Realtime) onNewSocket(s *glue.Socket) {
-	r.connectingSockets <- s
+// SetNamespace sets the namespace the realtime instance listens on.
+// Panics if the realtime instance is running.
+func (r *Realtime) SetNamespace(namespace string) {
+	if r.running {
+		panic(errAlreadyRunning)
+	}
+	r.namespace = normalizeNamespace(namespace)
 }
 
-// Bridge registers the Realtime instance with a ServeMux under the given namespace.
-// It also starts all internal handlers.
-func (r *Realtime) Bridge(mux *http.ServeMux, namespace string) {
-	namespace = normalizeNamespace(namespace)
+// Namespace returns the namespace the realtime instance listens on.
+func (r *Realtime) Namespace() string {
+	return r.namespace
+}
 
+func (r *Realtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	if !r.running {
+		panic(errNotRunning)
+	}
+	r.Server.ServeHTTP(w, req)
+}
+
+// Bridge registers the Realtime instance with a ServeMux.
+// It prepares the Realtime instance for request handling by invoking Start.
+func (r *Realtime) Bridge(mux *http.ServeMux) error {
+	err := r.Start()
+	if err != nil {
+		return err
+	}
+	mux.Handle(r.namespace, r)
+	return nil
+}
+
+// Start prepares the Realtime instance to handle incoming requests.
+// This must be called before registering the Realtime instance
+// as an http handler.
+//
+// After handling is done, Release should be called to stop all internal
+// goroutines.
+func (r *Realtime) Start() error {
+	if r.running {
+		return errAlreadyRunning
+	}
+
+	r.running = true
+	r.release = make(chan *struct{}, 0)
+
+	// initialize glue server
 	s := glue.NewServer(glue.Options{
-		HTTPHandleURL: namespace,
+		HTTPHandleURL: r.namespace,
 		CheckOrigin: func(r *http.Request) bool {
 			return true // TODO add a way to specify a CheckOrigin function?
 		},
@@ -201,19 +249,6 @@ func (r *Realtime) Bridge(mux *http.ServeMux, namespace string) {
 
 	s.OnNewSocket(r.onNewSocket)
 	r.Server = s
-
-	r.start()
-
-	mux.Handle(namespace, s)
-}
-
-func (r *Realtime) start() error {
-	if r.started {
-		panic(errors.New("a Realtime instance may only be started once"))
-	}
-
-	r.started = true
-	r.release = make(chan *struct{}, 0)
 
 	// create trigger function calling notify
 	_, err := r.app.DB().Exec(triggerFunctionQuery)
@@ -237,11 +272,16 @@ func (r *Realtime) start() error {
 	return nil
 }
 
-// Release releases all internal handlers.
+// Release stops all internal goroutines.
 // Should be called after serving is done.
 func (r *Realtime) Release() {
 	r.Server.Release()
 	close(r.release)
+	r.running = false
+}
+
+func (r *Realtime) onNewSocket(s *glue.Socket) {
+	r.connectingSockets <- s
 }
 
 func (r *Realtime) handleConnectingSockets() {
