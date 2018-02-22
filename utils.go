@@ -26,8 +26,8 @@ func difference(a, b []int64) []int64 {
 	return ab
 }
 
-// normalizeNamespace ensures that namespace starts and ends with a slash.
-func normalizeNamespace(namespace string) string {
+// NormalizeNamespace ensures that the namespace starts and ends with a slash.
+func NormalizeNamespace(namespace string) string {
 	// prepend slash to namespace
 	if len(namespace) < 1 || namespace[0] != '/' {
 		namespace = "/" + namespace

@@ -199,7 +199,7 @@ func (r *Realtime) SetNamespace(namespace string) {
 	if r.running {
 		panic(errAlreadyRunning)
 	}
-	r.namespace = normalizeNamespace(namespace)
+	r.namespace = NormalizeNamespace(namespace)
 }
 
 // Namespace returns the namespace the realtime instance listens on.
