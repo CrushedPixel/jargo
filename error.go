@@ -45,7 +45,7 @@ func (e *ApiError) Payload() (string, error) {
 
 // Body satisfies the ferry.Response interface.
 func (e *ApiError) Response() (int, string) {
-	return responseToFerry(e).Response()
+	return ResponseToFerry(e).Response()
 }
 
 // ToErrorObject converts the ApiError to a jsonapi.ErrorObject.

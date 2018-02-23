@@ -38,7 +38,7 @@ func (c handlerChain) toFerry(app *Application, cont *Controller) ferry.HandlerF
 		for _, m := range append(cont.middleware, c...) {
 			res := m(context)
 			if res != nil {
-				return responseToFerry(res)
+				return ResponseToFerry(res)
 			}
 		}
 
@@ -58,7 +58,7 @@ func (c indexHandlerChain) toFerry(app *Application, cont *Controller) ferry.Han
 		for _, m := range cont.middleware {
 			res := m(context)
 			if res != nil {
-				return responseToFerry(res)
+				return ResponseToFerry(res)
 			}
 		}
 
@@ -72,7 +72,7 @@ func (c indexHandlerChain) toFerry(app *Application, cont *Controller) ferry.Han
 		for _, h := range c {
 			res := h(context, req)
 			if res != nil {
-				return responseToFerry(res)
+				return ResponseToFerry(res)
 			}
 		}
 
@@ -92,7 +92,7 @@ func (c showHandlerChain) toFerry(app *Application, cont *Controller) ferry.Hand
 		for _, m := range cont.middleware {
 			res := m(context)
 			if res != nil {
-				return responseToFerry(res)
+				return ResponseToFerry(res)
 			}
 		}
 
@@ -106,7 +106,7 @@ func (c showHandlerChain) toFerry(app *Application, cont *Controller) ferry.Hand
 		for _, h := range c {
 			res := h(context, req)
 			if res != nil {
-				return responseToFerry(res)
+				return ResponseToFerry(res)
 			}
 		}
 
@@ -126,7 +126,7 @@ func (c createHandlerChain) toFerry(app *Application, cont *Controller) ferry.Ha
 		for _, m := range cont.middleware {
 			res := m(context)
 			if res != nil {
-				return responseToFerry(res)
+				return ResponseToFerry(res)
 			}
 		}
 
@@ -140,7 +140,7 @@ func (c createHandlerChain) toFerry(app *Application, cont *Controller) ferry.Ha
 		for _, h := range c {
 			res := h(context, req)
 			if res != nil {
-				return responseToFerry(res)
+				return ResponseToFerry(res)
 			}
 		}
 
@@ -160,7 +160,7 @@ func (c updateHandlerChain) toFerry(app *Application, cont *Controller) ferry.Ha
 		for _, m := range cont.middleware {
 			res := m(context)
 			if res != nil {
-				return responseToFerry(res)
+				return ResponseToFerry(res)
 			}
 		}
 
@@ -174,7 +174,7 @@ func (c updateHandlerChain) toFerry(app *Application, cont *Controller) ferry.Ha
 		for _, h := range c {
 			res := h(context, req)
 			if res != nil {
-				return responseToFerry(res)
+				return ResponseToFerry(res)
 			}
 		}
 
@@ -194,7 +194,7 @@ func (c deleteHandlerChain) toFerry(app *Application, cont *Controller) ferry.Ha
 		for _, m := range cont.middleware {
 			res := m(context)
 			if res != nil {
-				return responseToFerry(res)
+				return ResponseToFerry(res)
 			}
 		}
 
@@ -208,7 +208,7 @@ func (c deleteHandlerChain) toFerry(app *Application, cont *Controller) ferry.Ha
 		for _, h := range c {
 			res := h(context, req)
 			if res != nil {
-				return responseToFerry(res)
+				return ResponseToFerry(res)
 			}
 		}
 
@@ -216,7 +216,9 @@ func (c deleteHandlerChain) toFerry(app *Application, cont *Controller) ferry.Ha
 	}
 }
 
-func responseToFerry(res Response) ferry.Response {
+// ResponseToFerry creates a ferry.Response from a Response,
+// invoking its Payload() method and handling any errors.
+func ResponseToFerry(res Response) ferry.Response {
 	payload, err := res.Payload()
 	if err != nil {
 		res = NewErrorResponse(err)
