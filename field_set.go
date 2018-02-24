@@ -61,3 +61,13 @@ func removeDuplicateFields(fields []internal.SchemaField) {
 	}
 	fields = fields[:j]
 }
+
+// FieldNames returns the JSON API Member names
+// of the FieldSet's fields.
+func (fs *FieldSet) FieldNames() []string {
+	var names []string
+	for _, f := range fs.fields {
+		names = append(names, f.JSONAPIName())
+	}
+	return names
+}
