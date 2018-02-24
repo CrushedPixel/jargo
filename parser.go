@@ -119,94 +119,97 @@ func ParseResourceId(idStr string) (int64, error) {
 	return id, nil
 }
 
-func ParseIndexRequest(c *Context) (*IndexRequest, error) {
-	fieldSet, err := c.Resource().ParseFieldSet(ParseFieldParameters(c.QueryParams))
+func ParseIndexRequest(base *Request) (*IndexRequest, error) {
+	fieldSet, err := base.Resource().ParseFieldSet(ParseFieldParameters(base.QueryParams()))
 	if err != nil {
 		return nil, err
 	}
 
-	filters, err := c.Resource().ParseFilters(ParseFilterParameters(c.QueryParams))
+	filters, err := base.Resource().ParseFilters(ParseFilterParameters(base.QueryParams()))
 	if err != nil {
 		return nil, err
 	}
 
-	sort, err := c.Resource().ParseSortFields(ParseSortParameters(c.QueryParams))
+	sort, err := base.Resource().ParseSortFields(ParseSortParameters(base.QueryParams()))
 	if err != nil {
 		return nil, err
 	}
 
-	pagination, err := ParsePagination(ParsePageParameters(c.QueryParams), c.Application().MaxPageSize())
+	pagination, err := ParsePagination(ParsePageParameters(base.QueryParams()), base.Application().MaxPageSize())
 	if err != nil {
 		return nil, err
 	}
 
 	req := &IndexRequest{
-		Fields:     fieldSet,
-		Filters:    filters,
-		SortFields: sort,
-		Pagination: pagination,
+		Request:    base,
+		fields:     fieldSet,
+		filters:    filters,
+		sortFields: sort,
+		pagination: pagination,
 	}
 	return req, nil
 }
 
-func ParseShowRequest(c *Context) (*ShowRequest, error) {
-	fieldSet, err := c.Resource().ParseFieldSet(ParseFieldParameters(c.QueryParams))
+func ParseShowRequest(base *Request) (*ShowRequest, error) {
+	fieldSet, err := base.Resource().ParseFieldSet(ParseFieldParameters(base.QueryParams()))
 	if err != nil {
 		return nil, err
 	}
 
-	resourceId, err := ParseResourceId(c.PathParams["id"])
+	resourceId, err := ParseResourceId(base.PathParams()["id"])
 	if err != nil {
 		return nil, err
 	}
 
 	req := &ShowRequest{
-		Fields:     fieldSet,
-		ResourceId: resourceId,
+		Request:    base,
+		fields:     fieldSet,
+		resourceId: resourceId,
 	}
 	return req, nil
 }
 
-func ParseCreateRequest(c *Context) (*CreateRequest, error) {
-	fieldSet, err := c.Resource().ParseFieldSet(ParseFieldParameters(c.QueryParams))
+func ParseCreateRequest(base *Request) (*CreateRequest, error) {
+	fieldSet, err := base.Resource().ParseFieldSet(ParseFieldParameters(base.QueryParams()))
 	if err != nil {
 		return nil, err
 	}
 
 	req := &CreateRequest{
-		Fields:  fieldSet,
-		Payload: c.Payload,
+		Request: base,
+		fields:  fieldSet,
 	}
 	return req, nil
 }
 
-func ParseUpdateRequest(c *Context) (*UpdateRequest, error) {
-	fieldSet, err := c.Resource().ParseFieldSet(ParseFieldParameters(c.QueryParams))
+func ParseUpdateRequest(base *Request) (*UpdateRequest, error) {
+	fieldSet, err := base.Resource().ParseFieldSet(ParseFieldParameters(base.QueryParams()))
 	if err != nil {
 		return nil, err
 	}
 
-	resourceId, err := ParseResourceId(c.PathParams["id"])
+	resourceId, err := ParseResourceId(base.PathParams()["id"])
 	if err != nil {
 		return nil, err
 	}
 
 	req := &UpdateRequest{
-		Fields:     fieldSet,
-		ResourceId: resourceId,
-		Payload:    c.Payload,
+		Request:    base,
+		fields:     fieldSet,
+		resourceId: resourceId,
 	}
 	return req, nil
 }
 
-func ParseDeleteRequest(c *Context) (*DeleteRequest, error) {
-	resourceId, err := ParseResourceId(c.PathParams["id"])
+func ParseDeleteRequest(base *Request) (*DeleteRequest, error) {
+	resourceId, err := ParseResourceId(base.PathParams()["id"])
 	if err != nil {
 		return nil, err
 	}
 
 	req := &DeleteRequest{
-		ResourceId: resourceId,
+		Request:    base,
+		resourceId: resourceId,
 	}
 	return req, nil
 }

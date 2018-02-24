@@ -1,32 +1,94 @@
 package jargo
 
 import (
-	"io"
+	"github.com/crushedpixel/ferry"
+	"github.com/go-pg/pg"
 )
 
+type Request struct {
+	*ferry.Request
+	application *Application
+	resource    *Resource
+}
+
+func (r *Request) Application() *Application {
+	return r.application
+}
+
+func (r *Request) DB() *pg.DB {
+	return r.application.db
+}
+
+func (r *Request) Resource() *Resource {
+	return r.resource
+}
+
 type IndexRequest struct {
-	Fields     *FieldSet
-	Filters    *Filters
-	SortFields *SortFields
-	Pagination *Pagination
+	*Request
+	fields     *FieldSet
+	filters    *Filters
+	sortFields *SortFields
+	pagination *Pagination
+}
+
+func (r *IndexRequest) Fields() *FieldSet {
+	return r.fields
+}
+
+func (r *IndexRequest) Filters() *Filters {
+	return r.filters
+}
+
+func (r *IndexRequest) SortFields() *SortFields {
+	return r.sortFields
+}
+
+func (r *IndexRequest) Pagination() *Pagination {
+	return r.pagination
 }
 
 type ShowRequest struct {
-	Fields     *FieldSet
-	ResourceId int64
+	*Request
+	fields     *FieldSet
+	resourceId int64
+}
+
+func (r *ShowRequest) Fields() *FieldSet {
+	return r.fields
+}
+
+func (r *ShowRequest) ResourceId() int64 {
+	return r.resourceId
 }
 
 type CreateRequest struct {
-	Fields  *FieldSet
-	Payload io.Reader
+	*Request
+	fields *FieldSet
+}
+
+func (r *CreateRequest) Fields() *FieldSet {
+	return r.fields
 }
 
 type UpdateRequest struct {
-	Fields     *FieldSet
-	ResourceId int64
-	Payload    io.Reader
+	*Request
+	fields     *FieldSet
+	resourceId int64
+}
+
+func (r *UpdateRequest) Fields() *FieldSet {
+	return r.fields
+}
+
+func (r *UpdateRequest) ResourceId() int64 {
+	return r.resourceId
 }
 
 type DeleteRequest struct {
-	ResourceId int64
+	*Request
+	resourceId int64
+}
+
+func (r *DeleteRequest) ResourceId() int64 {
+	return r.resourceId
 }
