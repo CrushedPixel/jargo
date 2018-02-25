@@ -71,3 +71,27 @@ func (fs *FieldSet) FieldNames() []string {
 	}
 	return names
 }
+
+// Without returns a copy of the FieldSet instance
+// not containing fields with the JSON API Member names passed.
+func (fs *FieldSet) Without(names ...string) *FieldSet {
+	f := &FieldSet{
+		resource: fs.resource,
+	}
+
+	for _, field := range fs.fields {
+		excluded := false
+		for _, name := range names {
+			if field.JSONAPIName() == name {
+				excluded = true
+			}
+			break
+		}
+
+		if !excluded {
+			f.fields = append(f.fields, field)
+		}
+	}
+
+	return f
+}
