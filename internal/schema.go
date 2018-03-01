@@ -83,9 +83,7 @@ func (s *Schema) CreateTable(db *pg.DB) error {
 
 func (s *Schema) CreateRealtimeTriggers(db *pg.DB, functionName string) error {
 	_, err := db.Exec(fmt.Sprintf(realtimeTriggerQuery,
-		s.table, s.table, s.table, s.table, functionName, // UPDATE
-		s.table, s.table, s.table, s.table, functionName, // INSERT
-		s.table, s.table, s.table, s.table, functionName, // DELETE
+		s.table, s.table, s.table, s.table, functionName,
 	))
 	return err
 }
