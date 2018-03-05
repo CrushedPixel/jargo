@@ -25,7 +25,6 @@ func DefaultIndexResourceHandler(req *IndexRequest) Response {
 	return req.Resource().Select(req.DB()).
 		Filters(req.Filters()).
 		Fields(req.Fields()).
-		Sort(req.SortFields()).
 		Pagination(req.Pagination())
 }
 

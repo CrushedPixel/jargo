@@ -9,10 +9,6 @@ import (
 	"reflect"
 )
 
-// DefaultMaxPageSize is the default maximum number
-// of allowed entries per page.
-const DefaultMaxPageSize = 25
-
 var errNoResponse = errors.New("the last HandlerFunc returned a nil Response")
 
 // Application is the central component of jargo.
@@ -24,27 +20,26 @@ type Application struct {
 	registry  internal.SchemaRegistry
 	resources map[*internal.Schema]*Resource
 
-	maxPageSize int
-	validate    *validator.Validate
+	paginationStrategies *PaginationStrategies
+	maxPageSize          int
+	validate             *validator.Validate
 }
 
 // NewApplication returns a new Application
-// using the given pg handle and a default
-// Validate instance.
-func NewApplication(db *pg.DB) *Application {
-	return NewApplicationWithValidate(db, validator.New())
-}
+// for the given Options.
+func NewApplication(options *Options) *Application {
+	options.setDefaults()
 
-// NewApplicationWithErrorHandler returns a new Application
-// using the given pg handle and Validate instance.
-func NewApplicationWithValidate(db *pg.DB, validate *validator.Validate) *Application {
 	return &Application{
-		db:          db,
 		controllers: make(map[*Resource]*Controller),
 		registry:    make(internal.SchemaRegistry),
 		resources:   make(map[*internal.Schema]*Resource),
-		maxPageSize: DefaultMaxPageSize,
-		validate:    validate,
+
+		db: options.DB,
+
+		paginationStrategies: options.PaginationStrategies,
+		maxPageSize:          options.MaxPageSize,
+		validate:             options.Validate,
 	}
 }
 
@@ -105,22 +100,6 @@ func (app *Application) MustRegisterResource(model interface{}) *Resource {
 // AddController registers a Controller with the Application.
 func (app *Application) AddController(c *Controller) {
 	app.controllers[c.resource] = c
-}
-
-// MaxPageSize returns the maximum number
-// of allowed entries per page for paginated results.
-func (app *Application) MaxPageSize() int {
-	return app.maxPageSize
-}
-
-// SetMaxPageSize sets the maximum number
-// of allowed entries per page.
-// Panics if value is not positive.
-func (app *Application) SetMaxPageSize(maxPageSize int) {
-	if maxPageSize < 1 {
-		panic(errors.New("maximum page size has to be positive"))
-	}
-	app.maxPageSize = maxPageSize
 }
 
 // BridgeRoot registers all of the application's controller's actions

@@ -27,8 +27,7 @@ type IndexRequest struct {
 	*Request
 	fields     *FieldSet
 	filters    *Filters
-	sortFields *SortFields
-	pagination *Pagination
+	pagination Pagination
 }
 
 func (r *IndexRequest) Fields() *FieldSet {
@@ -39,11 +38,7 @@ func (r *IndexRequest) Filters() *Filters {
 	return r.filters
 }
 
-func (r *IndexRequest) SortFields() *SortFields {
-	return r.sortFields
-}
-
-func (r *IndexRequest) Pagination() *Pagination {
+func (r *IndexRequest) Pagination() Pagination {
 	return r.pagination
 }
 

@@ -258,45 +258,6 @@ func (r *Resource) allFields() *FieldSet {
 	return newFieldSet(r, r.schema.Fields())
 }
 
-// SortFields returns a SortField instance for a map of
-// JSON API fields names and sort direction (true being ascending).
-//
-// Returns an error if a field is not
-// a valid JSON API field name for this resource.
-func (r *Resource) ParseSortFields(sort map[string]bool) (*SortFields, error) {
-	s := make(map[internal.SchemaField]bool)
-	for fieldName, asc := range sort {
-		// find resource field with matching jsonapi name
-		var field internal.SchemaField
-		for _, rf := range r.schema.Fields() {
-			if rf.JSONAPIName() == fieldName {
-				field = rf
-				break
-			}
-		}
-		if field == nil {
-			return nil, ErrInvalidQueryParams(fmt.Sprintf(`unknown sort parameter: "%s"`, fieldName))
-		}
-		if !field.Sortable() {
-			return nil, errors.New(fmt.Sprintf(`sorting by "%s" is disabled`, fieldName))
-		}
-
-		s[field] = asc
-	}
-
-	return newSortFields(r, s), nil
-}
-
-// SortById returns a SortFields instance
-// sorting by the id field in descending order.
-func (r *Resource) SortById() *SortFields {
-	sort, err := r.ParseSortFields(map[string]bool{"id": false})
-	if err != nil {
-		panic(err)
-	}
-	return sort
-}
-
 // ParseFilters parses filter query parameters according to JSON API spec,
 // returning the resulting Filters for this Resource.
 // http://jsonapi.org/format/#fetching-filtering
