@@ -11,6 +11,7 @@ const DefaultMaxPageSize = 25
 
 // Options is used to configure an Application when creating it.
 type Options struct {
+	// DB is required.
 	DB *pg.DB
 
 	PaginationStrategies *PaginationStrategies

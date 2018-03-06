@@ -27,19 +27,20 @@ type Application struct {
 
 // NewApplication returns a new Application
 // for the given Options.
-func NewApplication(options *Options) *Application {
-	options.setDefaults()
+func NewApplication(options Options) *Application {
+	o := &options
+	o.setDefaults()
 
 	return &Application{
 		controllers: make(map[*Resource]*Controller),
 		registry:    make(internal.SchemaRegistry),
 		resources:   make(map[*internal.Schema]*Resource),
 
-		db: options.DB,
+		db: o.DB,
 
-		paginationStrategies: options.PaginationStrategies,
-		maxPageSize:          options.MaxPageSize,
-		validate:             options.Validate,
+		paginationStrategies: o.PaginationStrategies,
+		maxPageSize:          o.MaxPageSize,
+		validate:             o.Validate,
 	}
 }
 
