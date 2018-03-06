@@ -29,7 +29,7 @@
   branch = "master"
   name = "github.com/crushedpixel/http_bridge"
   packages = ["."]
-  revision = "84ab1a54eb5175b2435ea132a5a391e2dbdd4af4"
+  revision = "82a2bf048ba482fdbff52af039bc1816c97558de"
 
 [[projects]]
   name = "github.com/davecgh/go-spew"
