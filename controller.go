@@ -23,8 +23,10 @@ type route struct {
 // NewCRUDController returns a new Controller for a Resource
 // with the default JSON API-compliant
 // Index, Show, Create, Update and Delete Actions.
-func NewCRUDController(resource *Resource) *Controller {
-	c := NewController(resource)
+// If the Application already has a controller for this resource,
+// it is replaced with the newly created controller.
+func (app *Application) NewCRUDController(resource *Resource) *Controller {
+	c := app.NewController(resource)
 	c.SetIndexAction(DefaultIndexResourceHandler)
 	c.SetShowAction(DefaultShowResourceHandler)
 	c.SetCreateAction(DefaultCreateResourceHandler)
@@ -33,12 +35,17 @@ func NewCRUDController(resource *Resource) *Controller {
 	return c
 }
 
-// NewController returns a new Controller for a Resource.
-func NewController(resource *Resource) *Controller {
-	return &Controller{
+// NewController creates a new controller for a given resource.
+// If the Application already has a controller for this resource,
+// it is replaced with the newly created controller.
+func (app *Application) NewController(resource *Resource) *Controller {
+	c := &Controller{
 		resource:      resource,
 		customActions: make(map[route]handlerChain),
 	}
+
+	app.controllers[c.resource] = c
+	return c
 }
 
 // Use adds handler functions to be run

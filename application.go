@@ -98,11 +98,6 @@ func (app *Application) MustRegisterResource(model interface{}) *Resource {
 	return r
 }
 
-// AddController registers a Controller with the Application.
-func (app *Application) AddController(c *Controller) {
-	app.controllers[c.resource] = c
-}
-
 // BridgeRoot registers all of the application's controller's actions
 // with a Ferry instance at root level.
 func (app *Application) BridgeRoot(f *ferry.Ferry) {
