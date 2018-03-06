@@ -124,6 +124,10 @@ func (i *idFieldInstance) parentField() SchemaField {
 	return i.field
 }
 
+func (i *idFieldInstance) sortValue() interface{} {
+	return i.value
+}
+
 func (i *idFieldInstance) parseResourceModel(instance *resourceModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)

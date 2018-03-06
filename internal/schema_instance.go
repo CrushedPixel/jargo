@@ -9,6 +9,17 @@ type SchemaInstance struct {
 	fields []schemaFieldInstance
 }
 
+// SortValue returns the schema instance's value
+// for a given field for use when sorting.
+func (i *SchemaInstance) SortValue(field SchemaField) interface{} {
+	for _, fi := range i.fields {
+		if fi.parentField() == field {
+			return fi.sortValue()
+		}
+	}
+	panic("unknown schema field")
+}
+
 // ToResourceModel creates a new Resource Model Instance
 // from the fields of the schema instance.
 func (i *SchemaInstance) ToResourceModel() interface{} {

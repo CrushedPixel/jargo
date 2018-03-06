@@ -56,8 +56,19 @@ func (s *Schema) Table() string {
 	return s.table
 }
 
+// Fields returns all of Schema's fields.
 func (s *Schema) Fields() []SchemaField {
 	return s.fields
+}
+
+// IdField returns the Schema's id field.
+func (s *Schema) IdField() SchemaField {
+	for _, f := range s.fields {
+		if _, ok := f.(*idField); ok {
+			return f
+		}
+	}
+	panic("could not find id field")
 }
 
 // CreateTable creates the database table

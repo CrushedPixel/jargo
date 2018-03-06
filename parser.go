@@ -130,12 +130,9 @@ func ParseIndexRequest(base *Request) (*IndexRequest, error) {
 		return nil, err
 	}
 
-	sort, err := base.Resource().ParseSortFields(ParseSortParameters(base.QueryParams()))
-	if err != nil {
-		return nil, err
-	}
+	pagination, err := base.Resource().ParsePagination(base.Application(),
+		ParseSortParameters(base.QueryParams()), ParsePageParameters(base.QueryParams()))
 
-	pagination, err := ParsePagination(ParsePageParameters(base.QueryParams()), base.Application().MaxPageSize())
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +141,6 @@ func ParseIndexRequest(base *Request) (*IndexRequest, error) {
 		Request:    base,
 		fields:     fieldSet,
 		filters:    filters,
-		sortFields: sort,
 		pagination: pagination,
 	}
 	return req, nil

@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 )
@@ -41,12 +40,16 @@ func (f *hasField) Filterable() bool {
 }
 
 func (f *hasField) Sortable() bool {
+	// we can't sort by has relations, as they don't
+	// have any columns containing information about
+	// their relations.
+
 	// TODO: ensure user does not set `sortable:true`
 	return false
 }
 
 func (f *hasField) PGFilterColumn() string {
-	panic(errors.New("unsupported operation"))
+	panic("unsupported operation")
 }
 
 // override this function to calculate topLevel pg fields on demand,
@@ -87,4 +90,12 @@ type hasFieldInstance struct {
 
 func (i *hasFieldInstance) parentField() SchemaField {
 	return i.field
+}
+
+func (i *hasFieldInstance) sortValue() interface{} {
+	// we can't sort by has relations, and because
+	// sorting (with cursor-based pagination) is the only
+	// time we use the value() function, we don't need
+	// to implement it
+	panic("unsupported operation")
 }

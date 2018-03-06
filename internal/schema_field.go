@@ -39,6 +39,10 @@ type SchemaField interface {
 type schemaFieldInstance interface {
 	parentField() SchemaField
 
+	// sortValue returns the field instance's value for use when sorting.
+	// Only implemented for fields that may be sortable.
+	sortValue() interface{}
+
 	// parses a resource model instance, setting the field's value.
 	parseResourceModel(*resourceModelInstance)
 	// parses a jsonapi model instance, setting the field's value.

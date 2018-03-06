@@ -120,6 +120,23 @@ func (i *belongsToFieldInstance) parentField() SchemaField {
 	return i.field
 }
 
+func (i *belongsToFieldInstance) sortValue() interface{} {
+	val := i.values[0]
+	// relations may be nil
+	if val == nil {
+		return nil
+	}
+
+	// return relation's id value
+	for _, f := range val.fields {
+		if idf, ok := f.(*idFieldInstance); ok {
+			return idf.sortValue()
+		}
+	}
+
+	panic("could not find relation's id field")
+}
+
 // parsePGModel parses the value of the pg relation struct field
 // (e.g. *User) and stores it in i.values[0].
 // If the relation struct field is nil, but the relation id field (e.g. UserId)

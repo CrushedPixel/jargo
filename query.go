@@ -38,8 +38,7 @@ type Query struct {
 
 	// user settable
 	fields     *FieldSet
-	sort       *SortFields
-	pagination *Pagination
+	pagination Pagination
 	filters    *Filters
 
 	// internal
@@ -73,30 +72,11 @@ func (q *Query) Fields(fs *FieldSet) *Query {
 	return q
 }
 
-// Sort sets a SortFields instance
-// to apply on Query execution.
-//
-// Panics if Query is not a Select many Query.
-func (q *Query) Sort(s *SortFields) *Query {
-	if q.typ != typeSelect {
-		panic(errNotSelecting)
-	}
-	if !q.collection {
-		panic(errNoCollection)
-	}
-	if s.resource != q.resource {
-		panic(errMismatchingResource)
-	}
-	q.sort = s
-
-	return q
-}
-
 // Pagination sets a Pagination instance
 // to apply on Query execution.
 //
 // Panics if Query is not a Select many Query.
-func (q *Query) Pagination(p *Pagination) *Query {
+func (q *Query) Pagination(p Pagination) *Query {
 	if q.typ != typeSelect {
 		panic(errNotSelecting)
 	}
@@ -212,18 +192,8 @@ func (q *Query) execute() {
 			q.filters.applyToQuery(q.Query)
 		}
 
-		if q.collection {
-			var sort *SortFields
-			if q.sort != nil {
-				sort = q.sort
-			} else {
-				sort = q.resource.SortById()
-			}
-			sort.applyToQuery(q.Query)
-
-			if q.pagination != nil {
-				q.pagination.applyToQuery(q.Query)
-			}
+		if q.collection && q.pagination != nil {
+			q.pagination.applyToQuery(q.Query)
 		}
 
 		q.executionError = q.Select()
