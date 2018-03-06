@@ -2,7 +2,6 @@ package jargo
 
 import (
 	"errors"
-	"github.com/crushedpixel/ferry"
 	"github.com/crushedpixel/jargo/internal"
 	"github.com/go-pg/pg"
 	"gopkg.in/go-playground/validator.v9"
@@ -96,49 +95,4 @@ func (app *Application) MustRegisterResource(model interface{}) *Resource {
 		panic(err)
 	}
 	return r
-}
-
-// BridgeRoot registers all of the application's controller's actions
-// with a Ferry instance at root level.
-func (app *Application) BridgeRoot(f *ferry.Ferry) {
-	app.Bridge(f, "")
-}
-
-// Bridge registers all of the application's controller's actions
-// with a Ferry instance.
-func (app *Application) Bridge(f *ferry.Ferry, namespace string) {
-	// prepend slash to namespace
-	if len(namespace) < 1 || namespace[0] != '/' {
-		namespace = "/" + namespace
-	}
-	// remove trailing slash from namespace
-	if namespace[len(namespace)-1] == '/' {
-		namespace = namespace[:len(namespace)-1]
-	}
-
-	for resource, controller := range app.controllers {
-		prefix := namespace + "/" + resource.JSONAPIName()
-
-		if len(controller.indexAction) > 0 {
-			f.GET(prefix, controller.indexAction.toFerry(app, controller))
-		}
-		if len(controller.showAction) > 0 {
-			f.GET(prefix+"/{id}", controller.showAction.toFerry(app, controller))
-		}
-		if len(controller.createAction) > 0 {
-			f.POST(prefix, controller.createAction.toFerry(app, controller))
-		}
-		if len(controller.updateAction) > 0 {
-			f.PATCH(prefix+"/{id}", controller.updateAction.toFerry(app, controller))
-		}
-		if len(controller.deleteAction) > 0 {
-			f.DELETE(prefix+"/{id}", controller.deleteAction.toFerry(app, controller))
-		}
-
-		for route, handlers := range controller.customActions {
-			if len(handlers) > 0 {
-				f.Handle(route.method, prefix+route.path, handlers.toFerry(app, controller))
-			}
-		}
-	}
 }
