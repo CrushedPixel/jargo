@@ -44,7 +44,6 @@ var (
 	errInvalidModelType          = errors.New("model has to be a struct")
 	errMissingIdField            = errors.New("missing id field")
 	errInvalidIdType             = errors.New("id field must be of type int")
-	errUnannotatedIdField        = errors.New("id field is missing jargo annotation")
 	errInvalidMemberName         = errors.New(`member name has to adhere to the jsonapi specification and not include characters marked as "not recommended"`)
 	errInvalidTableName          = errors.New("table name may only consist of [0-9,a-z,A-Z$_]")
 	errInvalidTableAlias         = errors.New("alias may only consist of [0-9,a-z,A-Z$_]")
@@ -106,10 +105,7 @@ func parseSchema(t reflect.Type) *Schema {
 	}
 
 	// parse jargo struct tag
-	tag, ok := f.Tag.Lookup(jargoFieldTag)
-	if !ok {
-		panic(errUnannotatedIdField)
-	}
+	tag := f.Tag.Get(jargoFieldTag)
 
 	// parse schema name, sql table and sql alias
 	// from struct tag.
