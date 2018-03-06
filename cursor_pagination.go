@@ -77,9 +77,14 @@ func (p *cursorPagination) keySort(q *orm.Query) *orm.Query {
 	return q
 }
 
+// appendWhere appends the keyset pagination WHERE clause to the given Query
+// for the cursorPagination's order entry at index i.
+//
+// See https://use-the-index-luke.com/sql/partial-results/fetch-next-page
 func (p *cursorPagination) appendWhere(q *orm.Query, i int) *orm.Query {
 	e := p.entries[i]
 
+	// determine sorting operator
 	var op string
 	if e.asc {
 		op = ">"
@@ -100,11 +105,13 @@ func (p *cursorPagination) appendWhere(q *orm.Query, i int) *orm.Query {
 	q = q.Where(fmt.Sprintf(`%s %s ?`, column, op), value)
 	if i+1 < len(p.entries) {
 		q.WhereGroup(func(q *orm.Query) (*orm.Query, error) {
-			q = q.Where(fmt.Sprintf(`"%s" != ?`, column), value).
-				WhereOrGroup(func(q *orm.Query) (*orm.Query, error) {
-					q = p.appendWhere(q, i+1)
-					return q, nil
-				})
+			q = q.Where(fmt.Sprintf(`"%s" != ?`, column), value)
+
+			// append WHERE clause for next sorting instruction inside nested condition
+			q = q.WhereOrGroup(func(q *orm.Query) (*orm.Query, error) {
+				q = p.appendWhere(q, i+1)
+				return q, nil
+			})
 			return q, nil
 		})
 	}
