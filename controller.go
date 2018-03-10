@@ -28,7 +28,7 @@ type route struct {
 func (app *Application) NewCRUDController(resource *Resource) *Controller {
 	c := app.NewController(resource)
 	c.SetIndexHandler(NewIndexAction())
-	c.SetShowHandler(DefaultShowResourceHandler)
+	c.SetShowHandler(NewShowAction())
 	c.SetCreateHandler(DefaultCreateResourceHandler)
 	c.SetUpdateHandler(DefaultUpdateResourceHandler)
 	c.SetDeleteHandler(DefaultDeleteResourceHandler)

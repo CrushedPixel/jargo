@@ -16,15 +16,6 @@ func ParseUpdatePayload(req *UpdateRequest) (interface{}, error) {
 	return req.Resource().ParseJsonapiUpdatePayload(req.Payload(), instance, req.Application().Validate())
 }
 
-// DefaultShowResourceHandler is the HandlerFunc
-// used by the builtin JSON API Show Action.
-// It supports Sparse Fieldsets according to the JSON API spec.
-// http://jsonapi.org/format/#fetching
-var DefaultShowResourceHandler = ShowHandlerFunc(func(req *ShowRequest) Response {
-	return req.Resource().SelectById(req.DB(), req.ResourceId()).
-		Fields(req.Fields())
-})
-
 // DefaultCreateResourceHandler is the HandlerFunc
 // used by the builtin JSON API Create Action.
 // It supports Sparse Fieldsets according to the JSON API spec.

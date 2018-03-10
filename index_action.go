@@ -2,11 +2,7 @@ package jargo
 
 type BeforeQueryHandlerFunc func(*Query) *Query
 
-type IndexResultHandlerFunc func(*IndexRequest, interface{}) Response
-
-var DefaultIndexResultHandlerFunc = func(req *IndexRequest, result interface{}) Response {
-	return req.Resource().Response(result, req.Fields())
-}
+type IndexResultHandlerFunc func(request *IndexRequest, result interface{}) Response
 
 // IndexAction is a customizable IndexHandler.
 //
@@ -19,11 +15,9 @@ type IndexAction struct {
 	resultHandler IndexResultHandlerFunc
 }
 
-// NewIndexAction creates a new default index action.
+// NewIndexAction creates a new default IndexAction instance.
 func NewIndexAction() *IndexAction {
-	return &IndexAction{
-		resultHandler: DefaultIndexResultHandlerFunc,
-	}
+	return &IndexAction{}
 }
 
 func (a *IndexAction) Handle(req *IndexRequest) Response {
@@ -44,7 +38,15 @@ func (a *IndexAction) Handle(req *IndexRequest) Response {
 		return NewErrorResponse(err)
 	}
 
-	return a.resultHandler(req, result)
+	// if set, apply result handler
+	if a.resultHandler != nil {
+		if res := a.resultHandler(req, result); res != nil {
+			return res
+		}
+	}
+
+	// default result handling
+	return req.Resource().Response(result, req.Fields())
 }
 
 // BeforeQueryHandlerFunc sets the BeforeQueryHandlerFunc
