@@ -29,7 +29,7 @@ func (app *Application) NewCRUDController(resource *Resource) *Controller {
 	c := app.NewController(resource)
 	c.SetIndexHandler(NewIndexAction())
 	c.SetShowHandler(NewShowAction())
-	c.SetCreateHandler(DefaultCreateResourceHandler)
+	c.SetCreateHandler(NewCreateAction())
 	c.SetUpdateHandler(DefaultUpdateResourceHandler)
 	c.SetDeleteHandler(DefaultDeleteResourceHandler)
 	return c

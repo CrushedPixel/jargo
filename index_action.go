@@ -1,6 +1,6 @@
 package jargo
 
-type BeforeQueryHandlerFunc func(*Query) *Query
+type BeforeIndexQueryHandlerFunc func(request *IndexRequest, query *Query) *Query
 
 type IndexResultHandlerFunc func(request *IndexRequest, result interface{}) Response
 
@@ -11,7 +11,7 @@ type IndexResultHandlerFunc func(request *IndexRequest, result interface{}) Resp
 // according to the JSON API spec.
 // http://jsonapi.org/format/#fetching
 type IndexAction struct {
-	beforeQuery   BeforeQueryHandlerFunc
+	beforeQuery   BeforeIndexQueryHandlerFunc
 	resultHandler IndexResultHandlerFunc
 }
 
@@ -29,7 +29,7 @@ func (a *IndexAction) Handle(req *IndexRequest) Response {
 
 	// if set, apply beforeQuery handler
 	if a.beforeQuery != nil {
-		q = a.beforeQuery(q)
+		q = a.beforeQuery(req, q)
 	}
 
 	// execute query
@@ -49,10 +49,10 @@ func (a *IndexAction) Handle(req *IndexRequest) Response {
 	return req.Resource().Response(result, req.Fields())
 }
 
-// BeforeQueryHandlerFunc sets the BeforeQueryHandlerFunc
+// BeforeQueryHandlerFunc sets the BeforeIndexQueryHandlerFunc
 // to be applied before executing the query,
 // replacing the existing handler function.
-func (a *IndexAction) BeforeQueryHandlerFunc(f BeforeQueryHandlerFunc) {
+func (a *IndexAction) BeforeQueryHandlerFunc(f BeforeIndexQueryHandlerFunc) {
 	a.beforeQuery = f
 }
 

@@ -1,5 +1,7 @@
 package jargo
 
+type BeforeShowQueryHandlerFunc func(request *ShowRequest, query *Query) *Query
+
 type ShowResultHandlerFunc func(request *ShowRequest, result interface{}) Response
 
 // ShowAction is a customizable ShowHandler.
@@ -8,7 +10,7 @@ type ShowResultHandlerFunc func(request *ShowRequest, result interface{}) Respon
 // according to the JSON API spec.
 // http://jsonapi.org/format/#fetching
 type ShowAction struct {
-	beforeQuery   BeforeQueryHandlerFunc
+	beforeQuery   BeforeShowQueryHandlerFunc
 	resultHandler ShowResultHandlerFunc
 }
 
@@ -24,7 +26,7 @@ func (a *ShowAction) Handle(req *ShowRequest) Response {
 
 	// if set, apply beforeQuery handler
 	if a.beforeQuery != nil {
-		q = a.beforeQuery(q)
+		q = a.beforeQuery(req, q)
 	}
 
 	// execute query
@@ -47,10 +49,10 @@ func (a *ShowAction) Handle(req *ShowRequest) Response {
 	return req.Resource().Response(result, req.Fields())
 }
 
-// BeforeQueryHandlerFunc sets the BeforeQueryHandlerFunc
+// BeforeQueryHandlerFunc sets the BeforeShowQueryHandlerFunc
 // to be applied before executing the query,
 // replacing the existing handler function.
-func (a *ShowAction) BeforeQueryHandlerFunc(f BeforeQueryHandlerFunc) {
+func (a *ShowAction) BeforeQueryHandlerFunc(f BeforeShowQueryHandlerFunc) {
 	a.beforeQuery = f
 }
 
