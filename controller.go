@@ -31,7 +31,7 @@ func (app *Application) NewCRUDController(resource *Resource) *Controller {
 	c.SetShowHandler(NewShowAction())
 	c.SetCreateHandler(NewCreateAction())
 	c.SetUpdateHandler(NewUpdateAction())
-	c.SetDeleteHandler(DefaultDeleteResourceHandler)
+	c.SetDeleteHandler(NewDeleteAction())
 	return c
 }
 
