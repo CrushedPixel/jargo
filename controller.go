@@ -4,7 +4,7 @@ package jargo
 // Actions related to a specific Resource.
 type Controller struct {
 	resource   *Resource
-	middleware []HandlerFunc
+	middleware handlerChain
 
 	indexAction  indexHandlerChain
 	showAction   showHandlerChain
@@ -50,36 +50,36 @@ func (app *Application) NewController(resource *Resource) *Controller {
 
 // Use adds handler functions to be run
 // before the Controller's action handlers.
-func (c *Controller) Use(middleware ...HandlerFunc) {
+func (c *Controller) Use(middleware ...Handler) {
 	c.middleware = append(c.middleware, middleware...)
 }
 
 // SetIndexAction sets the Controller's Index Action.
-func (c *Controller) SetIndexAction(handlers ...IndexHandlerFunc) {
+func (c *Controller) SetIndexAction(handlers ...IndexHandler) {
 	c.indexAction = handlers
 }
 
 // SetShowAction sets the Controller's Show Action.
-func (c *Controller) SetShowAction(handlers ...ShowHandlerFunc) {
+func (c *Controller) SetShowAction(handlers ...ShowHandler) {
 	c.showAction = handlers
 }
 
 // SetCreateAction sets the Controller's Create Action.
-func (c *Controller) SetCreateAction(handlers ...CreateHandlerFunc) {
+func (c *Controller) SetCreateAction(handlers ...CreateHandler) {
 	c.createAction = handlers
 }
 
 // SetUpdateAction sets the Controller's Update Action.
-func (c *Controller) SetUpdateAction(handlers ...UpdateHandlerFunc) {
+func (c *Controller) SetUpdateAction(handlers ...UpdateHandler) {
 	c.updateAction = handlers
 }
 
 // SetDeleteAction sets the Controller's Delete Action.
-func (c *Controller) SetDeleteAction(handlers ...DeleteHandlerFunc) {
+func (c *Controller) SetDeleteAction(handlers ...DeleteHandler) {
 	c.deleteAction = handlers
 }
 
-func (c *Controller) SetAction(method string, path string, handlers ...HandlerFunc) {
+func (c *Controller) SetAction(method string, path string, handlers ...Handler) {
 	// ensure leading slash in path unless path is empty
 	if len(path) > 0 && path[0] != '/' {
 		path = "/" + path

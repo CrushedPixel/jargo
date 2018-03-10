@@ -21,27 +21,27 @@ func ParseUpdatePayload(req *UpdateRequest) (interface{}, error) {
 // It supports Pagination, Sorting, Filtering and Sparse Fieldsets
 // according to the JSON API spec.
 // http://jsonapi.org/format/#fetching
-func DefaultIndexResourceHandler(req *IndexRequest) Response {
+var DefaultIndexResourceHandler = IndexHandlerFunc(func(req *IndexRequest) Response {
 	return req.Resource().Select(req.DB()).
 		Filters(req.Filters()).
 		Fields(req.Fields()).
 		Pagination(req.Pagination())
-}
+})
 
 // DefaultShowResourceHandler is the HandlerFunc
 // used by the builtin JSON API Show Action.
 // It supports Sparse Fieldsets according to the JSON API spec.
 // http://jsonapi.org/format/#fetching
-func DefaultShowResourceHandler(req *ShowRequest) Response {
+var DefaultShowResourceHandler = ShowHandlerFunc(func(req *ShowRequest) Response {
 	return req.Resource().SelectById(req.DB(), req.ResourceId()).
 		Fields(req.Fields())
-}
+})
 
 // DefaultCreateResourceHandler is the HandlerFunc
 // used by the builtin JSON API Create Action.
 // It supports Sparse Fieldsets according to the JSON API spec.
 // http://jsonapi.org/format/#crud-creating
-func DefaultCreateResourceHandler(req *CreateRequest) Response {
+var DefaultCreateResourceHandler = CreateHandlerFunc(func(req *CreateRequest) Response {
 	m, err := ParseCreatePayload(req)
 	if err != nil {
 		return NewErrorResponse(err)
@@ -49,13 +49,13 @@ func DefaultCreateResourceHandler(req *CreateRequest) Response {
 
 	return req.Resource().InsertInstance(req.DB(), m).
 		Fields(req.Fields())
-}
+})
 
 // DefaultUpdateResourceHandler is the HandlerFunc
 // used by the builtin JSON API Update Action.
 // It supports Sparse Fieldsets according to the JSON API spec.
 // http://jsonapi.org/format/#crud-updating
-func DefaultUpdateResourceHandler(req *UpdateRequest) Response {
+var DefaultUpdateResourceHandler = UpdateHandlerFunc(func(req *UpdateRequest) Response {
 	m, err := ParseUpdatePayload(req)
 	if err != nil {
 		return NewErrorResponse(err)
@@ -63,11 +63,11 @@ func DefaultUpdateResourceHandler(req *UpdateRequest) Response {
 
 	return req.Resource().UpdateInstance(req.DB(), m).
 		Fields(req.Fields())
-}
+})
 
 // DefaultDeleteResourceHandler is the HandlerFunc
 // used by the builtin JSON API Delete Action.
 // http://jsonapi.org/format/#crud-deleting
-func DefaultDeleteResourceHandler(req *DeleteRequest) Response {
+var DefaultDeleteResourceHandler = DeleteHandlerFunc(func(req *DeleteRequest) Response {
 	return req.Resource().DeleteById(req.DB(), req.ResourceId())
-}
+})
