@@ -2,29 +2,89 @@ package jargo
 
 import "github.com/crushedpixel/ferry"
 
-// A HandlerFunc is a function handling a generic jargo request.
+// Handler handles a generic jargo request.
+type Handler interface {
+	Handle(*Request) Response
+}
+
+// HandlerFunc handles a generic jargo request.
 type HandlerFunc func(req *Request) Response
-type handlerChain []HandlerFunc
 
-// An IndexHandlerFunc is a function handling an index request.
+func (h HandlerFunc) Handle(req *Request) Response {
+	return h(req)
+}
+
+type handlerChain []Handler
+
+// IndexHandler handles an index request.
+type IndexHandler interface {
+	Handle(request *IndexRequest) Response
+}
+
+// IndexHandlerFunc handles an index request.
 type IndexHandlerFunc func(req *IndexRequest) Response
-type indexHandlerChain []IndexHandlerFunc
 
-// A ShowHandlerFunc is a function handling a show request.
+func (h IndexHandlerFunc) Handle(req *IndexRequest) Response {
+	return h(req)
+}
+
+type indexHandlerChain []IndexHandler
+
+// ShowHandler handles a show request.
+type ShowHandler interface {
+	Handle(*ShowRequest) Response
+}
+
+// ShowHandlerFunc handles a show request.
 type ShowHandlerFunc func(req *ShowRequest) Response
-type showHandlerChain []ShowHandlerFunc
 
-// A CreateHandlerFunc is a function handling a create request.
+func (h ShowHandlerFunc) Handle(req *ShowRequest) Response {
+	return h(req)
+}
+
+type showHandlerChain []ShowHandler
+
+// CreateHandler handles a create request.
+type CreateHandler interface {
+	Handle(*CreateRequest) Response
+}
+
+// CreateHandlerFunc handles a create request.
 type CreateHandlerFunc func(req *CreateRequest) Response
-type createHandlerChain []CreateHandlerFunc
 
-// An UpdateHandlerFunc is a function handling an update request.
+func (h CreateHandlerFunc) Handle(req *CreateRequest) Response {
+	return h(req)
+}
+
+type createHandlerChain []CreateHandler
+
+// UpdateHandler handles an update request.
+type UpdateHandler interface {
+	Handle(*UpdateRequest) Response
+}
+
+// UpdateHandlerFunc handles an update request.
 type UpdateHandlerFunc func(req *UpdateRequest) Response
-type updateHandlerChain []UpdateHandlerFunc
 
-// A DeleteHandlerFunc is a function handling a delete request.
+func (h UpdateHandlerFunc) Handle(req *UpdateRequest) Response {
+	return h(req)
+}
+
+type updateHandlerChain []UpdateHandler
+
+// DeleteHandler handles a delete request.
+type DeleteHandler interface {
+	Handle(*DeleteRequest) Response
+}
+
+// DeleteHandlerFunc handles a delete request.
 type DeleteHandlerFunc func(req *DeleteRequest) Response
-type deleteHandlerChain []DeleteHandlerFunc
+
+func (h DeleteHandlerFunc) Handle(req *DeleteRequest) Response {
+	return h(req)
+}
+
+type deleteHandlerChain []DeleteHandler
 
 func (c handlerChain) toFerry(app *Application, cont *Controller) ferry.HandlerFunc {
 	return func(r *ferry.Request) ferry.Response {
@@ -36,7 +96,7 @@ func (c handlerChain) toFerry(app *Application, cont *Controller) ferry.HandlerF
 
 		// execute middleware and handlers
 		for _, m := range append(cont.middleware, c...) {
-			res := m(req)
+			res := m.Handle(req)
 			if res != nil {
 				return ResponseToFerry(res)
 			}
@@ -56,7 +116,7 @@ func (c indexHandlerChain) toFerry(app *Application, cont *Controller) ferry.Han
 
 		// execute middleware
 		for _, m := range cont.middleware {
-			res := m(base)
+			res := m.Handle(base)
 			if res != nil {
 				return ResponseToFerry(res)
 			}
@@ -70,7 +130,7 @@ func (c indexHandlerChain) toFerry(app *Application, cont *Controller) ferry.Han
 
 		// execute handlers
 		for _, h := range c {
-			res := h(req)
+			res := h.Handle(req)
 			if res != nil {
 				return ResponseToFerry(res)
 			}
@@ -90,7 +150,7 @@ func (c showHandlerChain) toFerry(app *Application, cont *Controller) ferry.Hand
 
 		// execute middleware
 		for _, m := range cont.middleware {
-			res := m(base)
+			res := m.Handle(base)
 			if res != nil {
 				return ResponseToFerry(res)
 			}
@@ -104,7 +164,7 @@ func (c showHandlerChain) toFerry(app *Application, cont *Controller) ferry.Hand
 
 		// execute handlers
 		for _, h := range c {
-			res := h(req)
+			res := h.Handle(req)
 			if res != nil {
 				return ResponseToFerry(res)
 			}
@@ -124,7 +184,7 @@ func (c createHandlerChain) toFerry(app *Application, cont *Controller) ferry.Ha
 
 		// execute middleware
 		for _, m := range cont.middleware {
-			res := m(base)
+			res := m.Handle(base)
 			if res != nil {
 				return ResponseToFerry(res)
 			}
@@ -138,7 +198,7 @@ func (c createHandlerChain) toFerry(app *Application, cont *Controller) ferry.Ha
 
 		// execute handlers
 		for _, h := range c {
-			res := h(req)
+			res := h.Handle(req)
 			if res != nil {
 				return ResponseToFerry(res)
 			}
@@ -158,7 +218,7 @@ func (c updateHandlerChain) toFerry(app *Application, cont *Controller) ferry.Ha
 
 		// execute middleware
 		for _, m := range cont.middleware {
-			res := m(base)
+			res := m.Handle(base)
 			if res != nil {
 				return ResponseToFerry(res)
 			}
@@ -172,7 +232,7 @@ func (c updateHandlerChain) toFerry(app *Application, cont *Controller) ferry.Ha
 
 		// execute handlers
 		for _, h := range c {
-			res := h(req)
+			res := h.Handle(req)
 			if res != nil {
 				return ResponseToFerry(res)
 			}
@@ -192,7 +252,7 @@ func (c deleteHandlerChain) toFerry(app *Application, cont *Controller) ferry.Ha
 
 		// execute middleware
 		for _, m := range cont.middleware {
-			res := m(base)
+			res := m.Handle(base)
 			if res != nil {
 				return ResponseToFerry(res)
 			}
@@ -206,7 +266,7 @@ func (c deleteHandlerChain) toFerry(app *Application, cont *Controller) ferry.Ha
 
 		// execute handlers
 		for _, h := range c {
-			res := h(req)
+			res := h.Handle(req)
 			if res != nil {
 				return ResponseToFerry(res)
 			}
