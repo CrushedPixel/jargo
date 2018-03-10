@@ -16,18 +16,6 @@ func ParseUpdatePayload(req *UpdateRequest) (interface{}, error) {
 	return req.Resource().ParseJsonapiUpdatePayload(req.Payload(), instance, req.Application().Validate())
 }
 
-// DefaultIndexResourceHandler is the HandlerFunc
-// used by the builtin JSON API Index Action.
-// It supports Pagination, Sorting, Filtering and Sparse Fieldsets
-// according to the JSON API spec.
-// http://jsonapi.org/format/#fetching
-var DefaultIndexResourceHandler = IndexHandlerFunc(func(req *IndexRequest) Response {
-	return req.Resource().Select(req.DB()).
-		Filters(req.Filters()).
-		Fields(req.Fields()).
-		Pagination(req.Pagination())
-})
-
 // DefaultShowResourceHandler is the HandlerFunc
 // used by the builtin JSON API Show Action.
 // It supports Sparse Fieldsets according to the JSON API spec.

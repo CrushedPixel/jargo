@@ -27,7 +27,7 @@ type route struct {
 // it is replaced with the newly created controller.
 func (app *Application) NewCRUDController(resource *Resource) *Controller {
 	c := app.NewController(resource)
-	c.SetIndexHandler(DefaultIndexResourceHandler)
+	c.SetIndexHandler(NewIndexAction())
 	c.SetShowHandler(DefaultShowResourceHandler)
 	c.SetCreateHandler(DefaultCreateResourceHandler)
 	c.SetUpdateHandler(DefaultUpdateResourceHandler)
