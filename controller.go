@@ -27,11 +27,11 @@ type route struct {
 // it is replaced with the newly created controller.
 func (app *Application) NewCRUDController(resource *Resource) *Controller {
 	c := app.NewController(resource)
-	c.SetIndexAction(DefaultIndexResourceHandler)
-	c.SetShowAction(DefaultShowResourceHandler)
-	c.SetCreateAction(DefaultCreateResourceHandler)
-	c.SetUpdateAction(DefaultUpdateResourceHandler)
-	c.SetDeleteAction(DefaultDeleteResourceHandler)
+	c.SetIndexHandler(DefaultIndexResourceHandler)
+	c.SetShowHandler(DefaultShowResourceHandler)
+	c.SetCreateHandler(DefaultCreateResourceHandler)
+	c.SetUpdateHandler(DefaultUpdateResourceHandler)
+	c.SetDeleteHandler(DefaultDeleteResourceHandler)
 	return c
 }
 
@@ -54,32 +54,33 @@ func (c *Controller) Use(middleware ...Handler) {
 	c.middleware = append(c.middleware, middleware...)
 }
 
-// SetIndexAction sets the Controller's Index Action.
-func (c *Controller) SetIndexAction(handlers ...IndexHandler) {
+// SetIndexHandler sets the Controller's index request handler.
+func (c *Controller) SetIndexHandler(handlers ...IndexHandler) {
 	c.indexAction = handlers
 }
 
-// SetShowAction sets the Controller's Show Action.
-func (c *Controller) SetShowAction(handlers ...ShowHandler) {
+// SetShowHandler sets the Controller's show request handler.
+func (c *Controller) SetShowHandler(handlers ...ShowHandler) {
 	c.showAction = handlers
 }
 
-// SetCreateAction sets the Controller's Create Action.
-func (c *Controller) SetCreateAction(handlers ...CreateHandler) {
+// SetCreateHandler sets the Controller's create request handler.
+func (c *Controller) SetCreateHandler(handlers ...CreateHandler) {
 	c.createAction = handlers
 }
 
-// SetUpdateAction sets the Controller's Update Action.
-func (c *Controller) SetUpdateAction(handlers ...UpdateHandler) {
+// SetUpdateHandler sets the Controller's update request handler.
+func (c *Controller) SetUpdateHandler(handlers ...UpdateHandler) {
 	c.updateAction = handlers
 }
 
-// SetDeleteAction sets the Controller's Delete Action.
-func (c *Controller) SetDeleteAction(handlers ...DeleteHandler) {
+// SetDeleteHandler sets the Controller's delete request handler.
+func (c *Controller) SetDeleteHandler(handlers ...DeleteHandler) {
 	c.deleteAction = handlers
 }
 
-func (c *Controller) SetAction(method string, path string, handlers ...Handler) {
+// SetHandler sets the Controller's handler for a given method and path.
+func (c *Controller) SetHandler(method string, path string, handlers ...Handler) {
 	// ensure leading slash in path unless path is empty
 	if len(path) > 0 && path[0] != '/' {
 		path = "/" + path
