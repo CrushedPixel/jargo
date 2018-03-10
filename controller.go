@@ -30,7 +30,7 @@ func (app *Application) NewCRUDController(resource *Resource) *Controller {
 	c.SetIndexHandler(NewIndexAction())
 	c.SetShowHandler(NewShowAction())
 	c.SetCreateHandler(NewCreateAction())
-	c.SetUpdateHandler(DefaultUpdateResourceHandler)
+	c.SetUpdateHandler(NewUpdateAction())
 	c.SetDeleteHandler(DefaultDeleteResourceHandler)
 	return c
 }

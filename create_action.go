@@ -1,6 +1,6 @@
 package jargo
 
-type PayloadHandlerFunc func(request *CreateRequest, payload interface{}) Response
+type CreatePayloadHandlerFunc func(request *CreateRequest, payload interface{}) Response
 
 type BeforeCreateQueryHandlerFunc func(request *CreateRequest, query *Query) *Query
 
@@ -12,7 +12,7 @@ type CreateResultHandlerFunc func(request *CreateRequest, result interface{}) Re
 // according to the JSON API spec.
 // http://jsonapi.org/format/#crud-creating
 type CreateAction struct {
-	payloadHandler PayloadHandlerFunc
+	payloadHandler CreatePayloadHandlerFunc
 	beforeQuery    BeforeCreateQueryHandlerFunc
 	resultHandler  CreateResultHandlerFunc
 }
