@@ -22,23 +22,23 @@ func (app *Application) Bridge(f *ferry.Ferry, namespace string) {
 	for resource, controller := range app.controllers {
 		prefix := namespace + "/" + resource.JSONAPIName()
 
-		if len(controller.indexAction) > 0 {
-			f.GET(prefix, controller.indexAction.toFerry(app, controller))
+		if len(controller.indexHandlers) > 0 {
+			f.GET(prefix, controller.indexHandlers.toFerry(app, controller))
 		}
-		if len(controller.showAction) > 0 {
-			f.GET(prefix+"/{id}", controller.showAction.toFerry(app, controller))
+		if len(controller.showHandlers) > 0 {
+			f.GET(prefix+"/{id}", controller.showHandlers.toFerry(app, controller))
 		}
-		if len(controller.createAction) > 0 {
-			f.POST(prefix, controller.createAction.toFerry(app, controller))
+		if len(controller.createHandlers) > 0 {
+			f.POST(prefix, controller.createHandlers.toFerry(app, controller))
 		}
-		if len(controller.updateAction) > 0 {
-			f.PATCH(prefix+"/{id}", controller.updateAction.toFerry(app, controller))
+		if len(controller.updateHandlers) > 0 {
+			f.PATCH(prefix+"/{id}", controller.updateHandlers.toFerry(app, controller))
 		}
-		if len(controller.deleteAction) > 0 {
-			f.DELETE(prefix+"/{id}", controller.deleteAction.toFerry(app, controller))
+		if len(controller.deleteHandlers) > 0 {
+			f.DELETE(prefix+"/{id}", controller.deleteHandlers.toFerry(app, controller))
 		}
 
-		for route, handlers := range controller.customActions {
+		for route, handlers := range controller.customHandlers {
 			if len(handlers) > 0 {
 				f.Handle(route.method, prefix+route.path, handlers.toFerry(app, controller))
 			}
