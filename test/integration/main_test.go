@@ -32,15 +32,20 @@ $$
 `
 
 var (
-	pgURL = flag.String("test_db", "postgres://jargo@localhost/jargo?sslmode=disable", "url for integration test database connection")
+	pgURLFlag = flag.String("test_db", "postgres://jargo@localhost/jargo?sslmode=disable", "url for integration test database connection")
 
 	app *jargo.Application
+
+	dummyResource *jargo.Resource
+	// dummyInstance is an instance
+	// of dummy to use for testing
+	dummyInstance *dummy
 )
 
 func TestMain(m *testing.M) {
 	flag.Parse()
 
-	url, err := pg.ParseURL(*pgURL)
+	url, err := pg.ParseURL(*pgURLFlag)
 	if err != nil {
 		panic(err)
 	}
@@ -58,6 +63,7 @@ func TestMain(m *testing.M) {
 		log.Printf("%s %s", time.Since(event.StartTime), query)
 	})
 
+	// drop entire database
 	_, err = db.Exec(clearQuery)
 	if err != nil {
 		panic(err)
@@ -67,5 +73,18 @@ func TestMain(m *testing.M) {
 		DB: db,
 	})
 
+	dummyResource = app.MustRegisterResource(dummy{})
+	res, err := dummyResource.InsertInstance(app.DB(), &dummy{}).Result()
+	if err != nil {
+		panic(err)
+	}
+	dummyInstance = res.(*dummy)
+
 	os.Exit(m.Run())
+}
+
+// dummy is an empty type for testing purposes
+// in relations
+type dummy struct {
+	Id int64
 }
