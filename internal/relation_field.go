@@ -16,8 +16,10 @@ type relationField struct {
 
 	registry SchemaRegistry
 
-	relationType reflect.Type // struct type of relation
-	collection   bool         // whether it's a to-many-relation
+	// relationType is the direct struct type of the relation,
+	// e.g. *User -> User, []*User -> User
+	relationType reflect.Type
+	collection   bool // whether it's a to-many-relation
 }
 
 func newRelationField(r SchemaRegistry, schema *Schema, f *reflect.StructField) *relationField {

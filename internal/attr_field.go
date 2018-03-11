@@ -12,21 +12,17 @@ import (
 const validationTag = "validate"
 
 var (
+	errInvalidAttrFieldType           = errors.New("attribute field types must be primitive, time.Time or a pointer to these types")
 	errJsonapiOptionOnUnexportedField = errors.New("jsonapi-related option on unexported field")
 	errInvalidColumnName              = errors.New("column name may only consist of [0-9,a-z,A-Z$_]")
 	errCreatedAtDefaultForbidden      = errors.New(`"default" option may not be used in conjunction with "createdAt""`)
 	errUpdatedAtDefaultForbidden      = errors.New(`"default" option may not be used in conjunction with "updatedAt""`)
 	errCreatedAtUpdatedAtExclusive    = errors.New(`"createdAt" and "updatedAt" options are mutually exclusive`)
-	errCreatedAtUpdatedAtNotnull      = errors.New(`"createdAt" and "updatedAt" options are only allowed on nullable fields`)
-	errCreatedAtUpdatedAtType         = errors.New(`"createdAt" and "updatedAt" options are only allowed on fields of type time.Time`)
+	errCreatedAtUpdatedAtType         = errors.New(`"createdAt" and "updatedAt" options are only allowed on fields of type *time.Time`)
 	errCreatedAtUpdatedAtWritable     = errors.New(`"createdAt" and "updatedAt" options are only allowed on writable (non-readonly) fields`)
 
-	timeType = reflect.TypeOf(time.Time{})
+	autoTimestampsType = reflect.TypeOf(&time.Time{})
 )
-
-func errInvalidAttrFieldType(p reflect.Type) error {
-	return errors.New(fmt.Sprintf("invalid type for attribute field: %s", p))
-}
 
 type attrField struct {
 	*baseField
@@ -59,7 +55,7 @@ func newAttrField(schema *Schema, f *reflect.StructField) SchemaField {
 	// validate field type
 	typ := f.Type
 	if !isValidAttrType(typ) {
-		panic(errInvalidAttrFieldType(typ))
+		panic(errInvalidAttrFieldType)
 	}
 
 	parsed := parseJargoTag(f.Tag.Get(jargoFieldTag))
@@ -78,7 +74,7 @@ func newAttrField(schema *Schema, f *reflect.StructField) SchemaField {
 		case optionUpdatedAt:
 			updatedAt = parseBoolOption(value)
 		case optionReadonly, optionSort, optionFilter,
-			optionOmitempty, optionNotnull, optionUnique:
+			optionOmitempty, optionUnique:
 			// these were handled when parsing the baseField
 			// and should therefore not trigger the default handler.
 		default:
@@ -98,11 +94,7 @@ func newAttrField(schema *Schema, f *reflect.StructField) SchemaField {
 	}
 
 	if createdAt || updatedAt {
-		if field.sqlNotnull {
-			panic(errCreatedAtUpdatedAtNotnull)
-		}
-
-		if field.fieldType != timeType {
+		if field.fieldType != autoTimestampsType {
 			panic(errCreatedAtUpdatedAtType)
 		}
 
@@ -162,7 +154,7 @@ func jsonapiAttrFields(f *attrField) []reflect.StructField {
 	if f.jsonapiOmitempty {
 		tag += `,omitempty`
 	}
-	if f.fieldType == timeType {
+	if isTimeField(f.fieldType) {
 		// the jsonapi spec recommends using ISO8601 for date/time formatting.
 		// see http://jsonapi.org/recommendations/#date-and-time-fields
 		tag += `,iso8601`
@@ -180,7 +172,7 @@ func jsonapiAttrFields(f *attrField) []reflect.StructField {
 
 func pgAttrFields(f *attrField) []reflect.StructField {
 	tag := fmt.Sprintf(`sql:"%s`, f.column)
-	if f.sqlNotnull {
+	if !isNullable(f.fieldType) {
 		tag += ",notnull"
 	}
 	if f.sqlUnique {
@@ -206,10 +198,39 @@ func (f *attrField) createInstance() schemaFieldInstance {
 	}
 }
 
+// isValidAttrType returns whether typ is a valid
+// type for an attribute field, which is the case
+// if it's a primitive type or time.Time or a pointer
+// to one of those types.
 func isValidAttrType(typ reflect.Type) bool {
+	// pointer types are allowed
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+	}
+
 	switch reflect.New(typ).Elem().Interface().(type) {
 	case bool, int, int8, int16, int32, int64, uint, uint8,
 		uint16, uint32, uint64, float32, float64, string, time.Time:
+		return true
+	default:
+		return false
+	}
+}
+
+// isNullable returns whether typ represents a nullable type.
+func isNullable(typ reflect.Type) bool {
+	return typ.Kind() == reflect.Ptr
+}
+
+// isTimeField returns whether typ is a time.Time field.
+func isTimeField(typ reflect.Type) bool {
+	// pointer types are allowed
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+	}
+
+	switch reflect.New(typ).Elem().Interface().(type) {
+	case time.Time:
 		return true
 	default:
 		return false

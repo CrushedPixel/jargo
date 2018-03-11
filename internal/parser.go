@@ -22,7 +22,6 @@ const (
 	optionSort      = "sort"
 	optionFilter    = "filter"
 	optionOmitempty = "omitempty"
-	optionNotnull   = "notnull"
 	optionUnique    = "unique"
 	optionDefault   = "default"
 	optionCreatedAt = "createdAt"

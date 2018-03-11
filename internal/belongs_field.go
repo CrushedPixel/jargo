@@ -67,7 +67,7 @@ func pgBelongsToFields(f *belongsToField, joinField bool) []reflect.StructField 
 	// every belongsTo association has a column containing
 	// the id of the related resource
 	tag := fmt.Sprintf(`sql:"%s`, f.relationIdFieldColumn())
-	if f.sqlNotnull {
+	if !isNullable(f.fieldType) {
 		tag += ",notnull"
 	}
 	if f.sqlUnique {

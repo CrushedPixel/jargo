@@ -12,8 +12,8 @@ import (
 type AutoTimestamps struct {
 	Id int64 `jargo:"auto_timestamps,alias:auto_timestamp"`
 
-	CreatedAt time.Time `jargo:",createdAt"`
-	UpdatedAt time.Time `jargo:",updatedAt"`
+	CreatedAt *time.Time `jargo:",createdAt"`
+	UpdatedAt *time.Time `jargo:",updatedAt"`
 
 	Name string
 }
@@ -31,8 +31,8 @@ func TestAutoTimestamps(t *testing.T) {
 	instance := r.(*AutoTimestamps)
 	assert.Equal(t, "A", instance.Name)
 	// instance.CreatedAt and instance.UpdatedAt should have been populated by the server
-	assert.NotEmpty(t, instance.CreatedAt)
-	assert.NotEmpty(t, instance.UpdatedAt)
+	assert.NotNil(t, instance.CreatedAt)
+	assert.NotNil(t, instance.UpdatedAt)
 	assert.Equal(t, instance.CreatedAt, instance.UpdatedAt)
 
 	// wait a short amount of time to ensure
@@ -47,10 +47,10 @@ func TestAutoTimestamps(t *testing.T) {
 	assert.Equal(t, "B", updated.Name)
 
 	// instance.CreatedAt should not have changed
-	assert.NotEmpty(t, updated.CreatedAt)
+	assert.NotNil(t, updated.CreatedAt)
 	assert.Equal(t, instance.CreatedAt, updated.CreatedAt)
 
 	// instance.UpdatedAt should be updated timestamp
-	assert.NotEmpty(t, updated.UpdatedAt)
+	assert.NotNil(t, updated.UpdatedAt)
 	assert.NotEqual(t, instance.UpdatedAt, updated.UpdatedAt)
 }
