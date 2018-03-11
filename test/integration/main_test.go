@@ -63,7 +63,9 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	app = jargo.NewApplication(db)
+	app = jargo.NewApplication(jargo.Options{
+		DB: db,
+	})
 
 	os.Exit(m.Run())
 }
