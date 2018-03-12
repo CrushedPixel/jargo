@@ -259,15 +259,14 @@ func (q *Query) execute() {
 // for specific pg.Error types. For unexpected errors,
 // it returns the error itself.
 //
+// https://www.postgresql.org/docs/10/static/protocol-error-fields.html
 // https://www.postgresql.org/docs/10/static/errcodes-appendix.html
 func pgErrToApiErr(pgErr pg.Error) error {
-	column := pgErr.Field('c')
-
 	switch pgErr.Field('C') {
 	case "23502": // not_null_violation
-		return NewApiError(http.StatusBadRequest, "NOT_NULL_VIOLATION", column)
+		return NewApiError(http.StatusBadRequest, "NOT_NULL_VIOLATION", pgErr.Field('n')) // n is the constraint name
 	case "23505": // unique_violation
-		return NewApiError(http.StatusBadRequest, "UNIQUE_VIOLATION", column)
+		return NewApiError(http.StatusBadRequest, "UNIQUE_VIOLATION", pgErr.Field('n')) // n is the constraint name
 	default:
 		return pgErr.(error)
 	}
