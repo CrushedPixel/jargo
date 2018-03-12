@@ -231,6 +231,11 @@ func (q *Query) execute() {
 			return
 		}
 
+		// handle pg.Error errors
+		if pgErr, ok := q.executionError.(pg.Error); ok {
+			q.executionError = pgErrToApiErr(pgErr)
+		}
+
 		return
 	}
 
@@ -247,5 +252,23 @@ func (q *Query) execute() {
 		q.result = q.resource.schema.NewResourceModelCollection(entries...)
 	} else {
 		q.result = q.resource.schema.ParsePGModel(m.Interface()).ToResourceModel()
+	}
+}
+
+// pgErrToApiErr returns descriptive ApiError instances
+// for specific pg.Error types. For unexpected errors,
+// it returns the error itself.
+//
+// https://www.postgresql.org/docs/10/static/errcodes-appendix.html
+func pgErrToApiErr(pgErr pg.Error) error {
+	column := pgErr.Field('c')
+
+	switch pgErr.Field('C') {
+	case "23502": // not_null_violation
+		return NewApiError(http.StatusBadRequest, "NOT_NULL_VIOLATION", column)
+	case "23505": // unique_violation
+		return NewApiError(http.StatusBadRequest, "UNIQUE_VIOLATION", column)
+	default:
+		return pgErr.(error)
 	}
 }
