@@ -6,7 +6,6 @@ layout: default
 This article shows how to create a fully featured [**JSON API**][jsonapi] using **jargo** within a couple of minutes.
 
 # Table of contents
-
 - [Installing jargo](#installing-jargo)
 - [Connecting to PostgreSQL](#connecting-to-postgresql)
 - [Creating an Application](#creating-an-application)
@@ -76,7 +75,7 @@ type User struct {
 ```
 
 > For a more in-depth guide on Resource Model definition, including relationships, 
-  please refer to the dedicated page I'm going to write soon™.
+  please refer to the dedicated page: [Model definition][model-definition]
 
 Now that we defined the *Resource Model*, we can register it with our *Application*
 to obtain a [`jargo.Resource`][jargo.Resource] instance:
@@ -245,6 +244,7 @@ func main() {
 [jargo.Options]: https://godoc.org/github.com/CrushedPixel/jargo#Options
 [struct-tags]: https://golang.org/ref/spec#Tag
 [time.Time]: https://golang.org/pkg/time/#Time
+[model-definition]: model-definition
 [jargo.Resource]: https://godoc.org/github.com/CrushedPixel/jargo#Resource
 [jargo.Controller]: https://godoc.org/github.com/CrushedPixel/jargo#Controller
 [ferry]: https://github.com/CrushedPixel/ferry
