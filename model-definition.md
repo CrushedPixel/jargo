@@ -2,10 +2,10 @@
 layout: default
 ---
 
-# Introduction  
+# [Introduction](#introduction)
 Resource models are defined by creating `struct` types, configured via `jargo` [struct tags][struct-tags].
 
-# id field
+# [Id field](#id-field)
 Every model definition has an **id field**, which serves as the **primary key**.
  
 The id field **must** be named `Id`.
@@ -15,8 +15,53 @@ Currently, it has to be of type `int64`, however support for `UUID` and `string`
 Id int64
 ~~~
 
+## [Resource name](#resource-name)
+By default, a resource's **JSON API name** is the **underscored** and **pluralized** version of the struct name.
+~~~go
+type CookieFlavor struct {
+    Id int64 // resource name: cookie_flavors
+}
+~~~  
+To override the resource name, set the first value in the *id field's* `jargo` struct tag:
+~~~go
+type CookieFlavor struct {
+    Id int64 `jargo:"flavors"`
+}
+~~~
 
-# Attribute fields
+*All resource names must adhere to the [JSON API specification][member-names].*
+
+To keep the default resource name, but specify other options, 
+simply omit the name and start the struct tag with a comma:
+~~~go
+Id int64 `jargo:",table:my_table"`
+~~~
+
+## [Table name](#table-name)
+By default, a resource's **database table name** is the same as its [resource name](#resource-name).
+
+To override the table name, use the `table` option on the *id field*:
+~~~go
+type CookieFlavor struct {
+    Id int64 `jargo:",table:gusto"`
+}
+~~~ 
+
+## [Table alias](#table-alias)
+By default, a resource's **table alias** to use in *SQL queries* is the **underscored** version of the struct name.
+~~~go
+type CookieFlavor struct {
+    Id int64 // table alias: cookie_flavor
+}
+~~~
+To override the table alias, use the `alias` option on the *id field*:
+~~~go
+type CookieFlavor struct {
+    Id int64 `jargo:",alias:flavor"`
+}
+~~~
+
+# [Attribute fields](#attribute-fields)
 A *resource model* may have any number of *attributes* representing primitive data types stored in the database.
 
 Supported attribute types are:
@@ -49,10 +94,17 @@ FooBar   int    `jargo:"foo_bar"`
 *All member names must adhere to the [JSON API specification][member-names].*
 
 To keep the default member name, but specify other options, 
-simply omit the name and start the struct tag with a `,`:
+simply omit the name and start the struct tag with a comma:
 ~~~go
 FooBar int `jargo:",unique"`
 ~~~
+
+### [Unexported attributes](#unexported-attributes)
+Sometimes, you don't want to expose certain attributes via *JSON API*, but still keep them in your database.  
+To exclude an attribute from the generated API, simply set its member name to `-`:
+~~~go
+PasswordHash string `jargo:"-"`
+~~~ 
 
 ## [Column name](#column-name)
 By default, an attribute's **database column name** is the **underscored** version of the field name.
