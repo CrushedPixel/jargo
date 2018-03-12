@@ -16,6 +16,7 @@ var (
 	errJsonapiOptionOnUnexportedField = errors.New("jsonapi-related option on unexported field")
 	errInvalidColumnName              = errors.New("column name may only consist of [0-9,a-z,A-Z$_]")
 	errNonNullableTypeDefault         = errors.New(`"default" option may only be used on pointer types`)
+	errNotnullWithoutDefault          = errors.New(`"notnull" option may only be used in conjunction with the "default" option. use a primitive type instead`)
 
 	errCreatedAtDefaultForbidden   = errors.New(`"default" option may not be used in conjunction with "createdAt""`)
 	errUpdatedAtDefaultForbidden   = errors.New(`"default" option may not be used in conjunction with "updatedAt""`)
@@ -70,27 +71,34 @@ func newAttrField(schema *Schema, f *reflect.StructField) SchemaField {
 
 	var createdAt, updatedAt bool
 
+	// parse default option before others,
+	// so it is set before notnull is processed
+	if value, ok := parsed.Options[optionDefault]; ok {
+		if !isNullable(field.fieldType) {
+			// a default value may only be set for
+			// pointer types, to avoid zero values
+			// being omitted by go-pg (go-pg#790)
+			panic(errNonNullableTypeDefault)
+		}
+		field.sqlDefault = value
+	}
+
 	// parse options
 	for option, value := range parsed.Options {
 		switch option {
 		case optionColumn:
 			field.column = value
-		case optionDefault:
-			if !isNullable(field.fieldType) {
-				// a default value may only be set for
-				// pointer types, to avoid zero values
-				// being omitted by go-pg (go-pg#790)
-				panic(errNonNullableTypeDefault)
-			}
-			field.sqlDefault = value
 		case optionNotnull:
 			field.notnull = parseBoolOption(value)
+			if field.notnull && field.sqlDefault == "" {
+				panic(errNotnullWithoutDefault)
+			}
 		case optionCreatedAt:
 			createdAt = parseBoolOption(value)
 		case optionUpdatedAt:
 			updatedAt = parseBoolOption(value)
 		case optionReadonly, optionSort, optionFilter,
-			optionOmitempty, optionUnique:
+			optionOmitempty, optionUnique, optionDefault:
 			// these were handled when parsing the baseField
 			// and should therefore not trigger the default handler.
 		default:

@@ -35,3 +35,15 @@ func TestDefaultOnNonPointer(t *testing.T) {
 	_, err := app.RegisterResource(defaultOnNonPointer{})
 	require.EqualError(t, err, `"default" option may only be used on pointer types`)
 }
+
+type notnullWithoutDefault struct {
+	Id   int64
+	Name *string `jargo:",notnull"`
+}
+
+// TestNotnullWithoutDefault asserts that the notnull option is only
+// allowed on fields with a default value.
+func TestNotnullWithoutDefault(t *testing.T) {
+	_, err := app.RegisterResource(notnullWithoutDefault{})
+	require.EqualError(t, err, `"notnull" option may only be used in conjunction with the "default" option. use a primitive type instead`)
+}
