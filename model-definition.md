@@ -2,10 +2,19 @@
 layout: default
 ---
 
-# Introduction
-Models are objects that represent the resources your API exposes.
+# Introduction  
+Resource models are defined by creating `struct` types, configured via `jargo` [struct tags][struct-tags].
 
-# Id field
+# id field
+Every model definition has an **id field**, which serves as the **primary key**.
+ 
+The id field **must** be named `Id`.
+Currently, it has to be of type `int64`, however support for `UUID` and `string` values is planned.
+
+~~~go
+Id int64
+~~~
+
 
 # Attribute fields
 A *resource model* may have any number of *attributes* representing primitive data types stored in the database.
@@ -23,21 +32,57 @@ Supported attribute types are:
 | `string`                                   | `text`             |
 | [`time.Time`][time.Time]                   | `timestamptz`      |
 
+## [JSON API member name](#json-api-member-name)
+By default, an attribute's **JSON API member name** is the **dasherized** version of the field name.  
+~~~go
+Age      int    // name: age
+UserName string // name: user-name
+FooBar   int    // name: foo-bar
+~~~
+To override the member name, set the first value in the `jargo` struct tag:
+~~~go
+Age      int    `jargo:"age_in_years"`
+UserName string `jargo:"name"`
+FooBar   int    `jargo:"foo_bar"`
+~~~
+
+*All member names must adhere to the [JSON API specification][member-names].*
+
+To keep the default member name, but specify other options, 
+simply omit the name and start the struct tag with a `,`:
+~~~go
+FooBar int `jargo:",unique"`
+~~~
+
+## [Column name](#column-name)
+By default, an attribute's **database column name** is the **underscored** version of the field name.
+~~~go
+Age      int    // column: age
+UserName string // column: user_name
+FooBar   int    // column: foo_bar
+~~~
+To override the column name, use the `column` option:
+~~~go
+Age      int    `jargo:",column:attr_age"`
+UserName string `jargo:",column:name"`
+FooBar   int    `jargo:",column:FooBarColumn"`
+~~~
+
 ## [Nullable attributes](#nullable-attributes)
 *Primitive* attributes have a `NOT NULL` constraint in the database.
 If an attribute should be **nullable**, use a **pointer type** instead:
 
-```go
+~~~go
 Age  int  // field can't be NULL
 Size *int // nil pointers are treated as NULL
-```
+~~~
 
 ## [Default values](#default-values)
 You may define a `DEFAULT` constraint for pointer attributes.
-When inserting a resource instance with an attribute set to `nil`,
+When inserting a resource instance with the attribute set to `nil`,
 the `DEFAULT` constraint will take effect:
 
-```go
+~~~go
 type Person struct {
     Id   int64
     Name *string `jargo:",default:'John Doe'"`
@@ -50,31 +95,29 @@ if err != nil {
 }
 person := res.(*Person)
 log.Printf("Name: %s", person.Name) // person's name is "John Doe"
-```
+~~~
 
-The `default` option must be valid SQL, as it is the constraint itself.
+*The `default` option must be valid SQL*, as it is the constraint itself.
 This allows you to use SQL functions, such as `NOW()` in `DEFAULT` constraints:
 
-```go
+~~~go
 Expires *time.Time `jargo:",default:NOW() + INTERVAL '1 day'"`
-```
+~~~
 
 ### [`NOT NULL` attributes with default values](#not-null-attributes-with-default-values)
 
 You may add the `notnull` option to an attribute with a default value 
 to add a `NOT NULL` constraint to the database column:
-```go
+~~~go
 Size *int `jargo:",notnull,default:170"`
-```
+~~~
 
 Setting the value to `nil` omits it when updating it in the database,
 to ensure the `NOT NULL` constraint is never violated.
 
-## Attribute name
-
-## Column name
-
-## Sorting
+## [Sorting](#sorting)
 By default, sorting is enabled for all **non-nullable** attributes and `belongsTo` relations.
 
+[struct-tags]: https://golang.org/ref/spec#Tag
 [time.Time]: https://golang.org/pkg/time/#Time
+[member-names]: http://jsonapi.org/format/#document-member-names
