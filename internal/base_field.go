@@ -35,7 +35,7 @@ func (f *baseField) Writable() bool {
 }
 
 func (f *baseField) Sortable() bool {
-	return f.jargoSortable
+	return f.jargoSortable && !isNullable(f.fieldType)
 }
 
 func (f *baseField) Filterable() bool {
