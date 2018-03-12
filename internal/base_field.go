@@ -20,8 +20,7 @@ type baseField struct {
 	jsonapiExported  bool
 	jsonapiOmitempty bool
 
-	sqlNotnull bool
-	sqlUnique  bool
+	sqlUnique bool
 
 	jsonapiF []reflect.StructField
 	pgF      []reflect.StructField
@@ -36,7 +35,7 @@ func (f *baseField) Writable() bool {
 }
 
 func (f *baseField) Sortable() bool {
-	return f.jargoSortable
+	return f.jargoSortable && !isNullable(f.fieldType)
 }
 
 func (f *baseField) Filterable() bool {
@@ -90,8 +89,6 @@ func newBaseField(schema *Schema, f *reflect.StructField) *baseField {
 				panic(errJsonapiOptionOnUnexportedField)
 			}
 			field.jsonapiOmitempty = parseBoolOption(value)
-		case optionNotnull:
-			field.sqlNotnull = parseBoolOption(value)
 		case optionUnique:
 			field.sqlUnique = parseBoolOption(value)
 		}

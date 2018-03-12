@@ -7,56 +7,59 @@ import (
 	"reflect"
 )
 
-func errInvalidRelationFieldType(p reflect.Type) error {
-	return errors.New(fmt.Sprintf("invalid type for relation field: %s", p))
-}
+var errInvalidRelationFieldType = errors.New("relation field types must be a struct type, a pointer to a struct type or a slice of a struct type")
 
 type relationField struct {
 	*baseField
 
 	registry SchemaRegistry
 
-	relationType reflect.Type // struct type of relation
-	collection   bool         // whether it's a to-many-relation
+	// relationType is the direct struct type of the relation,
+	// e.g. *User -> User, []*User -> User
+	relationType reflect.Type
+	// whether it's a to-many-relation
+	collection bool
+	// whether the relation is nullable
+	nullable bool
 }
 
 func newRelationField(r SchemaRegistry, schema *Schema, f *reflect.StructField) *relationField {
 	base := newBaseField(schema, f)
 
 	// validate field type
-	typ, collection := getRelationType(f.Type)
+	typ, collection, nullable := getRelationType(f.Type)
 	if typ == nil {
-		panic(errInvalidRelationFieldType(f.Type))
+		panic(errInvalidRelationFieldType)
 	}
 
-	field := &relationField{
+	return &relationField{
 		baseField:    base,
 		registry:     r,
 		relationType: typ,
 		collection:   collection,
+		nullable:     nullable,
 	}
-
-	return field
 }
 
-func getRelationType(typ reflect.Type) (reflect.Type, bool) {
-	collection := false
+// getRelationType returns typ's struct type, whether it's a collection
+// and whether it's nullable.
+// If the returned Type is nil, typ is not a struct type, or it is
+// a collection of pointers (which is pointless to have).
+func getRelationType(typ reflect.Type) (structType reflect.Type, collection bool, nullable bool) {
 	if typ.Kind() == reflect.Slice {
 		typ = typ.Elem()
 		collection = true
-	}
-
-	if typ.Kind() == reflect.Ptr {
+	} else if typ.Kind() == reflect.Ptr {
 		typ = typ.Elem()
-	} else {
-		return nil, false
+		nullable = true
 	}
 
-	if typ.Kind() != reflect.Struct {
-		return nil, false
+	if typ.Kind() == reflect.Struct {
+		structType = typ
+		return
 	}
 
-	return typ, collection
+	return nil, false, false
 }
 
 func (f *belongsToField) Writable() bool {
@@ -183,14 +186,20 @@ func (i *relationFieldInstance) applyToResourceModel(instance *resourceModelInst
 		for x := 0; x < l; x++ {
 			v := i.values[x]
 			if v != nil {
-				values.Index(x).Set(reflect.ValueOf(v.toJoinResourceModel()))
+				values.Index(x).Set(reflect.ValueOf(v.toJoinResourceModel()).Elem())
 			}
 		}
 		val.Set(values)
 	} else {
 		v := i.values[0]
 		if v != nil {
-			val.Set(reflect.ValueOf(v.toJoinResourceModel()))
+			joinModel := reflect.ValueOf(v.toJoinResourceModel())
+			if !i.field.nullable {
+				// if the field is not nullable,
+				// we need the struct type instead of the pointer type
+				joinModel = joinModel.Elem()
+			}
+			val.Set(joinModel)
 		}
 	}
 }

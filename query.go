@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/go-pg/pg"
 	"github.com/go-pg/pg/orm"
+	"github.com/mohae/deepcopy"
 	"net/http"
 	"reflect"
 )
@@ -50,12 +51,17 @@ type Query struct {
 }
 
 func newQuery(db orm.DB, resource *Resource, typ queryType, collection bool, pgModelInstance interface{}) *Query {
+	// deepcopy the pg model instance passed
+	// to ensure the original data is not being
+	// modified if it has pointer references
+	clone := deepcopy.Copy(pgModelInstance)
+
 	return &Query{
-		Query:      db.Model(pgModelInstance),
+		Query:      db.Model(clone),
 		typ:        typ,
 		resource:   resource,
 		collection: collection,
-		model:      reflect.ValueOf(pgModelInstance),
+		model:      reflect.ValueOf(clone),
 	}
 }
 

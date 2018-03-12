@@ -43,22 +43,22 @@ type schemaFieldInstance interface {
 	// Only implemented for fields that may be sortable.
 	sortValue() interface{}
 
-	// parses a resource model instance, setting the field's value.
+	// parses a resource model instance, storing it's value for the schema field.
 	parseResourceModel(*resourceModelInstance)
-	// parses a jsonapi model instance, setting the field's value.
+	// parses a jsonapi model instance, storing it's value for the schema field.
 	parseJsonapiModel(*jsonapiModelInstance)
-	// parses a resource model instance, setting the field's value.
+	// parses a resource model instance, storing it's value for the schema field.
 	parsePGModel(*pgModelInstance)
 
 	parseJoinResourceModel(*resourceModelInstance)
 	parseJoinJsonapiModel(*joinJsonapiModelInstance)
 	parseJoinPGModel(*joinPGModelInstance)
 
-	// applies the field's value to a resource model instance.
+	// applies the stored value to a resource model instance.
 	applyToResourceModel(*resourceModelInstance)
-	// applies the field's value to a resource model instance.
+	// applies the stored value to a jsonapi model instance.
 	applyToJsonapiModel(*jsonapiModelInstance)
-	// applies the field's value to a resource model instance.
+	// applies the stored value to a pg model instance.
 	applyToPGModel(*pgModelInstance)
 
 	applyToJoinResourceModel(*resourceModelInstance)
