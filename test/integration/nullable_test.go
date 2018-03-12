@@ -39,6 +39,13 @@ func TestNullableAttributes(t *testing.T) {
 
 	require.Equal(t, original.Age, fetched.Age)
 	require.Equal(t, original.Name, fetched.Name)
+
+	// ensure instance properly encodes to json
+	json, err := resource.ResponseAllFields(fetched).Payload()
+	require.Nil(t, err)
+	require.Equal(t,
+		`{"data":{"type":"nullable_attributes","id":"1","attributes":{"name":null,"age":20}}}`,
+		json)
 }
 
 /* TODO: re-introduce this check when implementing support for non-int64 id fields

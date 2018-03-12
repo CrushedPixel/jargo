@@ -29,6 +29,13 @@ func TestOneToManyRelations(t *testing.T) {
 	require.Nil(t, err)
 	a := res.(*oneToManyA)
 
+	// ensure instance properly encodes to json
+	json, err := resourceA.ResponseAllFields(a).Payload()
+	require.Nil(t, err)
+	require.Equal(t,
+		`{"data":{"type":"one_to_many_as","id":"1","attributes":{"attr":"test"},"relationships":{"bs":{"data":[]}}}}`,
+		json)
+
 	// create instance of oneToManyB with relation to a
 	res, err = resourceB.InsertInstance(app.DB(), &oneToManyB{A: *a}).Result()
 	require.Nil(t, err)
@@ -38,6 +45,13 @@ func TestOneToManyRelations(t *testing.T) {
 	require.Equal(t, a.Id, b.A.Id)
 	require.Equal(t, a.Attr, b.A.Attr)
 
+	// ensure relation properly encodes to json
+	json, err = resourceB.ResponseAllFields(b).Payload()
+	require.Nil(t, err)
+	require.Equal(t,
+		`{"data":{"type":"one_to_many_bs","id":"1","relationships":{"a":{"data":{"type":"one_to_many_as","id":"1"}}}}}`,
+		json)
+
 	// fetch oneToManyA to update relations
 	res, err = resourceA.SelectById(app.DB(), a.Id).Result()
 	require.Nil(t, err)
@@ -45,6 +59,13 @@ func TestOneToManyRelations(t *testing.T) {
 
 	// ensure relation is properly set
 	require.Equal(t, b.Id, a.Bs[0].Id)
+
+	// ensure relation properly encodes to json
+	json, err = resourceA.ResponseAllFields(a).Payload()
+	require.Nil(t, err)
+	require.Equal(t,
+		`{"data":{"type":"one_to_many_as","id":"1","attributes":{"attr":"test"},"relationships":{"bs":{"data":[{"type":"one_to_many_bs","id":"1"}]}}}}`,
+		json)
 }
 
 type oneToOneA struct {
@@ -71,6 +92,13 @@ func TestOneToOneRelations(t *testing.T) {
 	require.Nil(t, err)
 	a := res.(*oneToOneA)
 
+	// ensure instance properly encodes to json
+	json, err := resourceA.ResponseAllFields(a).Payload()
+	require.Nil(t, err)
+	require.Equal(t,
+		`{"data":{"type":"one_to_one_as","id":"1","attributes":{"attr":"test"},"relationships":{"b":{"data":null}}}}`,
+		json)
+
 	// create instance of oneToManyB with relation to a
 	res, err = resourceB.InsertInstance(app.DB(), &oneToOneB{A: *a}).Result()
 	require.Nil(t, err)
@@ -80,6 +108,13 @@ func TestOneToOneRelations(t *testing.T) {
 	require.Equal(t, a.Id, b.A.Id)
 	require.Equal(t, a.Attr, b.A.Attr)
 
+	// ensure relation properly encodes to json
+	json, err = resourceB.ResponseAllFields(b).Payload()
+	require.Nil(t, err)
+	require.Equal(t,
+		`{"data":{"type":"one_to_one_bs","id":"1","relationships":{"a":{"data":{"type":"one_to_one_as","id":"1"}}}}}`,
+		json)
+
 	// fetch oneToManyA to update relations
 	res, err = resourceA.SelectById(app.DB(), a.Id).Result()
 	require.Nil(t, err)
@@ -87,4 +122,11 @@ func TestOneToOneRelations(t *testing.T) {
 
 	// ensure relation is properly set
 	require.Equal(t, b.Id, a.B.Id)
+
+	// ensure relation properly encodes to json
+	json, err = resourceA.ResponseAllFields(a).Payload()
+	require.Nil(t, err)
+	require.Equal(t,
+		`{"data":{"type":"one_to_one_as","id":"1","attributes":{"attr":"test"},"relationships":{"b":{"data":{"type":"one_to_one_bs","id":"1"}}}}}`,
+		json)
 }
