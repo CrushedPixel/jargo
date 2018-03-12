@@ -67,7 +67,7 @@ func pgBelongsToFields(f *belongsToField, joinField bool) []reflect.StructField 
 	// every belongsTo association has a column containing
 	// the id of the related resource
 	tag := fmt.Sprintf(`sql:"%s`, f.relationIdFieldColumn())
-	if !isNullable(f.fieldType) {
+	if !f.nullable {
 		tag += ",notnull"
 	}
 	if f.sqlUnique {
@@ -242,7 +242,7 @@ func (i *belongsToFieldInstance) applyToJoinResourceModel(instance *resourceMode
 
 	rmi := v.toJoinResourceModel()
 
-	instance.value.Elem().FieldByName(i.field.fieldName).Set(reflect.ValueOf(rmi))
+	instance.value.Elem().FieldByName(i.field.fieldName).Set(reflect.ValueOf(rmi).Elem())
 }
 
 // relationId returns the id value of the relation.

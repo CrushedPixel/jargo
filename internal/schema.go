@@ -234,6 +234,15 @@ func (s *Schema) ParseResourceModel(instance interface{}) *SchemaInstance {
 
 func (s *Schema) parseJoinResourceModel(instance interface{}) *SchemaInstance {
 	v := reflect.ValueOf(instance)
+
+	// if instance is not a pointer,
+	// wrap it in a pointer
+	if v.Type() == s.resourceModelType {
+		ptr := reflect.New(v.Type())
+		ptr.Elem().Set(v)
+		v = ptr
+	}
+
 	if v.Type() != reflect.PtrTo(s.resourceModelType) {
 		panic(errInvalidResourceInstance)
 	}
