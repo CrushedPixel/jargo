@@ -23,6 +23,7 @@ const (
 	optionFilter    = "filter"
 	optionOmitempty = "omitempty"
 	optionUnique    = "unique"
+	optionNotnull   = "notnull"
 	optionDefault   = "default"
 	optionCreatedAt = "createdAt"
 	optionUpdatedAt = "updatedAt"

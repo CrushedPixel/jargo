@@ -15,11 +15,13 @@ var (
 	errInvalidAttrFieldType           = errors.New("attribute field types must be primitive, time.Time or a pointer to these types")
 	errJsonapiOptionOnUnexportedField = errors.New("jsonapi-related option on unexported field")
 	errInvalidColumnName              = errors.New("column name may only consist of [0-9,a-z,A-Z$_]")
-	errCreatedAtDefaultForbidden      = errors.New(`"default" option may not be used in conjunction with "createdAt""`)
-	errUpdatedAtDefaultForbidden      = errors.New(`"default" option may not be used in conjunction with "updatedAt""`)
-	errCreatedAtUpdatedAtExclusive    = errors.New(`"createdAt" and "updatedAt" options are mutually exclusive`)
-	errCreatedAtUpdatedAtType         = errors.New(`"createdAt" and "updatedAt" options are only allowed on fields of type *time.Time`)
-	errCreatedAtUpdatedAtWritable     = errors.New(`"createdAt" and "updatedAt" options are only allowed on writable (non-readonly) fields`)
+	errNonNullableTypeDefault         = errors.New(`"default" option may only be used on pointer types`)
+
+	errCreatedAtDefaultForbidden   = errors.New(`"default" option may not be used in conjunction with "createdAt""`)
+	errUpdatedAtDefaultForbidden   = errors.New(`"default" option may not be used in conjunction with "updatedAt""`)
+	errCreatedAtUpdatedAtExclusive = errors.New(`"createdAt" and "updatedAt" options are mutually exclusive`)
+	errCreatedAtUpdatedAtType      = errors.New(`"createdAt" and "updatedAt" options are only allowed on fields of type *time.Time`)
+	errCreatedAtUpdatedAtWritable  = errors.New(`"createdAt" and "updatedAt" options are only allowed on writable (non-readonly) fields`)
 
 	autoTimestampsType = reflect.TypeOf(&time.Time{})
 )
@@ -29,6 +31,12 @@ type attrField struct {
 
 	column     string // sql column name
 	sqlDefault string
+
+	// whether the field should have a NOT NULL constraint
+	// although it is a pointer type.
+	// this may be used to use DEFAULT values on NOT NULL fields
+	// by inserting nil pointer values.
+	notnull bool
 
 	validation string
 }
@@ -68,7 +76,15 @@ func newAttrField(schema *Schema, f *reflect.StructField) SchemaField {
 		case optionColumn:
 			field.column = value
 		case optionDefault:
+			if !isNullable(field.fieldType) {
+				// a default value may only be set for
+				// pointer types, to avoid zero values
+				// being omitted by go-pg (go-pg#790)
+				panic(errNonNullableTypeDefault)
+			}
 			field.sqlDefault = value
+		case optionNotnull:
+			field.notnull = parseBoolOption(value)
 		case optionCreatedAt:
 			createdAt = parseBoolOption(value)
 		case optionUpdatedAt:
@@ -94,6 +110,8 @@ func newAttrField(schema *Schema, f *reflect.StructField) SchemaField {
 	}
 
 	if createdAt || updatedAt {
+		field.notnull = true
+
 		if field.fieldType != autoTimestampsType {
 			panic(errCreatedAtUpdatedAtType)
 		}
@@ -145,6 +163,15 @@ func (f *attrField) jsonapiJoinFields() []reflect.StructField {
 	return []reflect.StructField{}
 }
 
+func (f *attrField) Sortable() bool {
+	// override sortable to take f.notnull flag into account
+	return f.jargoSortable && !f.isNullable()
+}
+
+func (f *attrField) isNullable() bool {
+	return isNullable(f.fieldType) && !f.notnull
+}
+
 func jsonapiAttrFields(f *attrField) []reflect.StructField {
 	if f.name == unexportedFieldName {
 		return []reflect.StructField{}
@@ -172,7 +199,7 @@ func jsonapiAttrFields(f *attrField) []reflect.StructField {
 
 func pgAttrFields(f *attrField) []reflect.StructField {
 	tag := fmt.Sprintf(`sql:"%s`, f.column)
-	if !isNullable(f.fieldType) {
+	if !f.isNullable() {
 		tag += ",notnull"
 	}
 	if f.sqlUnique {

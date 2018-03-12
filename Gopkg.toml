@@ -16,7 +16,7 @@
 
 [[constraint]]
   name = "github.com/go-pg/pg"
-  version = "6.9.3"
+  branch = "master"
 
 [[constraint]]
   name = "github.com/google/jsonapi"

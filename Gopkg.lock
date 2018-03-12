@@ -53,6 +53,7 @@
   revision = "09c14070c2b18be76289ee6e7745772d39377776"
 
 [[projects]]
+  branch = "master"
   name = "github.com/go-pg/pg"
   packages = [
     ".",
@@ -62,8 +63,7 @@
     "orm",
     "types"
   ]
-  revision = "24dfe0572921e42ffe1035f7afbd40f9d97cb8c8"
-  version = "v6.10.0"
+  revision = "98f7c765e7e7b0f0aa3c804a9db46612d2b903d5"
 
 [[projects]]
   name = "github.com/go-playground/locales"
@@ -191,6 +191,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "03fb1f694df95f7e2bb00b647ea60d77cec0ae25fe8ec8a55a8c6d3951303f97"
+  inputs-digest = "715d3996a120c9f65f1df91da30ba2fc8901d083fbd917cc66d4e654a45284fc"
   solver-name = "gps-cdcl"
   solver-version = 1
