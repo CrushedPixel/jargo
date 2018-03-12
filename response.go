@@ -67,7 +67,7 @@ func (r *resourceResponse) Payload() (string, error) {
 			r.fieldSet.applyToJsonapiNode(node)
 		}
 
-		bytes, err = jsoniter.ConfigDefault.Marshal(payload)
+		bytes, err = jsoniter.ConfigCompatibleWithStandardLibrary.Marshal(payload)
 		if err != nil {
 			return "", err
 		}
@@ -76,7 +76,7 @@ func (r *resourceResponse) Payload() (string, error) {
 		payload.Included = nil
 		r.fieldSet.applyToJsonapiNode(payload.Data)
 
-		bytes, err = jsoniter.ConfigDefault.Marshal(payload)
+		bytes, err = jsoniter.ConfigCompatibleWithStandardLibrary.Marshal(payload)
 		if err != nil {
 			return "", err
 		}

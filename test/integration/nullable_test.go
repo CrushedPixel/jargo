@@ -44,7 +44,7 @@ func TestNullableAttributes(t *testing.T) {
 	json, err := resource.ResponseAllFields(fetched).Payload()
 	require.Nil(t, err)
 	require.Equal(t,
-		`{"data":{"type":"nullable_attributes","id":"1","attributes":{"name":null,"age":20}}}`,
+		`{"data":{"type":"nullable_attributes","id":"1","attributes":{"age":20,"name":null}}}`,
 		json)
 }
 
