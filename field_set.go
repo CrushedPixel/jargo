@@ -1,11 +1,14 @@
 package jargo
 
 import (
+	"fmt"
 	"github.com/crushedpixel/jargo/internal"
 	"github.com/go-pg/pg/orm"
 	"github.com/google/jsonapi"
 )
 
+// FieldSet contains information about
+// which fields are
 type FieldSet struct {
 	resource *Resource
 	fields   []internal.SchemaField
@@ -94,4 +97,39 @@ func (fs *FieldSet) Without(names ...string) *FieldSet {
 	}
 
 	return f
+}
+
+// ParseFieldSet creates a FieldSet instance
+// for the given map of field parameters.
+// These parameters can be created manually
+// or extracted from an URL's query parameters
+// using ParseFieldParameters.
+//
+// Returns ErrInvalidQueryParams when encountering invalid query values.
+func (r *Resource) ParseFieldSet(parsed map[string][]string) (*FieldSet, error) {
+	var schemaFields []internal.SchemaField
+	// check if user specified to filter this resource's fields
+	if fields, ok := parsed[r.JSONAPIName()]; ok {
+		// always include the id field,
+		// so it gets fetched from the database
+		fields = append(fields, internal.IdFieldJsonapiName)
+		for _, fieldName := range fields {
+			// find resource field with matching jsonapi name
+			var field internal.SchemaField
+			for _, f := range r.schema.Fields() {
+				if f.JSONAPIName() == fieldName {
+					field = f
+					break
+				}
+			}
+			if field == nil {
+				return nil, ErrInvalidQueryParams(fmt.Sprintf(`unknown field parameter: "%s"`, fieldName))
+			}
+
+			schemaFields = append(schemaFields, field)
+		}
+		return newFieldSet(r, schemaFields), nil
+	} else {
+		return r.allFields(), nil
+	}
 }

@@ -10,6 +10,8 @@ import (
 
 const keySize = "size"
 
+// PaginationStrategies contains information about
+// which pagination strategies are supported by an application.
 type PaginationStrategies struct {
 	// Offset determines whether
 	// offset-based pagination is enabled.
@@ -134,6 +136,11 @@ func (r *Resource) parseOrder(sortParams map[string]bool) (*order, error) {
 	return o, nil
 }
 
+// ParsePagination creates a Pagination instance
+// for the given page and sort parameters.
+// These parameters can be created manually
+// or extracted from an URL's query parameters
+// using ParseSortParameters and ParsePageParameters.
 func (r *Resource) ParsePagination(app *Application, sortParams map[string]bool, pageParams map[string]string) (Pagination, error) {
 	size, err := app.parsePageSize(pageParams)
 	if err != nil {

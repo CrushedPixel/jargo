@@ -12,6 +12,11 @@ var (
 	pageParamRegex   = regexp.MustCompile(`^page\[([^][]+)]$`)
 )
 
+// ParseFieldParameters parses a map of query parameters,
+// extracting field parameters.
+// The resulting map can be used in Resource.ParseFieldSet.
+//
+// http://jsonapi.org/format/#fetching-sparse-fieldsets
 func ParseFieldParameters(query map[string][]string) map[string][]string {
 	fields := make(map[string][]string)
 	for k, v := range query {
@@ -34,6 +39,11 @@ func ParseFieldParameters(query map[string][]string) map[string][]string {
 	return fields
 }
 
+// ParseFilterParameters parses a map of query parameters,
+// extracting filter parameters.
+// The resulting map can be used in Resource.ParseFilters.
+//
+// http://jsonapi.org/format/#fetching-filtering
 func ParseFilterParameters(query map[string][]string) map[string]map[string][]string {
 	// map[field]map[operator][]values
 	filters := make(map[string]map[string][]string)
@@ -71,6 +81,11 @@ func ParseFilterParameters(query map[string][]string) map[string]map[string][]st
 	return filters
 }
 
+// ParsePageParameters parses a map of query parameters,
+// extracting page parameters.
+// The resulting map can be used in Resource.ParsePagination.
+//
+// http://jsonapi.org/format/#fetching-pagination
 func ParsePageParameters(query map[string][]string) map[string]string {
 	fields := make(map[string]string)
 	for k, v := range query {
@@ -85,6 +100,11 @@ func ParsePageParameters(query map[string][]string) map[string]string {
 	return fields
 }
 
+// ParsePageParameters parses a map of query parameters,
+// extracting fields to sort by.
+// The resulting map can be used in Resource.ParsePagination.
+//
+// http://jsonapi.org/format/#fetching-sorting
 func ParseSortParameters(query map[string][]string) map[string]bool {
 	values := make(map[string]bool)
 	if sort, ok := query["sort"]; ok {
@@ -114,7 +134,7 @@ func ParseSortParameters(query map[string][]string) map[string]bool {
 func ParseResourceId(idStr string) (int64, error) {
 	id, err := strconv.ParseInt(idStr, 10, 0)
 	if err != nil {
-		return 0, ErrInvalidId
+		return 0, ErrNotFound
 	}
 	return id, nil
 }

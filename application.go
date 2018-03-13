@@ -11,6 +11,8 @@ import (
 var errNoResponse = errors.New("the last HandlerFunc returned a nil Response")
 
 // Application is the central component of jargo.
+// It contains all Controllers which are responsible
+// for request handling.
 type Application struct {
 	db *pg.DB
 
@@ -60,8 +62,8 @@ func (app *Application) Validate() *validator.Validate {
 // If the Resource has already been registered,
 // its cached value is returned.
 //
-// Panics if model is not an instance of a properly annotated
-// Resource Model.
+// Returns an error if model is not an instance
+// of a properly annotated Resource Model.
 func (app *Application) RegisterResource(model interface{}) (*Resource, error) {
 	s, err := app.registry.RegisterSchema(reflect.TypeOf(model))
 	if err != nil {
@@ -87,8 +89,8 @@ func (app *Application) RegisterResource(model interface{}) (*Resource, error) {
 	return app.resources[s], nil
 }
 
-// MustRegisterResource calls RegisterResource
-// and panics if it encounters an error.
+// MustRegisterResource calls RegisterResource,
+// panicking if it encounters an error.
 func (app *Application) MustRegisterResource(model interface{}) *Resource {
 	r, err := app.RegisterResource(model)
 	if err != nil {

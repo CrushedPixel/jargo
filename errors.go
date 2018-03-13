@@ -100,44 +100,15 @@ var ErrInternalServerError = NewApiError(
 	"internal server error",
 )
 
-var ErrUnsupportedMediaType = NewApiError(
-	http.StatusUnsupportedMediaType,
-	"UNSUPPORTED_MEDIA_TYPE",
-	fmt.Sprintf("media type must be %s", jsonapi.MediaType),
-)
-
-var ErrNotAcceptable = NewApiError(
-	http.StatusNotAcceptable,
-	"NOT_ACCEPTABLE",
-	fmt.Sprintf("accept header must contain %s without any media type parameters", jsonapi.MediaType),
-)
-
+// ErrNotFound indicates that the requested resource was not found.
 var ErrNotFound = NewApiError(
 	http.StatusNotFound,
 	"RESOURCE_NOT_FOUND",
 	"resource not found",
 )
 
-var ErrForbidden = NewApiError(
-	http.StatusForbidden,
-	"FORBIDDEN",
-	"forbidden",
-)
-
-var ErrInvalidId = NewApiError(
-	http.StatusBadRequest,
-	"INVALID_ID",
-	"invalid id parameter",
-)
-
-func ErrUnauthorized(detail string) *ApiError {
-	return NewApiError(
-		http.StatusUnauthorized,
-		"UNAUTHORIZED",
-		detail,
-	)
-}
-
+// ErrInvalidQueryParams creates an ApiError
+// indicating invalid query parameters.
 func ErrInvalidQueryParams(detail string) *ApiError {
 	return NewApiError(http.StatusBadRequest,
 		"INVALID_QUERY_PARAMS",
@@ -145,6 +116,8 @@ func ErrInvalidQueryParams(detail string) *ApiError {
 	)
 }
 
+// ErrInvalidPayload creates an ApiError
+// indicating an invalid request payload.
 func ErrInvalidPayload(detail string) *ApiError {
 	return NewApiError(http.StatusBadRequest,
 		"INVALID_PAYLOAD",
@@ -152,6 +125,8 @@ func ErrInvalidPayload(detail string) *ApiError {
 	)
 }
 
+// ErrValidationFailed creates an ApiError
+// indicating failed input resource validation.
 func ErrValidationFailed(errors validator.ValidationErrors) *ApiError {
 	var failed []string
 	for _, v := range errors {

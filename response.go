@@ -6,6 +6,7 @@ import (
 	"github.com/json-iterator/go"
 )
 
+// Response is a response sent to the client via JSON API.
 type Response interface {
 	// Status returns the HTTP Status
 	// for the response.

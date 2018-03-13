@@ -55,6 +55,7 @@ func (p *cursorPagination) applyToQuery(q *orm.Query) *orm.Query {
 	return q
 }
 
+// keySort applies the keyset pagination query clauses to q.
 func (p *cursorPagination) keySort(q *orm.Query) *orm.Query {
 	// generate cursor WHERE clause
 	q = p.appendWhere(q, 0)
@@ -77,7 +78,7 @@ func (p *cursorPagination) keySort(q *orm.Query) *orm.Query {
 	return q
 }
 
-// appendWhere appends the keyset pagination WHERE clause to the given Query
+// appendWhere appends to q the keyset pagination WHERE clause
 // for the cursorPagination's order entry at index i.
 //
 // See https://use-the-index-luke.com/sql/partial-results/fetch-next-page

@@ -75,22 +75,22 @@ type notificationPayload struct {
 }
 
 const (
-	// MsgConnectionTimeout is sent to the client
+	// msgConnectionTimeout is sent to the client
 	// if they don't send a connection message
 	// before Realtime.ConnectionMessageTimeout is exceeded.
-	MsgConnectionTimeout = "CONNECTION_TIMEOUT"
+	msgConnectionTimeout = "CONNECTION_TIMEOUT"
 
-	// MsgConnectionDisallowed is sent to the client
+	// msgConnectionDisallowed is sent to the client
 	// if Realtime.HandleConnection returns false.
-	MsgConnectionDisallowed = "CONNECTION_DISALLOWED"
+	msgConnectionDisallowed = "CONNECTION_DISALLOWED"
 
 	subscribeChannelName = "subscribe"
 	deletedChannelName   = "deleted"
 	updatedChannelName   = "updated"
 
-	MsgOk              = `{"status":"ok"}`
-	MsgInvalidResource = `{"error":"INVALID_RESOURCE"}`
-	MsgAccessDenied    = `{"error":"ACCESS_DENIED"}`
+	msgOk              = `{"status":"ok"}`
+	msgInvalidResource = `{"error":"INVALID_RESOURCE"}`
+	msgAccessDenied    = `{"error":"ACCESS_DENIED"}`
 )
 
 // subscribePayload is a struct representing the JSON payload
@@ -117,7 +117,7 @@ type resourceUpdatedPayload struct {
 	Payload string `json:"payload"`
 }
 
-// A Realtime instance allows clients to subscribe to
+// Realtime allows clients to subscribe to
 // resource instances via websocket.
 type Realtime struct {
 	*glue.Server
@@ -292,14 +292,14 @@ func (r *Realtime) handleConnectingSockets() {
 			if err != nil {
 				if err != glue.ErrSocketClosed {
 					// no connection message received
-					socket.Write(MsgConnectionTimeout)
+					socket.Write(msgConnectionTimeout)
 					socket.Close()
 				}
 				break
 			}
 			if !r.HandleConnection(socket, message) {
 				// connection disallowed
-				socket.Write(MsgConnectionDisallowed)
+				socket.Write(msgConnectionDisallowed)
 				socket.Close()
 				break
 			}
@@ -482,12 +482,12 @@ func (r *Realtime) onSubscribeRead(socket *glue.Socket, messageId string, data s
 		}
 	}
 	if resource == nil {
-		return cement.CodeError, MsgInvalidResource
+		return cement.CodeError, msgInvalidResource
 	}
 
 	// call MaySubscribe hook
 	if !r.MaySubscribe(socket, resource, payload.Id) {
-		return cement.CodeError, MsgAccessDenied
+		return cement.CodeError, msgAccessDenied
 	}
 
 	// subscribe client to resource
@@ -501,7 +501,7 @@ func (r *Realtime) onSubscribeRead(socket *glue.Socket, messageId string, data s
 	s[resource] = append(s[resource], payload.Id)
 	r.subscriptionsMutex.Unlock()
 
-	return cement.CodeOk, MsgOk
+	return cement.CodeOk, msgOk
 }
 
 // subscribers returns all sockets that are subscribed to a resource instance.

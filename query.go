@@ -286,6 +286,8 @@ func (q *Query) pgErrToApiErr(pgErr pg.Error) error {
 	}
 }
 
+// UniqueViolationError is returned by Queries that violate
+// a unique constraint in the database.
 type UniqueViolationError struct {
 	*ApiError
 	// Field is the JSON API name of the field
