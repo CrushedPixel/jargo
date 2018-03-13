@@ -12,6 +12,10 @@ type SchemaField interface {
 	// JSONAPIName returns the field's JSON API member name
 	JSONAPIName() string
 
+	// ColumnName returns the field's database column name.
+	// For query building, use PGSelectColumn() and PGFilterColumn().
+	ColumnName() string
+
 	// PGSelectColumn returns the pg column to use
 	// when selecting this field from the database
 	PGSelectColumn() string

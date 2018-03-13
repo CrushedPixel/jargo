@@ -158,6 +158,10 @@ func newAttrField(schema *Schema, f *reflect.StructField) SchemaField {
 	return field
 }
 
+func (f *attrField) ColumnName() string {
+	return f.column
+}
+
 func (f *attrField) PGSelectColumn() string {
 	return fmt.Sprintf("%s.%s", f.schema.alias, f.column)
 }

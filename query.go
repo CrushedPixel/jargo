@@ -233,7 +233,7 @@ func (q *Query) execute() {
 
 		// handle pg.Error errors
 		if pgErr, ok := q.executionError.(pg.Error); ok {
-			q.executionError = pgErrToApiErr(pgErr)
+			q.executionError = q.pgErrToApiErr(pgErr)
 		}
 
 		return
@@ -261,13 +261,45 @@ func (q *Query) execute() {
 //
 // https://www.postgresql.org/docs/10/static/protocol-error-fields.html
 // https://www.postgresql.org/docs/10/static/errcodes-appendix.html
-func pgErrToApiErr(pgErr pg.Error) error {
+func (q *Query) pgErrToApiErr(pgErr pg.Error) error {
 	switch pgErr.Field('C') {
-	case "23502": // not_null_violation
-		return NewApiError(http.StatusBadRequest, "NOT_NULL_VIOLATION", pgErr.Field('n')) // n is the constraint name
 	case "23505": // unique_violation
-		return NewApiError(http.StatusBadRequest, "UNIQUE_VIOLATION", pgErr.Field('n')) // n is the constraint name
+		// parse constraint name to get column name
+		constraint := pgErr.Field('n')
+		// unique constraint is always in the format "table_column_key",
+		// so we can strip away the table name and following underscore
+		// from the start, and _key from the end
+		column := constraint[len(q.resource.schema.Table())+1 : len(constraint)-len("_key")]
+
+		// get json api field name for column
+		var field string
+		for _, f := range q.resource.schema.Fields() {
+			if f.ColumnName() == column {
+				field = f.JSONAPIName()
+				break
+			}
+		}
+
+		return newUniqueViolationError(field, column)
 	default:
 		return pgErr.(error)
+	}
+}
+
+type UniqueViolationError struct {
+	*ApiError
+	// Field is the JSON API name of the field
+	// whose constraint was violated
+	Field string
+	// Column is the database column
+	// whose constraint was violated
+	Column string
+}
+
+func newUniqueViolationError(field string, column string) *UniqueViolationError {
+	return &UniqueViolationError{
+		ApiError: NewApiError(http.StatusBadRequest, "UNIQUE_VIOLATION", field),
+		Field:    field,
+		Column:   column,
 	}
 }

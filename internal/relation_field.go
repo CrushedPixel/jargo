@@ -67,6 +67,11 @@ func (f *belongsToField) Writable() bool {
 	return false
 }
 
+func (f *relationField) ColumnName() string {
+	// relations usually do not have a database column.
+	return ""
+}
+
 func (f *relationField) PGSelectColumn() string {
 	return f.fieldName
 }

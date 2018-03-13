@@ -48,10 +48,12 @@ type Schema struct {
 	joinPGModelType      reflect.Type
 }
 
+// JSONAPI returns the Schema's JSON API member name.
 func (s *Schema) JSONAPIName() string {
 	return s.name
 }
 
+// Table returns the Schema's table name in the database.
 func (s *Schema) Table() string {
 	return s.table
 }
