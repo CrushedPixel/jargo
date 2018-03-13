@@ -33,6 +33,7 @@ $$
 
 var (
 	pgURLFlag = flag.String("test_db", "postgres://jargo@localhost/jargo?sslmode=disable", "url for integration test database connection")
+	debugFlag = flag.Bool("debug", false, "enable debug output")
 
 	app *jargo.Application
 
@@ -53,15 +54,17 @@ func TestMain(m *testing.M) {
 	// setup database
 	db := pg.Connect(url)
 
-	// log database queries
-	db.OnQueryProcessed(func(event *pg.QueryProcessedEvent) {
-		query, err := event.FormattedQuery()
-		if err != nil {
-			panic(err)
-		}
+	if *debugFlag {
+		// log database queries
+		db.OnQueryProcessed(func(event *pg.QueryProcessedEvent) {
+			query, err := event.FormattedQuery()
+			if err != nil {
+				panic(err)
+			}
 
-		log.Printf("%s %s", time.Since(event.StartTime), query)
-	})
+			log.Printf("%s %s", time.Since(event.StartTime), query)
+		})
+	}
 
 	// drop entire database
 	_, err = db.Exec(clearQuery)

@@ -29,7 +29,7 @@
   branch = "master"
   name = "github.com/crushedpixel/http_bridge"
   packages = ["."]
-  revision = "82a2bf048ba482fdbff52af039bc1816c97558de"
+  revision = "a6a7a856303846406d322719c1bd8a6615f58742"
 
 [[projects]]
   name = "github.com/davecgh/go-spew"
@@ -63,7 +63,7 @@
     "orm",
     "types"
   ]
-  revision = "98f7c765e7e7b0f0aa3c804a9db46612d2b903d5"
+  revision = "59b9849180933e22b5498c6fc71ff1a96e86e3ac"
 
 [[projects]]
   name = "github.com/go-playground/locales"
@@ -165,13 +165,13 @@
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
-  revision = "c7dcf104e3a7a1417abc0230cb0d5240d764159d"
+  revision = "c4a91bd4f524f10d064139674cf55852e055ad01"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
   packages = ["context"]
-  revision = "ae89d30ce0c63142b652837da33d782e2b0a9b25"
+  revision = "892bf7b0c6e2f93b51166bf3882e50277fa5afc6"
 
 [[projects]]
   branch = "master"
@@ -180,7 +180,7 @@
     "unix",
     "windows"
   ]
-  revision = "7dca6fe1f43775aa6d1334576870ff63f978f539"
+  revision = "8c0ece68c28377f4c326d85b94f8df0dace46f80"
 
 [[projects]]
   name = "gopkg.in/go-playground/validator.v9"
