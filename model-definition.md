@@ -45,7 +45,7 @@ To override the table name, use the `table` option on the *id field*:
 type CookieFlavor struct {
     Id int64 `jargo:",table:gusto"`
 }
-~~~ 
+~~~
 
 ## [Table alias](#table-alias)
 By default, a resource's **table alias** to use in *SQL queries* is the **underscored** version of the struct name.
@@ -157,7 +157,6 @@ Expires *time.Time `jargo:",default:NOW() + INTERVAL '1 day'"`
 ~~~
 
 ### [`NOT NULL` attributes with default values](#not-null-attributes-with-default-values)
-
 You may add the `notnull` option to an attribute with a default value 
 to add a `NOT NULL` constraint to the database column:
 ~~~go
@@ -167,9 +166,101 @@ Size *int `jargo:",notnull,default:170"`
 Setting the value to `nil` omits it when updating it in the database,
 to ensure the `NOT NULL` constraint is never violated.
 
+## [Unique attributes](#unique-attributes)
+The `unique` option adds a `UNIQUE` constraint to the database column.
+~~~go
+Name  string `jargo:",unique"`
+Email string `jargo:",unique"`
+~~~
+A [Query][queries] violating this constraint returns an [`UniqueViolationError`][UniqueViolationError]:
+~~~go
+type User struct {
+    Id   int64
+    Name string `jargo:",unique"`
+}
+
+// insert user with name "Marius"
+res, err := req.Resource().InsertInstance(req.DB(), &User{Name: "Marius"}).Result()
+if err != nil {
+    return jargo.NewErrorResponse(err)
+}
+
+// insert another user with same name, violating the unique constraint
+res, err = req.Resource().InsertInstance(req.DB(), &User{Name: "Marius"}).Result()
+if err != nil {
+    if uve, ok := err.(*jargo.UniqueViolationError); ok {
+        log.Printf("Unique constraint violation on field %s\n", uve.Field)
+    }
+    return jargo.NewErrorResponse(err)
+}
+~~~
+
+## [Readonly attributes](#readonly-attributes)
+By default, all of a model's attributes can be set in **create** or **update requests**.  
+To disallow setting the value of a specific attribute, add the `readonly` option:
+~~~go
+Money float64 `jargo:",readonly"`
+~~~
+
+## [Omitting empty attributes](#omitting-empty-attributes)
+If you want to omit attributes with their type's [zero value][zero-value] from *JSON API* payloads,
+you can add the `omitempty` option:
+~~~go
+Name string `jargo:",omitempty"` // omitted if value is ""
+Age  int    `jargo:",omitempty"` // omitted if value is 0
+Pets *int   `jargo:",omitempty"` // omitted if value is <nil>
+~~~
+
 ## [Sorting](#sorting)
-By default, sorting is enabled for all **non-nullable** attributes and `belongsTo` relations.
+By default, [sorting][sorting] is enabled for all **non-nullable** attributes and `belongsTo` relations.  
+To disable sorting by an attribute, add the `nosort` option:
+~~~go
+Age int `jargo:",nosort"`
+~~~
+
+## [Filtering](#filtering)
+By default, [filtering][filtering] is enabled for all attributes and `belongsTo` relations.  
+To disable filtering by an attribute, add the `nofilter` option:
+~~~go
+Age int `jargo:",nofilter"`
+~~~
+
+## [Automatic Timestamps](#automatic-timestamps)
+Often times, you want to keep track of when a model has been **created** in the database 
+and when it was **last updated**.  
+This can be achieved using the `createdAt` and `updatedAt` options on a [`*time.Time`][time.Time] attribute:
+~~~go
+type User struct {
+    Id          int64
+    Name        string
+    Joined      *time.Time `jargo:",createdAt"`
+    LastUpdated *time.Time `jargo:",updatedAt"`
+}
+
+// insert new user instance
+res, err := req.Resource().InsertInstance(req.DB(), &User{Name: "Marius"}).Result()
+if err != nil {
+    return jargo.NewErrorResponse(err)
+}
+user := res.(*User)
+log.Printf("Joined: %s", user.Joined) // user.Joined is the time of creation in the database
+
+// update user instance
+user.Name = "Jane"
+res, err = req.Resource().UpdateInstance(req.DB(), user).Result()
+if err != nil {
+    return jargo.NewErrorResponse(err)
+}
+user = res.(*User)
+log.Printf("Joined: %s", user.LastUpdated) // user.LastUpdated is the time of last update in the database
+~~~
+
 
 [struct-tags]: https://golang.org/ref/spec#Tag
 [time.Time]: https://golang.org/pkg/time/#Time
 [member-names]: http://jsonapi.org/format/#document-member-names
+[queries]: #TODO
+[UniqueViolationError]: https://godoc.org/github.com/CrushedPixel/jargo#UniqueViolationError
+[zero-value]: https://golang.org/ref/spec#The_zero_value
+[sorting]: http://jsonapi.org/format/#fetching-sorting
+[filtering]: http://jsonapi.org/format/#fetching-filtering
