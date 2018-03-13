@@ -63,7 +63,7 @@ func (f *belongsToField) pgJoinFields() []reflect.StructField {
 }
 
 // generates the pg fields for a belongsTo relation. Example:
-// Owner *User `jargo:",hasMany"
+// Owner *User `jargo:",has"
 // =>
 // OwnerId int64 // join model and full model
 // Owner *User   // full model only
@@ -246,7 +246,13 @@ func (i *belongsToFieldInstance) applyToJoinResourceModel(instance *resourceMode
 
 	rmi := v.toJoinResourceModel()
 
-	instance.value.Elem().FieldByName(i.field.fieldName).Set(reflect.ValueOf(rmi).Elem())
+	// if target field is not nullable,
+	// dereference value pointer
+	val := reflect.ValueOf(rmi)
+	if !isNullable(i.field.fieldType) {
+		val = val.Elem()
+	}
+	instance.value.Elem().FieldByName(i.field.fieldName).Set(val)
 }
 
 // relationId returns the id value of the relation.

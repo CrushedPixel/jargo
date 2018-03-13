@@ -2,7 +2,6 @@ package jargo
 
 import (
 	"errors"
-	"fmt"
 	"github.com/crushedpixel/jargo/internal"
 	"github.com/go-pg/pg"
 	"github.com/go-pg/pg/orm"
@@ -10,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"reflect"
-	"strconv"
 	"strings"
 )
 
