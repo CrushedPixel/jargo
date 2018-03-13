@@ -11,20 +11,23 @@ const (
 	idFieldName         = "Id"
 	unexportedFieldName = "-"
 
-	jargoFieldTag   = "jargo"
-	optionTable     = "table"
-	optionAlias     = "alias"
-	optionColumn    = "column"
+	jargoFieldTag = "jargo"
+	optionTable   = "table"
+	optionAlias   = "alias"
+	optionColumn  = "column"
+
 	optionHas       = "has"
 	optionBelongsTo = "belongsTo"
 	optionMany2Many = "many2many"
+
 	optionReadonly  = "readonly"
-	optionSort      = "sort"
-	optionFilter    = "filter"
+	optionNoSort    = "nosort"
+	optionNoFilter  = "nofilter"
 	optionOmitempty = "omitempty"
 	optionUnique    = "unique"
 	optionNotnull   = "notnull"
 	optionDefault   = "default"
+
 	optionCreatedAt = "createdAt"
 	optionUpdatedAt = "updatedAt"
 )
@@ -161,7 +164,7 @@ func parseSchema(t reflect.Type) *Schema {
 }
 
 // parses a struct field into a schema field.
-// returns nil, nil for non-attribute fields.
+// returns nil for non-attribute fields.
 func (r SchemaRegistry) parseField(schema *Schema, f *reflect.StructField) SchemaField {
 	if f.Name == idFieldName {
 		return newIdField(schema)

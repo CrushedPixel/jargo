@@ -80,10 +80,10 @@ func newBaseField(schema *Schema, f *reflect.StructField) *baseField {
 		switch option {
 		case optionReadonly:
 			field.jargoWritable = !parseBoolOption(value)
-		case optionSort:
-			field.jargoSortable = parseBoolOption(value)
-		case optionFilter:
-			field.jargoFilterable = parseBoolOption(value)
+		case optionNoSort:
+			field.jargoSortable = !parseBoolOption(value)
+		case optionNoFilter:
+			field.jargoFilterable = !parseBoolOption(value)
 		case optionOmitempty:
 			if !field.jsonapiExported {
 				panic(errJsonapiOptionOnUnexportedField)

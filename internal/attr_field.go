@@ -97,7 +97,7 @@ func newAttrField(schema *Schema, f *reflect.StructField) SchemaField {
 			createdAt = parseBoolOption(value)
 		case optionUpdatedAt:
 			updatedAt = parseBoolOption(value)
-		case optionReadonly, optionSort, optionFilter,
+		case optionReadonly, optionNoSort, optionNoFilter,
 			optionOmitempty, optionUnique, optionDefault:
 			// these were handled when parsing the baseField
 			// and should therefore not trigger the default handler.
