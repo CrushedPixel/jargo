@@ -255,6 +255,26 @@ user = res.(*User)
 log.Printf("Joined: %s", user.LastUpdated) // user.LastUpdated is the time of last update in the database
 ~~~
 
+# [Relations](#relations)
+*TODO: write this section*
+
+# [Options cheat sheet](#options-cheat-sheet)
+Here's a list of all options in `jargo` struct tags:
+
+| Option                                                | Field types                    | Description                                                            |
+|-------------------------------------------------------|--------------------------------|------------------------------------------------------------------------|
+| [`table`](#table-name)                                | [Id](#id-field)                | Sets the resource's **table name**.                                    |
+| [`alias`](#table-alias)                               | [Id](#id-field)                | Sets the resource's **table alias**.                                   |
+| [`column`](#column-name)                              | [Attribute](#attribute-fields) | Sets the attribute's **column name**.                                  |
+| [`default`](#default-values)                          | [Attribute](#attribute-fields) | Sets the attribute's **default value**.                                |
+| [`notnull`](#not-null-attributes-with-default-values) | [Attribute](#attribute-fields) | Adds a **`NOT NULL` constraint** to a nullable type.                   |
+| [`unique`](#unique-attributes)                        | [Attribute](#attribute-fields) | Adds a **`UNIQUE` constraint** to an attribute.                        |
+| [`readonly`](#readonly-attributes)                    | [Attribute](#attribute-fields) | Disallows **setting** the attribute via JSON API.                      |
+| [`omitempty`](#omitting-empty-attributes)             | [Attribute](#attribute-fields) | **Omits** the attribute from JSON API if empty.                        |
+| [`nosort`](#sorting)                                  | [Attribute](#attribute-fields) | **Disables sorting** by an attribute.                                  |
+| [`nofilter`](#filtering)                              | [Attribute](#attribute-fields) | **Disables filtering** by an attribute.                                |
+| [`createdAt`](#automatic-timestamps)                  | [Attribute](#attribute-fields) | Automatically sets the attribute's value to the **time of insertion**. |
+| [`updatedAt`](#automatic-timestamps)                  | [Attribute](#attribute-fields) | Automatically sets the attribute's value to the **time of updating**.  |
 
 [struct-tags]: https://golang.org/ref/spec#Tag
 [time.Time]: https://golang.org/pkg/time/#Time
