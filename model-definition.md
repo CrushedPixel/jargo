@@ -212,18 +212,20 @@ Pets *int   `jargo:",omitempty"` // omitted if value is <nil>
 ~~~
 
 ## [Sorting](#sorting)
-By default, [sorting][sorting] is enabled for all **non-nullable** attributes and `belongsTo` relations.  
+By default, [sorting][sorting] is enabled for all **non-nullable** attributes and [`belongsTo` relations](#relationships).  
 To disable sorting by an attribute, add the `nosort` option:
 ~~~go
 Age int `jargo:",nosort"`
 ~~~
+For `belongsTo` relations, results are sorted by the **relation id**.
 
 ## [Filtering](#filtering)
-By default, [filtering][filtering] is enabled for all attributes and `belongsTo` relations.  
+By default, [filtering][filtering] is enabled for all attributes and [`belongsTo` relations](#relationships).  
 To disable filtering by an attribute, add the `nofilter` option:
 ~~~go
 Age int `jargo:",nofilter"`
 ~~~
+For `belongsTo` relations, results are filtered by the **relation id**.
 
 ## [Automatic Timestamps](#automatic-timestamps)
 Often times, you want to keep track of when a model has been **created** in the database 
@@ -255,26 +257,91 @@ user = res.(*User)
 log.Printf("Joined: %s", user.LastUpdated) // user.LastUpdated is the time of last update in the database
 ~~~
 
-# [Relations](#relations)
-*TODO: write this section*
+The `createdAt` option is equivalent to using `default:NOW()`.  
+The `updatedAt` option generates a [database trigger][triggers] setting the column to `NOW()` 
+for each row being inserted or updated.
+
+
+# [Relationships](#relationships)
+`jargo` allows you to define **relationships** on your resource models.
+Currently, the following relationship types are supported:
+- One-to-one
+- One-to-many
+
+Many-to-many relationships are **not supported at the moment**. However, [support is planned](https://github.com/CrushedPixel/jargo/issues/12).
+
+## [One-to-one](#one-to-one)
+One-to-one relationships are modeled using the `belongsTo` and `has` options:
+~~~go
+type User struct {
+    Id      int64
+    Profile *Profile `jargo:",has"` // creates no database column
+}
+
+type Profile struct {
+    Id    int64
+    User  *User `jargo:",belongsTo"` // creates user_id database column
+}
+~~~
+The resource on the `belongsTo` side contains the **foreign key** in the database.
+
+## [One-to-many](#one-to-many)
+One-to-many relationships are modeled just like one-to-one relationships, except that the `has` field is a slice:
+~~~go
+type Author struct {
+    Id    int64
+    Books []Book `jargo:",has"` // creates no database column
+}
+
+type Book struct {
+    Id      int64
+    Author  *Author `jargo:",belongsTo"` // creates author_id database column
+}
+~~~
+
+## [Explicit inverses](#explicit-inverses)
+If your relationship fields are not named after the relation's type, you must **explicitly specify the inverse**
+by setting the `has` option value to the field name of the inverse:
+~~~go
+type Person struct {
+    Id    int64
+    Books []Book `jargo:",has:Owner"`
+}
+
+type Book struct {
+    Id    int64
+    Owner *Person `jargo:",belongsTo"` // creates owner_id database column
+}
+~~~
+
+This makes **self-referencing relationships** possible:
+~~~go
+type Person struct {
+    Id       int64
+    Parent   *Person  `jargo:",belongsTo"`
+    Children []Person `jargo:",has:Parent"`
+}
+~~~
 
 # [Options cheat sheet](#options-cheat-sheet)
 Here's a list of all options in `jargo` struct tags:
 
-| Option                                                | Field types                    | Description                                                            |
-|-------------------------------------------------------|--------------------------------|------------------------------------------------------------------------|
-| [`table`](#table-name)                                | [Id](#id-field)                | Sets the resource's **table name**.                                    |
-| [`alias`](#table-alias)                               | [Id](#id-field)                | Sets the resource's **table alias**.                                   |
-| [`column`](#column-name)                              | [Attribute](#attribute-fields) | Sets the attribute's **column name**.                                  |
-| [`default`](#default-values)                          | [Attribute](#attribute-fields) | Sets the attribute's **default value**.                                |
-| [`notnull`](#not-null-attributes-with-default-values) | [Attribute](#attribute-fields) | Adds a **`NOT NULL` constraint** to a nullable type.                   |
-| [`unique`](#unique-attributes)                        | [Attribute](#attribute-fields) | Adds a **`UNIQUE` constraint** to an attribute.                        |
-| [`readonly`](#readonly-attributes)                    | [Attribute](#attribute-fields) | Disallows **setting** the attribute via JSON API.                      |
-| [`omitempty`](#omitting-empty-attributes)             | [Attribute](#attribute-fields) | **Omits** the attribute from JSON API if empty.                        |
-| [`nosort`](#sorting)                                  | [Attribute](#attribute-fields) | **Disables sorting** by an attribute.                                  |
-| [`nofilter`](#filtering)                              | [Attribute](#attribute-fields) | **Disables filtering** by an attribute.                                |
-| [`createdAt`](#automatic-timestamps)                  | [Attribute](#attribute-fields) | Automatically sets the attribute's value to the **time of insertion**. |
-| [`updatedAt`](#automatic-timestamps)                  | [Attribute](#attribute-fields) | Automatically sets the attribute's value to the **time of updating**.  |
+| Option                                                | Field types                                                      | Description                                                            |
+|-------------------------------------------------------|------------------------------------------------------------------|------------------------------------------------------------------------|
+| [`table`](#table-name)                                | [Id](#id-field)                                                  | Sets the resource's **table name**.                                    |
+| [`alias`](#table-alias)                               | [Id](#id-field)                                                  | Sets the resource's **table alias**.                                   |
+| [`column`](#column-name)                              | [Attributes](#attribute-fields)                                  | Sets the attribute's **column name**.                                  |
+| [`default`](#default-values)                          | [Attributes](#attribute-fields)                                  | Sets the attribute's **default value**.                                |
+| [`notnull`](#not-null-attributes-with-default-values) | [Attributes](#attribute-fields)                                  | Adds a **`NOT NULL` constraint** to a nullable type.                   |
+| [`unique`](#unique-attributes)                        | [Attributes](#attribute-fields), [Relationships](#relationships) | Adds a **`UNIQUE` constraint** to an attribute.                        |
+| [`readonly`](#readonly-attributes)                    | [Attributes](#attribute-fields), [Relationships](#relationships) | Disallows **setting** the attribute via JSON API.                      |
+| [`omitempty`](#omitting-empty-attributes)             | [Attributes](#attribute-fields), [Relationships](#relationships) | **Omits** the attribute from JSON API if empty.                        |
+| [`nosort`](#sorting)                                  | [Attributes](#attribute-fields), [Relationships](#relationships) | **Disables sorting** by an attribute.                                  |
+| [`nofilter`](#filtering)                              | [Attributes](#attribute-fields), [Relationships](#relationships) | **Disables filtering** by an attribute.                                |
+| [`createdAt`](#automatic-timestamps)                  | [Attributes](#attribute-fields)                                  | Automatically sets the attribute's value to the **time of insertion**. |
+| [`updatedAt`](#automatic-timestamps)                  | [Attributes](#attribute-fields)                                  | Automatically sets the attribute's value to the **time of updating**.  |
+| [`belongsTo`](#relationships)                         | [Relationships](#relationships)                                  | Defines a belongsTo relation to the target resource                    |
+| [`has`](#relationships)                               | [Relationships](#relationships)                                  | Defines a has relation to the target resource                          |
 
 [struct-tags]: https://golang.org/ref/spec#Tag
 [time.Time]: https://golang.org/pkg/time/#Time
@@ -284,3 +351,4 @@ Here's a list of all options in `jargo` struct tags:
 [zero-value]: https://golang.org/ref/spec#The_zero_value
 [sorting]: http://jsonapi.org/format/#fetching-sorting
 [filtering]: http://jsonapi.org/format/#fetching-filtering
+[triggers]: https://www.postgresql.org/docs/current/static/plpgsql-trigger.html
