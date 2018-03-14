@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/c9s/inflect"
+	"github.com/satori/go.uuid"
 	"gopkg.in/go-playground/validator.v9"
 	"reflect"
 	"time"
@@ -213,6 +214,9 @@ func pgAttrFields(f *attrField) []reflect.StructField {
 	if f.sqlDefault != "" {
 		tag += fmt.Sprintf(",default:%s", f.sqlDefault)
 	}
+	if isUUIDField(f.fieldType) {
+		tag += ",type:uuid"
+	}
 	tag += `"`
 
 	field := reflect.StructField{
@@ -244,6 +248,21 @@ func isTimeField(typ reflect.Type) bool {
 
 	switch reflect.New(typ).Elem().Interface().(type) {
 	case time.Time:
+		return true
+	default:
+		return false
+	}
+}
+
+// isUUIDField returns whether typ is a uuid.UUID field.
+func isUUIDField(typ reflect.Type) bool {
+	// pointer types are allowed
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+	}
+
+	switch reflect.New(typ).Elem().Interface().(type) {
+	case uuid.UUID:
 		return true
 	default:
 		return false
