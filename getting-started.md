@@ -58,7 +58,7 @@ This is done by defining a `struct` type and annotating it with `jargo` [struct 
 Let's say we want to create a `User` model with the following attributes:
 
 | JSON API Name | Type                     | Description                                                                                               |
-| ------------- | ------------------------ | --------------------------------------------------------------------------------------------------------- |
+|---------------|--------------------------|-----------------------------------------------------------------------------------------------------------|
 | `id`          | `int64`                  | The model's **unique** primary key. The `id` attribute is always required, and has to be of type `int64`. |
 | `name`        | `string`                 | The username. Must be **unique** among all users.                                                         |
 | `age`         | `int`                    | The user's age.                                                                                           |
@@ -68,9 +68,9 @@ This is what our `User` struct could look like:
 ~~~go
 type User struct {
     Id       int64
-    Name     string    `jargo:",unique"`
+    Name     string     `jargo:",unique"`
     Age      int
-    JoinedAt time.Time `jargo:",createdAt"`
+    JoinedAt *time.Time `jargo:",createdAt"`
 }
 ~~~
 
@@ -202,9 +202,9 @@ import (
 
 type User struct {
     Id       int64
-    Name     string    `jargo:",unique"`
+    Name     string     `jargo:",unique"`
     Age      int
-    JoinedAt time.Time `jargo:",createdAt"`
+    JoinedAt *time.Time `jargo:",createdAt"`
 }
 
 func main() {
@@ -212,7 +212,8 @@ func main() {
         // replace with your connection data
         Addr:     "localhost:5432",
         User:     "test",
-        Database: "test",
+        Database: "jargo",
+        Password: "my-secret-password",
     })
     
     // create application

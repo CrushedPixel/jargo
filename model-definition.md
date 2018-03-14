@@ -22,7 +22,7 @@ type CookieFlavor struct {
     Id int64 // resource name: cookie_flavors
 }
 ~~~  
-To override the resource name, set the first value in the *id field's* `jargo` struct tag:
+To manually specify the resource name, set the first value in the *id field's* `jargo` struct tag:
 ~~~go
 type CookieFlavor struct {
     Id int64 `jargo:"flavors"`
@@ -40,7 +40,7 @@ Id int64 `jargo:",table:my_table"`
 ## [Table name](#table-name)
 By default, a resource's **database table name** is the same as its [resource name](#resource-name).
 
-To override the table name, use the `table` option on the *id field*:
+To manually specify the table name, use the `table` option on the *id field*:
 ~~~go
 type CookieFlavor struct {
     Id int64 `jargo:",table:gusto"`
@@ -54,7 +54,7 @@ type CookieFlavor struct {
     Id int64 // table alias: cookie_flavor
 }
 ~~~
-To override the table alias, use the `alias` option on the *id field*:
+To manually specify the table alias, use the `alias` option on the *id field*:
 ~~~go
 type CookieFlavor struct {
     Id int64 `jargo:",alias:flavor"`
@@ -62,20 +62,7 @@ type CookieFlavor struct {
 ~~~
 
 # [Attribute fields](#attribute-fields)
-A *resource model* may have any number of *attributes* representing primitive data types stored in the database.
-
-Supported attribute types are:
-
-| Go type                                    | PostgreSQL type    |
-|--------------------------------------------|--------------------|
-| `int8`, `uint8`, `int16`                   | `smallint`         |
-| `uint16`, `int32`                          | `integer`          |
-| `uint32`, `int64`, `int`, `uint`, `uint64` | `bigint`           |
-| `float32`                                  | `real`             |
-| `float64`                                  | `double precision` |
-| `bool`                                     | `boolean`          |
-| `string`                                   | `text`             |
-| [`time.Time`][time.Time]                   | `timestamptz`      |
+A *resource model* may have any number of *attributes* representing data fields stored in the database.
 
 ## [JSON API member name](#json-api-member-name)
 By default, an attribute's **JSON API member name** is the **dasherized** version of the field name.  
@@ -84,7 +71,7 @@ Age      int    // name: age
 UserName string // name: user-name
 FooBar   int    // name: foo-bar
 ~~~
-To override the member name, set the first value in the `jargo` struct tag:
+To manually specify the member name, set the first value in the `jargo` struct tag:
 ~~~go
 Age      int    `jargo:"age_in_years"`
 UserName string `jargo:"name"`
@@ -104,7 +91,34 @@ Sometimes, you don't want to expose certain attributes via *JSON API*, but still
 To exclude an attribute from the generated API, simply set its member name to `-`:
 ~~~go
 PasswordHash string `jargo:"-"`
-~~~ 
+~~~
+
+## [Database type](#database-type)
+An attribute's **data type** is automatically chosen based on its field type:
+
+| Go type                                    | PostgreSQL type    |
+|--------------------------------------------|--------------------|
+| `int8`, `uint8`, `int16`                   | `smallint`         |
+| `uint16`, `int32`                          | `integer`          |
+| `uint32`, `int64`, `int`, `uint`, `uint64` | `bigint`           |
+| `float32`                                  | `real`             |
+| `float64`                                  | `double precision` |
+| `bool`                                     | `boolean`          |
+| `string`                                   | `text`             |
+| `[]byte`                                   | `bytea`            |
+| `struct`, `map`, `array`                   | `jsonb`            |
+| `time.Time`                                | `timestamptz`      |
+| `net.IP`                                   | `inet`             |
+| `net.IPNet`                                | `cidr`             |
+| `UUID`                                     | `uuid`             |
+
+To manually specify the data type, use the `type` option:
+~~~go
+Name string `jargo:",type:varchar(20)"`
+~~~
+
+The `uuid` data type is chosen for all `[16]byte` types named `UUID` (case-insensitive), to support
+many different UUID libraries without depending on them.
 
 ## [Column name](#column-name)
 By default, an attribute's **database column name** is the **underscored** version of the field name.
@@ -113,7 +127,7 @@ Age      int    // column: age
 UserName string // column: user_name
 FooBar   int    // column: foo_bar
 ~~~
-To override the column name, use the `column` option:
+To manually specify the column name, use the `column` option:
 ~~~go
 Age      int    `jargo:",column:attr_age"`
 UserName string `jargo:",column:name"`
@@ -330,6 +344,7 @@ Here's a list of all options in `jargo` struct tags:
 |-------------------------------------------------------|------------------------------------------------------------------|------------------------------------------------------------------------|
 | [`table`](#table-name)                                | [Id](#id-field)                                                  | Sets the resource's **table name**.                                    |
 | [`alias`](#table-alias)                               | [Id](#id-field)                                                  | Sets the resource's **table alias**.                                   |
+| [`type`](#database-type)                              | [Attributes](#attribute-fields)                                  | Sets the attribute's **data type** in the database.                    |
 | [`column`](#column-name)                              | [Attributes](#attribute-fields)                                  | Sets the attribute's **column name**.                                  |
 | [`default`](#default-values)                          | [Attributes](#attribute-fields)                                  | Sets the attribute's **default value**.                                |
 | [`notnull`](#not-null-attributes-with-default-values) | [Attributes](#attribute-fields)                                  | Adds a **`NOT NULL` constraint** to a nullable type.                   |
@@ -344,6 +359,7 @@ Here's a list of all options in `jargo` struct tags:
 | [`has`](#relationships)                               | [Relationships](#relationships)                                  | Defines a has relation to the target resource                          |
 
 [struct-tags]: https://golang.org/ref/spec#Tag
+[go-pg-model-definition]: https://github.com/go-pg/pg/wiki/Model-Definition
 [time.Time]: https://golang.org/pkg/time/#Time
 [member-names]: http://jsonapi.org/format/#document-member-names
 [queries]: #TODO
