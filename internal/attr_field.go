@@ -12,7 +12,6 @@ import (
 const validationTag = "validate"
 
 var (
-	errInvalidAttrFieldType           = errors.New("attribute field types must be primitive, time.Time or a pointer to these types")
 	errJsonapiOptionOnUnexportedField = errors.New("jsonapi-related option on unexported field")
 	errInvalidColumnName              = errors.New("column name may only consist of [0-9,a-z,A-Z$_]")
 	errNonNullableTypeDefault         = errors.New(`"default" option may only be used on pointer types`)
@@ -59,12 +58,6 @@ func newAttrField(schema *Schema, f *reflect.StructField) SchemaField {
 	field := &attrField{
 		baseField: base,
 		column:    column,
-	}
-
-	// validate field type
-	typ := f.Type
-	if !isValidAttrType(typ) {
-		panic(errInvalidAttrFieldType)
 	}
 
 	parsed := parseJargoTag(f.Tag.Get(jargoFieldTag))
@@ -234,25 +227,6 @@ func pgAttrFields(f *attrField) []reflect.StructField {
 func (f *attrField) createInstance() schemaFieldInstance {
 	return &attrFieldInstance{
 		field: f,
-	}
-}
-
-// isValidAttrType returns whether typ is a valid
-// type for an attribute field, which is the case
-// if it's a primitive type or time.Time or a pointer
-// to one of those types.
-func isValidAttrType(typ reflect.Type) bool {
-	// pointer types are allowed
-	if typ.Kind() == reflect.Ptr {
-		typ = typ.Elem()
-	}
-
-	switch reflect.New(typ).Elem().Interface().(type) {
-	case bool, int, int8, int16, int32, int64, uint, uint8,
-		uint16, uint32, uint64, float32, float64, string, time.Time:
-		return true
-	default:
-		return false
 	}
 }
 
