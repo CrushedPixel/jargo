@@ -27,6 +27,7 @@ const (
 	optionUnique    = "unique"
 	optionNotnull   = "notnull"
 	optionDefault   = "default"
+	optionType      = "type"
 
 	optionCreatedAt = "createdAt"
 	optionUpdatedAt = "updatedAt"

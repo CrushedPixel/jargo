@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/c9s/inflect"
-	"github.com/satori/go.uuid"
 	"gopkg.in/go-playground/validator.v9"
 	"reflect"
+	"strings"
 	"time"
 )
 
@@ -32,6 +32,7 @@ type attrField struct {
 
 	column     string // sql column name
 	sqlDefault string
+	pgType     string // the database type to use
 
 	// whether the field should have a NOT NULL constraint
 	// although it is a pointer type.
@@ -87,6 +88,8 @@ func newAttrField(schema *Schema, f *reflect.StructField) SchemaField {
 			if field.notnull && field.sqlDefault == "" {
 				panic(errNotnullWithoutDefault)
 			}
+		case optionType:
+			field.pgType = value
 		case optionCreatedAt:
 			createdAt = parseBoolOption(value)
 		case optionUpdatedAt:
@@ -98,6 +101,12 @@ func newAttrField(schema *Schema, f *reflect.StructField) SchemaField {
 		default:
 			panic(errDisallowedOption(option))
 		}
+	}
+
+	// set pgType to "uuid" for UUID types unless
+	// explicitly specified otherwise
+	if field.pgType == "" && isUUIDField(field.fieldType) {
+		field.pgType = "uuid"
 	}
 
 	// validate createdAt and updatedAt tags
@@ -214,8 +223,8 @@ func pgAttrFields(f *attrField) []reflect.StructField {
 	if f.sqlDefault != "" {
 		tag += fmt.Sprintf(",default:%s", f.sqlDefault)
 	}
-	if isUUIDField(f.fieldType) {
-		tag += ",type:uuid"
+	if f.pgType != "" {
+		tag += fmt.Sprintf(",type:%s", f.pgType)
 	}
 	tag += `"`
 
@@ -261,12 +270,12 @@ func isUUIDField(typ reflect.Type) bool {
 		typ = typ.Elem()
 	}
 
-	switch reflect.New(typ).Elem().Interface().(type) {
-	case uuid.UUID:
-		return true
-	default:
-		return false
-	}
+	// type must be named "uuid" (case-insensitive)
+	// and be of kind [16]byte
+	return strings.ToLower(typ.Name()) == "uuid" &&
+		typ.Kind() == reflect.Array &&
+		typ.Elem().Kind() == reflect.Uint8 && // byte is an alias for uint8
+		typ.Len() == 16
 }
 
 type attrFieldInstance struct {
