@@ -76,16 +76,23 @@ func (s *Schema) IdField() SchemaField {
 // CreateTable creates the database table
 // for this Schema if it doesn't exist yet.
 func (s *Schema) CreateTable(db *pg.DB) error {
-	err := db.CreateTable(s.NewPGModelInstance(), &orm.CreateTableOptions{IfNotExists: true})
-	if err != nil {
+	// call beforeCreateTable hooks on fields
+	for _, f := range s.Fields() {
+		if hook, ok := f.(beforeCreateTableHook); ok {
+			if err := hook.beforeCreateTable(db); err != nil {
+				return err
+			}
+		}
+	}
+
+	if err := db.CreateTable(s.NewPGModelInstance(), &orm.CreateTableOptions{IfNotExists: true}); err != nil {
 		return err
 	}
 
 	// call afterCreateTable hooks on fields
 	for _, f := range s.Fields() {
-		if afterHook, ok := f.(afterCreateTableHook); ok {
-			err = afterHook.afterCreateTable(db)
-			if err != nil {
+		if hook, ok := f.(afterCreateTableHook); ok {
+			if err := hook.afterCreateTable(db); err != nil {
 				return err
 			}
 		}

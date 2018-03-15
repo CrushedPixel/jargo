@@ -102,7 +102,17 @@ func (f *belongsToField) pgBelongsToFields(joinField bool) []reflect.StructField
 
 // relationIdFieldType returns the type of the relation's id field.
 func (f *belongsToField) relationIdFieldType() reflect.Type {
-	return f.registry[f.relationType].IdField().(*idField).fieldType
+	var schema *Schema
+	if f.schema.resourceModelType == f.relationType {
+		// if the related resource is of the same type
+		// as the resource being registered right now,
+		// it's not registered in the registry yet.
+		// therefore, get schema from field itself.
+		schema = f.schema
+	} else {
+		schema = f.registry[f.relationType]
+	}
+	return schema.IdField().(*idField).fieldType
 }
 
 // relationIdFieldName returns the name of the foreign id field.

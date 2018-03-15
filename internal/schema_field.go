@@ -72,6 +72,12 @@ type schemaFieldInstance interface {
 	validate(*validator.Validate) error
 }
 
+type beforeCreateTableHook interface {
+	// called on resource fields implementing beforeCreateTableHook
+	// by Resource.CreateTable() before table is created
+	beforeCreateTable(db *pg.DB) error
+}
+
 type afterCreateTableHook interface {
 	// called on resource fields implementing afterCreateTableHook
 	// by Resource.CreateTable() after table was created

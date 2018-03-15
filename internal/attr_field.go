@@ -150,12 +150,10 @@ func newAttrField(schema *Schema, f *reflect.StructField) SchemaField {
 	field.jsonapiF = field.jsonapiAttrFields()
 	field.pgF = field.pgAttrFields()
 
-	// wrap updatedAt fields in updatedAtField struct
-	// to implement afterCreateTable
+	// wrap updatedAt fields in updatedAtField
+	// for afterCreateTable hook
 	if updatedAt {
-		return &updatedAtField{
-			field,
-		}
+		return &updatedAtField{field}
 	}
 
 	return field
