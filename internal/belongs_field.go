@@ -180,8 +180,9 @@ func (i *belongsToFieldInstance) parsePGModel(instance *pgModelInstance) {
 	// if relation struct field is nil, but id field isn't,
 	// create a new instance of the model and set its id field
 	if schemaInstance == nil {
-		id := instance.value.Elem().FieldByName(i.field.relationIdFieldName()).Int()
-		if id != 0 {
+		idField := instance.value.Elem().FieldByName(i.field.relationIdFieldName())
+		id := idField.Interface()
+		if id != reflect.Zero(idField.Type()).Interface() {
 			schemaInstance = i.relationSchema.createInstance()
 			// set id field
 			for _, f := range schemaInstance.fields {
@@ -227,7 +228,7 @@ func (i *belongsToFieldInstance) parseJoinPGModel(instance *joinPGModelInstance)
 	relationInstance := i.relationSchema.createInstance()
 	for _, f := range relationInstance.fields {
 		if idField, ok := f.(*idFieldInstance); ok {
-			idField.value = idValue.Int()
+			idField.value = idValue.Interface()
 		}
 	}
 
