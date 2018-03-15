@@ -7,7 +7,7 @@ import (
 )
 
 type oneToManyA struct {
-	Id   int64
+	Id   string
 	Attr string
 	Bs   []oneToManyB `jargo:",has:A"`
 }
@@ -26,7 +26,7 @@ func TestOneToManyRelations(t *testing.T) {
 	require.Nil(t, err)
 
 	// create instance of oneToManyA
-	res, err := resourceA.InsertInstance(app.DB(), &oneToManyA{Attr: "test"}).Result()
+	res, err := resourceA.InsertInstance(app.DB(), &oneToManyA{Id: "parent", Attr: "test"}).Result()
 	require.Nil(t, err)
 	a := res.(*oneToManyA)
 
@@ -34,7 +34,7 @@ func TestOneToManyRelations(t *testing.T) {
 	json, err := resourceA.ResponseAllFields(a).Payload()
 	require.Nil(t, err)
 	require.Equal(t,
-		`{"data":{"type":"one_to_many_as","id":"1","attributes":{"attr":"test"},"relationships":{"bs":{"data":[]}}}}`,
+		`{"data":{"type":"one_to_many_as","id":"parent","attributes":{"attr":"test"},"relationships":{"bs":{"data":[]}}}}`,
 		json)
 
 	// create instance of oneToManyB with relation to a
@@ -50,7 +50,7 @@ func TestOneToManyRelations(t *testing.T) {
 	json, err = resourceB.ResponseAllFields(b).Payload()
 	require.Nil(t, err)
 	require.Equal(t,
-		`{"data":{"type":"one_to_many_bs","id":"1","relationships":{"a":{"data":{"type":"one_to_many_as","id":"1"}}}}}`,
+		`{"data":{"type":"one_to_many_bs","id":"1","relationships":{"a":{"data":{"type":"one_to_many_as","id":"parent"}}}}}`,
 		json)
 
 	// fetch oneToManyA to update relations
@@ -65,7 +65,7 @@ func TestOneToManyRelations(t *testing.T) {
 	json, err = resourceA.ResponseAllFields(a).Payload()
 	require.Nil(t, err)
 	require.Equal(t,
-		`{"data":{"type":"one_to_many_as","id":"1","attributes":{"attr":"test"},"relationships":{"bs":{"data":[{"type":"one_to_many_bs","id":"1"}]}}}}`,
+		`{"data":{"type":"one_to_many_as","id":"parent","attributes":{"attr":"test"},"relationships":{"bs":{"data":[{"type":"one_to_many_bs","id":"1"}]}}}}`,
 		json)
 }
 
