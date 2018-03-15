@@ -44,9 +44,9 @@ func ParseFieldParameters(query map[string][]string) map[string][]string {
 // The resulting map can be used in Resource.ParseFilters.
 //
 // http://jsonapi.org/format/#fetching-filtering
-func ParseFilterParameters(query map[string][]string) map[string]map[string][]string {
+func ParseFilterParameters(query map[string][]string) map[string]map[string][]interface{} {
 	// map[field]map[operator][]values
-	filters := make(map[string]map[string][]string)
+	filters := make(map[string]map[string][]interface{})
 	for k, v := range query {
 		res := filterParamRegex.FindAllStringSubmatch(k, -1)
 		if res == nil {
@@ -66,12 +66,14 @@ func ParseFilterParameters(query map[string][]string) map[string]map[string][]st
 		// add values to operations
 		operations := filters[field]
 		if operations == nil {
-			operations = make(map[string][]string)
+			operations = make(map[string][]interface{})
 		}
 
-		values := make([]string, 0)
+		values := make([]interface{}, 0)
 		for _, val := range v {
-			values = append(values, strings.Split(val, ",")...)
+			for _, str := range strings.Split(val, ",") {
+				values = append(values, str)
+			}
 		}
 		operations[op] = values
 

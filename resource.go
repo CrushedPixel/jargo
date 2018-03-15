@@ -107,7 +107,7 @@ func (r *Resource) SelectOne(db orm.DB) *Query {
 
 // Select returns a new Select One Query
 // selecting the Resource Instance with the given id.
-func (r *Resource) SelectById(db orm.DB, id int64) *Query {
+func (r *Resource) SelectById(db orm.DB, id interface{}) *Query {
 	q := r.SelectOne(db)
 	q.Filters(r.IdFilter(id))
 	return q

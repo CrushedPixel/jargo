@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/crushedpixel/jargo/internal"
 	"github.com/go-pg/pg/orm"
-	"strconv"
 	"strings"
 )
 
@@ -22,13 +21,13 @@ type Filters struct {
 // via a logical OR, and all of the values for
 // an operator being connected via a logical AND.
 type Filter struct {
-	Eq   []string
-	Not  []string
-	Like []string
-	Lt   []string
-	Lte  []string
-	Gt   []string
-	Gte  []string
+	Eq   []interface{}
+	Not  []interface{}
+	Like []interface{}
+	Lt   []interface{}
+	Lte  []interface{}
+	Gt   []interface{}
+	Gte  []interface{}
 }
 
 func newFilters(r *Resource, filters map[internal.SchemaField]*Filter) *Filters {
@@ -55,7 +54,7 @@ func (f *Filter) applyToQuery(q *orm.Query, field internal.SchemaField) {
 }
 
 // generates an AND WHERE (xxx OR xxx) clause
-func andWhereOr(q *orm.Query, field internal.SchemaField, op string, values []string) {
+func andWhereOr(q *orm.Query, field internal.SchemaField, op string, values []interface{}) {
 	if len(values) > 0 {
 		q.WhereGroup(func(q *orm.Query) (*orm.Query, error) {
 			for _, val := range values {
@@ -76,7 +75,7 @@ func andWhereOr(q *orm.Query, field internal.SchemaField, op string, values []st
 // using ParseFilterParameters.
 //
 // Returns ErrInvalidQueryParams when encountering invalid query values.
-func (r *Resource) ParseFilters(parsed map[string]map[string][]string) (*Filters, error) {
+func (r *Resource) ParseFilters(parsed map[string]map[string][]interface{}) (*Filters, error) {
 	// convert parsed data into Filter map
 	f := make(map[string]*Filter)
 	for field, filters := range parsed {
@@ -142,8 +141,8 @@ func (r *Resource) Filters(filters map[string]*Filter) (*Filters, error) {
 }
 
 // IdFilter returns a Filters instance filtering by the id field.
-func (r *Resource) IdFilter(id int64) *Filters {
-	f, err := r.Filters(map[string]*Filter{internal.IdFieldJsonapiName: {Eq: []string{strconv.FormatInt(id, 10)}}})
+func (r *Resource) IdFilter(id interface{}) *Filters {
+	f, err := r.Filters(map[string]*Filter{internal.IdFieldJsonapiName: {Eq: []interface{}{id}}})
 	if err != nil {
 		panic(err)
 	}
