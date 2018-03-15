@@ -49,7 +49,7 @@ func (f *belongsToField) pgFields() []reflect.StructField {
 		return f.pgF
 	}
 
-	f.pgF = pgBelongsToFields(f, false)
+	f.pgF = f.pgBelongsToFields(false)
 	return f.pgF
 }
 
@@ -58,7 +58,7 @@ func (f *belongsToField) pgJoinFields() []reflect.StructField {
 		return f.joinPGFields
 	}
 
-	f.joinPGFields = pgBelongsToFields(f, true)
+	f.joinPGFields = f.pgBelongsToFields(true)
 	return f.joinPGFields
 }
 
@@ -67,7 +67,7 @@ func (f *belongsToField) pgJoinFields() []reflect.StructField {
 // =>
 // OwnerId int64 // join model and full model
 // Owner *User   // full model only
-func pgBelongsToFields(f *belongsToField, joinField bool) []reflect.StructField {
+func (f *belongsToField) pgBelongsToFields(joinField bool) []reflect.StructField {
 	// every belongsTo association has a column containing
 	// the id of the related resource
 	tag := fmt.Sprintf(`sql:"%s`, f.relationIdFieldColumn())
@@ -81,7 +81,7 @@ func pgBelongsToFields(f *belongsToField, joinField bool) []reflect.StructField 
 
 	idField := reflect.StructField{
 		Name: f.relationIdFieldName(),
-		Type: idFieldType,
+		Type: f.relationIdFieldType(),
 		Tag:  reflect.StructTag(tag),
 	}
 	fields := []reflect.StructField{idField}
@@ -100,10 +100,17 @@ func pgBelongsToFields(f *belongsToField, joinField bool) []reflect.StructField 
 	return fields
 }
 
+// relationIdFieldType returns the type of the relation's id field.
+func (f *belongsToField) relationIdFieldType() reflect.Type {
+	return f.registry[f.relationType].IdField().(*idField).fieldType
+}
+
+// relationIdFieldName returns the name of the foreign id field.
 func (f *belongsToField) relationIdFieldName() string {
 	return fmt.Sprintf("%sId", f.fieldName)
 }
 
+// relationIdFieldColumn returns the sql column name of the foreign id field.
 func (f *belongsToField) relationIdFieldColumn() string {
 	return inflect.Underscore(f.relationIdFieldName())
 }
@@ -188,7 +195,7 @@ func (i *belongsToFieldInstance) applyToPGModel(instance *pgModelInstance) {
 	if !ok {
 		return
 	}
-	instance.value.Elem().FieldByName(i.field.relationIdFieldName()).SetInt(id)
+	instance.value.Elem().FieldByName(i.field.relationIdFieldName()).Set(reflect.ValueOf(id))
 	// apply relation instance to pg model field
 	instance.value.Elem().FieldByName(i.field.fieldName).Set(reflect.ValueOf(i.values[0].toJoinPGModel()))
 }
@@ -227,7 +234,7 @@ func (i *belongsToFieldInstance) applyToJoinPGModel(instance *joinPGModelInstanc
 	if !ok {
 		return
 	}
-	instance.value.Elem().FieldByName(i.field.relationIdFieldName()).SetInt(id)
+	instance.value.Elem().FieldByName(i.field.relationIdFieldName()).Set(reflect.ValueOf(id))
 }
 
 func (i *belongsToFieldInstance) applyToJoinResourceModel(instance *resourceModelInstance) {
@@ -256,26 +263,26 @@ func (i *belongsToFieldInstance) applyToJoinResourceModel(instance *resourceMode
 }
 
 // relationId returns the id value of the relation.
-func (i *belongsToFieldInstance) relationId() (int64, bool) {
+func (i *belongsToFieldInstance) relationId() (interface{}, bool) {
 	if len(i.values) == 0 {
-		return 0, false
+		return nil, false
 	}
 
 	// extract id field from relation
 	v := i.values[0]
 	// relations may be nil
 	if v == nil {
-		return 0, false
+		return nil, false
 	}
 
-	var id *int64
+	var id interface{}
 	for _, f := range v.fields {
 		if idField, ok := f.(*idFieldInstance); ok {
-			id = &idField.value
+			id = idField.value
 		}
 	}
 	if id == nil {
 		panic(errors.New("id field of related resource not found"))
 	}
-	return *id, true
+	return id, true
 }

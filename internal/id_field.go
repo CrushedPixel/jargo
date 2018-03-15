@@ -8,9 +8,10 @@ import (
 )
 
 var (
+	errInvalidIdType     = errors.New("pointer types are not allowed for id fields")
 	errNilPointer        = errors.New("resource must not be nil")
 	errMismatchingSchema = errors.New("mismatching schema")
-	emptyStructType      = reflect.TypeOf(new(struct{}))
+	emptyStructType      = reflect.TypeOf(new(struct{})).Elem()
 )
 
 const (
@@ -20,43 +21,57 @@ const (
 
 // implements field
 type idField struct {
-	schema *Schema
+	schema    *Schema
+	fieldType reflect.Type
 
 	jsonapiF []reflect.StructField
 	pgF      []reflect.StructField
 }
 
-func newIdField(schema *Schema) SchemaField {
-	f := &idField{
-		schema:   schema,
-		jsonapiF: jsonapiIdFields(schema),
-		pgF:      pgIdFields(schema),
+func newIdField(schema *Schema, f *reflect.StructField) SchemaField {
+	idf := &idField{
+		schema:    schema,
+		fieldType: f.Type,
 	}
-	return f
+
+	if !isValidIdField(idf.fieldType) {
+		panic(errInvalidIdType)
+	}
+
+	// generate jsonapi and pg attribute fields
+	idf.jsonapiF = idf.jsonapiIdFields()
+	idf.pgF = idf.pgIdFields()
+
+	return idf
 }
 
-func jsonapiIdFields(schema *Schema) []reflect.StructField {
-	tag := fmt.Sprintf(`jsonapi:"primary,%s"`, schema.name)
+// isValidIdField returns whether typ is a valid type for an id field.
+func isValidIdField(typ reflect.Type) bool {
+	return typ.Kind() != reflect.Ptr
+}
+
+func (f *idField) jsonapiIdFields() []reflect.StructField {
+	tag := fmt.Sprintf(`jsonapi:"primary,%s"`, f.schema.name)
 	idField := reflect.StructField{
 		Name: idFieldName,
-		Type: idFieldType,
+		Type: f.fieldType,
 		Tag:  reflect.StructTag(tag),
 	}
 
 	return []reflect.StructField{idField}
 }
 
-func pgIdFields(schema *Schema) []reflect.StructField {
+func (f *idField) pgIdFields() []reflect.StructField {
 	tableNameField := reflect.StructField{
 		Name: "TableName",
 		Type: emptyStructType,
 		// quote table name and alias as go-pg doesn't do it for aliases
-		Tag: reflect.StructTag(fmt.Sprintf(`sql:"\"%s\",alias:\"%s\""`, schema.table, schema.alias)),
+		Tag: reflect.StructTag(fmt.Sprintf(`sql:"\"%s\",alias:\"%s\""`, f.schema.table, f.schema.alias)),
 	}
 
 	idField := reflect.StructField{
 		Name: idFieldName,
-		Type: idFieldType,
+		Type: f.fieldType,
 		Tag:  reflect.StructTag(fmt.Sprintf(`sql:"%s,pk"`, IdFieldColumn)),
 	}
 
@@ -121,7 +136,7 @@ func (i *idFieldInstance) validate(*validator.Validate) error {
 // implements fieldInstance
 type idFieldInstance struct {
 	field *idField
-	value int64
+	value interface{}
 }
 
 func (i *idFieldInstance) parentField() SchemaField {
@@ -220,7 +235,7 @@ func (i *idFieldInstance) applyToJoinPGModel(instance *joinPGModelInstance) {
 // so the value of that field can be copied in any case.
 func (i *idFieldInstance) parse(v *reflect.Value) {
 	if !v.IsNil() {
-		i.value = v.Elem().FieldByName(idFieldName).Int()
+		i.value = v.Elem().FieldByName(idFieldName).Interface()
 	}
 }
 
@@ -228,5 +243,5 @@ func (i *idFieldInstance) apply(v *reflect.Value) {
 	if v.IsNil() {
 		panic(errNilPointer)
 	}
-	v.Elem().FieldByName(idFieldName).SetInt(i.value)
+	v.Elem().FieldByName(idFieldName).Set(reflect.ValueOf(i.value))
 }

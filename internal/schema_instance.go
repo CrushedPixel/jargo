@@ -88,8 +88,8 @@ func (i *SchemaInstance) Validate(validate *validator.Validate) error {
 
 // GetRelationIds returns all direct (belongsTo) relations
 // to other resource schemas.
-func (i *SchemaInstance) GetRelationIds() map[*Schema][]int64 {
-	m := make(map[*Schema][]int64)
+func (i *SchemaInstance) GetRelationIds() map[*Schema][]interface{} {
+	m := make(map[*Schema][]interface{})
 
 	for _, f := range i.fields {
 		if b, ok := f.(*belongsToFieldInstance); ok {

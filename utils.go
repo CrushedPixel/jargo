@@ -12,12 +12,12 @@ func escapePGColumn(field string) string {
 
 // difference returns the elements in a that aren't in b.
 // Modified from https://stackoverflow.com/a/45428032/2733724
-func difference(a, b []int64) []int64 {
-	mb := make(map[int64]bool)
+func difference(a, b []interface{}) []interface{} {
+	mb := make(map[interface{}]bool)
 	for _, x := range b {
 		mb[x] = true
 	}
-	var ab []int64
+	var ab []interface{}
 	for _, x := range a {
 		if _, ok := mb[x]; !ok {
 			ab = append(ab, x)

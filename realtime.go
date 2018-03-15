@@ -334,7 +334,7 @@ func (r *Realtime) handleRowUpdates(channel <-chan *pg.Notification) {
 			}
 
 			// map of all resources affected by the change
-			updated := make(map[*Resource][]int64)
+			updated := make(map[*Resource][]interface{})
 
 			// add all resources that were updated by the resources'
 			// relationships being modified
@@ -378,7 +378,7 @@ func (r *Realtime) handleRowUpdates(channel <-chan *pg.Notification) {
 				newRelations := modifiedInstance.GetRelationIds()
 
 				// create a changeset of all of the resources' relations
-				changeset := make(map[*internal.Schema][]int64)
+				changeset := make(map[*internal.Schema][]interface{})
 
 				// get all relations that were removed
 				for schema, oldIds := range oldRelations {
@@ -505,7 +505,7 @@ func (r *Realtime) onSubscribeRead(socket *glue.Socket, messageId string, data s
 }
 
 // subscribers returns all sockets that are subscribed to a resource instance.
-func (r *Realtime) subscribers(resource *Resource, id int64) []*glue.Socket {
+func (r *Realtime) subscribers(resource *Resource, id interface{}) []*glue.Socket {
 	var sockets []*glue.Socket
 	r.subscriptionsMutex.Lock()
 	for socket, subscriptions := range r.subscriptions {

@@ -147,8 +147,8 @@ func newAttrField(schema *Schema, f *reflect.StructField) SchemaField {
 	field.validation = f.Tag.Get(validationTag)
 
 	// finally, generate jsonapi and pg attribute fields
-	field.jsonapiF = jsonapiAttrFields(field)
-	field.pgF = pgAttrFields(field)
+	field.jsonapiF = field.jsonapiAttrFields()
+	field.pgF = field.pgAttrFields()
 
 	// wrap updatedAt fields in updatedAtField struct
 	// to implement afterCreateTable
@@ -187,7 +187,7 @@ func (f *attrField) isNullable() bool {
 	return isNullable(f.fieldType) && !f.notnull
 }
 
-func jsonapiAttrFields(f *attrField) []reflect.StructField {
+func (f *attrField) jsonapiAttrFields() []reflect.StructField {
 	if f.name == unexportedFieldName {
 		return []reflect.StructField{}
 	}
@@ -212,7 +212,7 @@ func jsonapiAttrFields(f *attrField) []reflect.StructField {
 	return []reflect.StructField{field}
 }
 
-func pgAttrFields(f *attrField) []reflect.StructField {
+func (f *attrField) pgAttrFields() []reflect.StructField {
 	tag := fmt.Sprintf(`sql:"%s`, f.column)
 	if !f.isNullable() {
 		tag += ",notnull"

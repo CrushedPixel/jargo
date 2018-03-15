@@ -43,11 +43,8 @@ const (
 )
 
 var (
-	idFieldType = reflect.TypeOf(int64(0))
-
 	errInvalidModelType          = errors.New("model has to be a struct")
 	errMissingIdField            = errors.New("missing id field")
-	errInvalidIdType             = errors.New("id field must be of type int")
 	errInvalidMemberName         = errors.New(`member name has to adhere to the jsonapi specification and not include characters marked as "not recommended"`)
 	errInvalidTableName          = errors.New("table name may only consist of [0-9,a-z,A-Z$_]")
 	errInvalidTableAlias         = errors.New("alias may only consist of [0-9,a-z,A-Z$_]")
@@ -103,9 +100,6 @@ func parseSchema(t reflect.Type) *Schema {
 	f, ok := t.FieldByName(idFieldName)
 	if !ok {
 		panic(errMissingIdField)
-	}
-	if f.Type != idFieldType {
-		panic(errInvalidIdType)
 	}
 
 	// parse jargo struct tag
@@ -168,7 +162,7 @@ func parseSchema(t reflect.Type) *Schema {
 // returns nil for non-attribute fields.
 func (r SchemaRegistry) parseField(schema *Schema, f *reflect.StructField) SchemaField {
 	if f.Name == idFieldName {
-		return newIdField(schema)
+		return newIdField(schema, f)
 	}
 
 	// determine field type from jargo tag
