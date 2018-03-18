@@ -2,7 +2,6 @@ package jargo
 
 import (
 	"regexp"
-	"strconv"
 	"strings"
 )
 
@@ -133,14 +132,6 @@ func ParseSortParameters(query map[string][]string) map[string]bool {
 	return values
 }
 
-func ParseResourceId(idStr string) (int64, error) {
-	id, err := strconv.ParseInt(idStr, 10, 0)
-	if err != nil {
-		return 0, ErrNotFound
-	}
-	return id, nil
-}
-
 func ParseIndexRequest(base *Request) (*IndexRequest, error) {
 	fieldSet, err := base.Resource().ParseFieldSet(ParseFieldParameters(base.QueryParams()))
 	if err != nil {
@@ -174,15 +165,10 @@ func ParseShowRequest(base *Request) (*ShowRequest, error) {
 		return nil, err
 	}
 
-	resourceId, err := ParseResourceId(base.PathParams()["id"])
-	if err != nil {
-		return nil, err
-	}
-
 	req := &ShowRequest{
 		Request:    base,
 		fields:     fieldSet,
-		resourceId: resourceId,
+		resourceId: base.PathParams()["id"],
 	}
 	return req, nil
 }
@@ -206,28 +192,18 @@ func ParseUpdateRequest(base *Request) (*UpdateRequest, error) {
 		return nil, err
 	}
 
-	resourceId, err := ParseResourceId(base.PathParams()["id"])
-	if err != nil {
-		return nil, err
-	}
-
 	req := &UpdateRequest{
 		Request:    base,
 		fields:     fieldSet,
-		resourceId: resourceId,
+		resourceId: base.PathParams()["id"],
 	}
 	return req, nil
 }
 
 func ParseDeleteRequest(base *Request) (*DeleteRequest, error) {
-	resourceId, err := ParseResourceId(base.PathParams()["id"])
-	if err != nil {
-		return nil, err
-	}
-
 	req := &DeleteRequest{
 		Request:    base,
-		resourceId: resourceId,
+		resourceId: base.PathParams()["id"],
 	}
 	return req, nil
 }

@@ -45,14 +45,14 @@ func (r *IndexRequest) Pagination() Pagination {
 type ShowRequest struct {
 	*Request
 	fields     *FieldSet
-	resourceId int64
+	resourceId string
 }
 
 func (r *ShowRequest) Fields() *FieldSet {
 	return r.fields
 }
 
-func (r *ShowRequest) ResourceId() int64 {
+func (r *ShowRequest) ResourceId() string {
 	return r.resourceId
 }
 
@@ -68,22 +68,22 @@ func (r *CreateRequest) Fields() *FieldSet {
 type UpdateRequest struct {
 	*Request
 	fields     *FieldSet
-	resourceId int64
+	resourceId string
 }
 
 func (r *UpdateRequest) Fields() *FieldSet {
 	return r.fields
 }
 
-func (r *UpdateRequest) ResourceId() int64 {
+func (r *UpdateRequest) ResourceId() string {
 	return r.resourceId
 }
 
 type DeleteRequest struct {
 	*Request
-	resourceId int64
+	resourceId string
 }
 
-func (r *DeleteRequest) ResourceId() int64 {
+func (r *DeleteRequest) ResourceId() string {
 	return r.resourceId
 }

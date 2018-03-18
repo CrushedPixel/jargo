@@ -171,7 +171,7 @@ func (r *Resource) DeleteInstance(db orm.DB, instance interface{}) *Query {
 
 // DeleteById returns a new Delete Query
 // deleting the Resource Instance with the given id.
-func (r *Resource) DeleteById(db orm.DB, id int64) *Query {
+func (r *Resource) DeleteById(db orm.DB, id interface{}) *Query {
 	q := r.newQuery(db, typeDelete, false)
 	q.Filters(r.IdFilter(id))
 	return q
