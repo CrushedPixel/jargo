@@ -110,7 +110,12 @@ func (f *belongsToField) relationIdFieldType() reflect.Type {
 		// therefore, get schema from field itself.
 		schema = f.schema
 	} else {
-		schema = f.registry[f.relationType]
+		// ensure relation schema is registered
+		var err error
+		schema, err = f.registry.RegisterSchema(f.relationType)
+		if err != nil {
+			panic(err)
+		}
 	}
 	return schema.IdField().(*idField).fieldType
 }

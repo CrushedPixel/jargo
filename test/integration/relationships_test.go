@@ -229,3 +229,18 @@ func TestOneToSelfRelations(t *testing.T) {
 		`{"data":{"type":"one_to_selves","id":"1","relationships":{"children":{"data":[{"type":"one_to_selves","id":"2"},{"type":"one_to_selves","id":"3"},{"type":"one_to_selves","id":"4"},{"type":"one_to_selves","id":"5"},{"type":"one_to_selves","id":"6"}]},"parent":{"data":null}}}}`,
 		json)
 }
+
+type belongsToA struct {
+	Id int64
+	B  belongsToB `jargo:",belongsTo"`
+}
+
+type belongsToB struct {
+	Id int64
+}
+
+// TestBelongsToRelations tests the behaviour of belongsTo relations.
+func TestBelongsToRelations(t *testing.T) {
+	_, err := app.RegisterResource(belongsToA{})
+	require.Nil(t, err)
+}
