@@ -38,6 +38,9 @@ type SchemaField interface {
 
 	pgFields() []reflect.StructField
 	pgJoinFields() []reflect.StructField
+
+	// typ returns the field's data type
+	typ() reflect.Type
 }
 
 type schemaFieldInstance interface {

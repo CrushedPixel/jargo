@@ -2,6 +2,7 @@ package integration
 
 import (
 	"fmt"
+	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -242,5 +243,21 @@ type belongsToB struct {
 // TestBelongsToRelations tests the behaviour of belongsTo relations.
 func TestBelongsToRelations(t *testing.T) {
 	_, err := app.RegisterResource(belongsToA{})
+	require.Nil(t, err)
+}
+
+type hasA struct {
+	Id *uuid.UUID
+	B  []hasB `jargo:",has:A"`
+}
+
+type hasB struct {
+	Id *uuid.UUID
+	A  *hasA `jargo:",belongsTo"`
+}
+
+// TestUUIDRelations tests the behaviour of relations with UUID id fields.
+func TestUUIDRelations(t *testing.T) {
+	_, err := app.RegisterResource(hasA{})
 	require.Nil(t, err)
 }

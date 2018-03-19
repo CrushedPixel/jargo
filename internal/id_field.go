@@ -163,6 +163,10 @@ func (f *idField) pgJoinFields() []reflect.StructField {
 	return f.pgF
 }
 
+func (f *idField) typ() reflect.Type {
+	return f.fieldType
+}
+
 // id fields are always valid
 func (i *idFieldInstance) validate(*validator.Validate) error {
 	return nil

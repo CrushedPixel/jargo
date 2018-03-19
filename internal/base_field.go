@@ -58,6 +58,10 @@ func (f *baseField) pgJoinFields() []reflect.StructField {
 	return f.pgF
 }
 
+func (f *baseField) typ() reflect.Type {
+	return f.fieldType
+}
+
 func newBaseField(schema *Schema, f *reflect.StructField) *baseField {
 	// determine default jsonapi member name.
 	// defaults to dasherized struct field name.

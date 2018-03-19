@@ -117,7 +117,7 @@ func (f *belongsToField) relationIdFieldType() reflect.Type {
 			panic(err)
 		}
 	}
-	return schema.IdField().(*idField).fieldType
+	return schema.IdField().typ()
 }
 
 // relationIdFieldName returns the name of the foreign id field.
