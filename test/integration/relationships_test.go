@@ -253,11 +253,20 @@ type hasA struct {
 
 type hasB struct {
 	Id *uuid.UUID
-	A  *hasA `jargo:",belongsTo"`
+	A  hasA `jargo:",belongsTo"`
 }
 
 // TestUUIDRelations tests the behaviour of relations with UUID id fields.
 func TestUUIDRelations(t *testing.T) {
-	_, err := app.RegisterResource(hasA{})
+	resource, err := app.RegisterResource(hasA{})
+	require.Nil(t, err)
+
+	// insert resource instance
+	res, err := resource.InsertInstance(app.DB(), &hasA{}).Result()
+	require.Nil(t, err)
+	a := res.(*hasA)
+
+	// fetch resource instance
+	res, err = resource.SelectById(app.DB(), a.Id).Result()
 	require.Nil(t, err)
 }

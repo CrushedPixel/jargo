@@ -77,11 +77,17 @@ func (f *belongsToField) pgBelongsToFields(joinField bool) []reflect.StructField
 	if f.sqlUnique {
 		tag += ",unique"
 	}
+	typ := f.relationIdFieldType()
+	if isUUIDField(typ) {
+		// the sql type must match the
+		// id field's sql type
+		tag += ",type:uuid"
+	}
 	tag += `"`
 
 	idField := reflect.StructField{
 		Name: f.relationIdFieldName(),
-		Type: f.relationIdFieldType(),
+		Type: typ,
 		Tag:  reflect.StructTag(tag),
 	}
 	fields := []reflect.StructField{idField}
