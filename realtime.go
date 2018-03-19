@@ -33,17 +33,17 @@ CREATE OR REPLACE FUNCTION %s() RETURNS TRIGGER AS $$
 BEGIN
   IF TG_OP = 'INSERT' THEN
     PERFORM pg_notify('%s', json_build_object('table', TG_TABLE_NAME,
-      'id', NEW.id, 'type', TG_OP,
+      'id', NEW.id::text, 'type', TG_OP,
       'new', row_to_json(NEW)::text
     )::text);
   ELSIF TG_OP = 'DELETE' THEN
     PERFORM pg_notify('%s', json_build_object('table', TG_TABLE_NAME,
-      'id', OLD.id, 'type', TG_OP,
+      'id', OLD.id::text, 'type', TG_OP,
       'old', row_to_json(OLD)::text
     )::text);
   ELSIF TG_OP = 'UPDATE' THEN
     PERFORM pg_notify('%s', json_build_object('table', TG_TABLE_NAME,
-      'id', OLD.id, 'type', TG_OP,
+      'id', OLD.id::text, 'type', TG_OP,
       'old', row_to_json(OLD)::text,
       'new', row_to_json(NEW)::text
     )::text);
@@ -65,7 +65,7 @@ type notificationPayload struct {
 	// The table name of the modified record
 	Table string `json:"table"`
 	// The id of the modified record
-	Id int64 `json:"id"`
+	Id string `json:"id"`
 	// Type of the action made to the row
 	Type string `json:"type"`
 	// The original record, json-encoded
@@ -106,14 +106,14 @@ type subscribePayload struct {
 // to send to Realtime clients when a resource was deleted.
 type resourceDeletedPayload struct {
 	Model string `json:"model"`
-	Id    int64  `json:"id,string"`
+	Id    string `json:"id"`
 }
 
 // resourceUpdatedPayload is a struct representing the JSON payload
 // to send to Realtime clients when a resource was inserted or updated.
 type resourceUpdatedPayload struct {
 	Model   string `json:"model"`
-	Id      int64  `json:"id,string"`
+	Id      string `json:"id"`
 	Payload string `json:"payload"`
 }
 
@@ -519,7 +519,7 @@ func (r *Realtime) subscribers(resource *Resource, id interface{}) []*glue.Socke
 	return sockets
 }
 
-func sendResourceDeleted(sockets []*glue.Socket, resource *Resource, id int64) error {
+func sendResourceDeleted(sockets []*glue.Socket, resource *Resource, id string) error {
 	b, err := jsoniter.ConfigDefault.Marshal(&resourceDeletedPayload{
 		Model: resource.JSONAPIName(),
 		Id:    id,
@@ -536,7 +536,7 @@ func sendResourceDeleted(sockets []*glue.Socket, resource *Resource, id int64) e
 	return nil
 }
 
-func sendResourceUpdated(sockets []*glue.Socket, resource *Resource, id int64, instance *internal.SchemaInstance) error {
+func sendResourceUpdated(sockets []*glue.Socket, resource *Resource, id string, instance *internal.SchemaInstance) error {
 	p, err := jsonapi.Marshal(instance.ToJsonapiModel())
 	if err != nil {
 		return err
