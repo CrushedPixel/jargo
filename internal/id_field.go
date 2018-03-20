@@ -25,9 +25,6 @@ type idField struct {
 	schema *Schema
 
 	fieldType reflect.Type
-	// whether the field needs to be marshalled
-	// into a string for jsonapi
-	marshalling bool
 
 	jsonapiF []reflect.StructField
 	pgF      []reflect.StructField
@@ -39,11 +36,10 @@ func newIdField(schema *Schema, f *reflect.StructField) SchemaField {
 		fieldType: f.Type,
 	}
 
-	valid, marshalling := isValidIdField(idf.fieldType)
+	valid := isValidIdField(idf.fieldType)
 	if !valid {
 		panic(errInvalidIdType)
 	}
-	idf.marshalling = marshalling
 
 	// generate jsonapi and pg attribute fields
 	idf.jsonapiF = idf.jsonapiIdFields()
@@ -58,27 +54,24 @@ func newIdField(schema *Schema, f *reflect.StructField) SchemaField {
 	return idf
 }
 
-// isValidIdField returns whether typ is a valid type for an id field
-// and whether it is a type that needs to be converted to string.
-func isValidIdField(typ reflect.Type) (bool, bool) {
+// isValidIdField returns whether typ is a valid type for an id field.
+func isValidIdField(typ reflect.Type) bool {
 	// allow types allowed by jsonapi
 	switch reflect.New(typ).Elem().Interface().(type) {
 	case string, int, int8, int16, int32, int64, uint, uint8, uint16,
 		uint32, uint64:
-		return true, false
+		return true
 	}
 
 	// allow types implementing TextMarshaler and TextUnmarshaler,
 	// as they can be easily converted to string, which is supported by jsonapi
 	return typ.Implements(reflect.TypeOf(new(encoding.TextMarshaler)).Elem()) &&
-		typ.Implements(reflect.TypeOf(new(encoding.TextUnmarshaler)).Elem()), true
+		typ.Implements(reflect.TypeOf(new(encoding.TextUnmarshaler)).Elem())
 }
 
 func (f *idField) jsonapiIdFields() []reflect.StructField {
-	typ := f.fieldType
-	if f.marshalling {
-		typ = reflect.TypeOf("")
-	}
+	// jsonapi id field is always a string
+	typ := reflect.TypeOf("")
 
 	tag := fmt.Sprintf(`jsonapi:"primary,%s"`, f.schema.name)
 	idField := reflect.StructField{
@@ -218,56 +211,28 @@ func (i *idFieldInstance) parseJsonapiModel(instance *jsonapiModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-
-	v := instance.value
-	if v.IsNil() {
-		return
-	}
-
-	val := v.Elem().FieldByName(idFieldName).Interface()
-	if i.field.marshalling {
-		// unmarshal value from string
-		val = reflect.New(i.field.fieldType).Elem().Interface()
-		val.(encoding.TextUnmarshaler).UnmarshalText([]byte(val.(string)))
-	}
-
-	i.value = val
+	i.parseJsonapi(instance.value)
 }
 
 func (i *idFieldInstance) applyToJsonapiModel(instance *jsonapiModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-
-	val := i.value
-	if i.field.marshalling {
-		// marshal the value into a string
-		b, err := i.value.(encoding.TextMarshaler).MarshalText()
-		if err != nil {
-			panic(err)
-		}
-		val = string(b)
-	}
-
-	v := instance.value
-	if v.IsNil() {
-		panic(errNilPointer)
-	}
-	v.Elem().FieldByName(idFieldName).Set(reflect.ValueOf(val))
+	i.applyJsonapi(instance.value)
 }
 
 func (i *idFieldInstance) parseJoinJsonapiModel(instance *joinJsonapiModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	i.parse(instance.value)
+	i.parseJsonapi(instance.value)
 }
 
 func (i *idFieldInstance) applyToJoinJsonapiModel(instance *joinJsonapiModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	i.apply(instance.value)
+	i.applyJsonapi(instance.value)
 }
 
 func (i *idFieldInstance) parsePGModel(instance *pgModelInstance) {
@@ -311,4 +276,18 @@ func (i *idFieldInstance) apply(v *reflect.Value) {
 		panic(errNilPointer)
 	}
 	v.Elem().FieldByName(idFieldName).Set(reflect.ValueOf(i.value))
+}
+
+func (i *idFieldInstance) parseJsonapi(v *reflect.Value) {
+	if v.IsNil() {
+		return
+	}
+	i.value = StringToId(v.Elem().FieldByName(idFieldName).String(), i.field.fieldType)
+}
+
+func (i *idFieldInstance) applyJsonapi(v *reflect.Value) {
+	if v.IsNil() {
+		panic(errNilPointer)
+	}
+	v.Elem().FieldByName(idFieldName).SetString(IdToString(i.value))
 }

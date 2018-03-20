@@ -32,7 +32,7 @@ func NormalizeNamespace(namespace string) string {
 	if len(namespace) < 1 || namespace[0] != '/' {
 		namespace = "/" + namespace
 	}
-	// remove trailing slash from namespace
+	// add trailing slash to namespace
 	if len(namespace) > 1 && namespace[len(namespace)-1] != '/' {
 		namespace = namespace + "/"
 	}

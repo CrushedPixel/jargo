@@ -99,7 +99,7 @@ type subscribePayload struct {
 	// Model is the JSON API member name of the resource type to subscribe to
 	Model string `json:"model"`
 	// Id is the id of the resource to subscribe to
-	Id int64 `json:"id,string"`
+	Id string `json:"id"`
 }
 
 // resourceDeletedPayload is a struct representing the JSON payload
@@ -144,7 +144,7 @@ type Realtime struct {
 
 	// subscriptions is a map containing all subscriptions
 	// for a socket.
-	subscriptions map[*glue.Socket]map[*Resource][]int64
+	subscriptions map[*glue.Socket]map[*Resource][]string
 	// subscriptionsMutex is the mutex protecting subscriptions
 	subscriptionsMutex *sync.Mutex
 
@@ -162,13 +162,13 @@ type Realtime struct {
 }
 
 type HandleConnectionFunc func(socket *glue.Socket, message string) bool
-type MaySubscribeFunc func(socket *glue.Socket, resource *Resource, id int64) bool
+type MaySubscribeFunc func(socket *glue.Socket, resource *Resource, id string) bool
 
 func defaultHandleConnectionFunc(*glue.Socket, string) bool {
 	return true
 }
 
-func defaultMaySubscribeFunc(*glue.Socket, *Resource, int64) bool {
+func defaultMaySubscribeFunc(*glue.Socket, *Resource, string) bool {
 	return true
 }
 
@@ -186,7 +186,7 @@ func NewRealtime(app *Application, namespace string) *Realtime {
 
 		connectingSockets: make(chan *glue.Socket, 0),
 
-		subscriptions:      make(map[*glue.Socket]map[*Resource][]int64),
+		subscriptions:      make(map[*glue.Socket]map[*Resource][]string),
 		subscriptionsMutex: &sync.Mutex{},
 	}
 	r.SetNamespace(namespace)
@@ -334,7 +334,7 @@ func (r *Realtime) handleRowUpdates(channel <-chan *pg.Notification) {
 			}
 
 			// map of all resources affected by the change
-			updated := make(map[*Resource][]interface{})
+			updated := make(map[*Resource][]string)
 
 			// add all resources that were updated by the resources'
 			// relationships being modified
@@ -359,7 +359,13 @@ func (r *Realtime) handleRowUpdates(channel <-chan *pg.Notification) {
 					// get resource for schema
 					for _, res := range r.app.resources {
 						if res.schema == schema {
-							updated[res] = ids
+							// convert id interface values
+							// into their string representation
+							var stringIds []string
+							for _, id := range ids {
+								stringIds = append(stringIds, internal.IdToString(id))
+							}
+							updated[res] = stringIds
 						}
 					}
 				}
@@ -399,7 +405,13 @@ func (r *Realtime) handleRowUpdates(channel <-chan *pg.Notification) {
 					// get resource for schema
 					for _, res := range r.app.resources {
 						if res.schema == schema {
-							updated[res] = ids
+							// convert id interface values
+							// into their string representation
+							var stringIds []string
+							for _, id := range ids {
+								stringIds = append(stringIds, internal.IdToString(id))
+							}
+							updated[res] = stringIds
 						}
 					}
 				}
@@ -494,7 +506,7 @@ func (r *Realtime) onSubscribeRead(socket *glue.Socket, messageId string, data s
 	r.subscriptionsMutex.Lock()
 	s, ok := r.subscriptions[socket]
 	if !ok {
-		s = make(map[*Resource][]int64)
+		s = make(map[*Resource][]string)
 		r.subscriptions[socket] = s
 	}
 
@@ -505,7 +517,7 @@ func (r *Realtime) onSubscribeRead(socket *glue.Socket, messageId string, data s
 }
 
 // subscribers returns all sockets that are subscribed to a resource instance.
-func (r *Realtime) subscribers(resource *Resource, id interface{}) []*glue.Socket {
+func (r *Realtime) subscribers(resource *Resource, id string) []*glue.Socket {
 	var sockets []*glue.Socket
 	r.subscriptionsMutex.Lock()
 	for socket, subscriptions := range r.subscriptions {
