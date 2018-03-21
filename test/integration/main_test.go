@@ -76,6 +76,9 @@ func TestMain(m *testing.M) {
 		DB: db,
 	})
 
+	app.Start()
+	defer app.Release()
+
 	dummyResource = app.MustRegisterResource(dummy{})
 	res, err := dummyResource.InsertInstance(app.DB(), &dummy{}).Result()
 	if err != nil {
