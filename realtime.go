@@ -22,8 +22,8 @@ const (
 )
 
 var (
-	errAlreadyRunning = errors.New("realtime instance is already running")
-	errNotRunning     = errors.New("realtime instance must be started to be able to handle http requests")
+	errRealtimeAlreadyRunning = errors.New("realtime instance is already running")
+	errRealtimeNotRunning     = errors.New("realtime instance must be started to be able to handle http requests")
 )
 
 // triggerFunctionQuery is a query creating a trigger function
@@ -153,7 +153,7 @@ type Realtime struct {
 	connectingSockets chan *glue.Socket
 
 	// release is the channel that signals internal goroutines
-	// to finish execution when closed
+	// to finish execution when closed.
 	release chan *struct{}
 
 	// running indicates whether the Realtime instance
@@ -197,7 +197,7 @@ func NewRealtime(app *Application, namespace string) *Realtime {
 // Panics if the realtime instance is running.
 func (r *Realtime) SetNamespace(namespace string) {
 	if r.running {
-		panic(errAlreadyRunning)
+		panic(errRealtimeAlreadyRunning)
 	}
 	r.namespace = NormalizeNamespace(namespace)
 }
@@ -209,7 +209,7 @@ func (r *Realtime) Namespace() string {
 
 func (r *Realtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if !r.running {
-		panic(errNotRunning)
+		panic(errRealtimeNotRunning)
 	}
 	r.Server.ServeHTTP(w, req)
 }
@@ -226,14 +226,13 @@ func (r *Realtime) Bridge(mux *http.ServeMux) error {
 }
 
 // Start prepares the Realtime instance to handle incoming requests.
-// This must be called before registering the Realtime instance
-// as an http handler.
+// This must be called before serving the Realtime instance.
 //
 // After handling is done, Release should be called to stop all internal
 // goroutines.
 func (r *Realtime) Start() error {
 	if r.running {
-		return errAlreadyRunning
+		panic(errRealtimeAlreadyRunning)
 	}
 
 	r.running = true
@@ -275,6 +274,9 @@ func (r *Realtime) Start() error {
 // Release stops all internal goroutines.
 // Should be called after serving is done.
 func (r *Realtime) Release() {
+	if !r.running {
+		panic(errRealtimeNotRunning)
+	}
 	r.Server.Release()
 	close(r.release)
 	r.running = false

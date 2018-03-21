@@ -8,7 +8,11 @@ import (
 	"reflect"
 )
 
-var errNoResponse = errors.New("the last HandlerFunc returned a nil Response")
+var (
+	errNoResponse        = errors.New("the last HandlerFunc returned a nil Response")
+	errAppAlreadyRunning = errors.New("realtime instance is already running")
+	errAppNotRunning     = errors.New("realtime instance must be started to be able to handle http requests")
+)
 
 // Application is the central component of jargo.
 // It contains all Controllers which are responsible
@@ -24,6 +28,14 @@ type Application struct {
 	paginationStrategies *PaginationStrategies
 	maxPageSize          int
 	validate             *validator.Validate
+
+	// release is the channel that signals internal goroutines
+	// to finish execution when closed.
+	release chan *struct{}
+
+	// running indicates whether the Application
+	// is currently able to handle requests.
+	running bool
 }
 
 // NewApplication returns a new Application
@@ -97,4 +109,28 @@ func (app *Application) MustRegisterResource(model interface{}) *Resource {
 		panic(err)
 	}
 	return r
+}
+
+// Start prepares the Application to handle incoming requests.
+// This must be called before serving the Application.
+//
+// After handling is done, Release should be called to stop all internal
+// goroutines.
+func (app *Application) Start() {
+	if app.running {
+		panic(errAppAlreadyRunning)
+	}
+
+	app.running = true
+	app.release = make(chan *struct{}, 0)
+}
+
+// Release stops all internal goroutines.
+// Should be called after serving is done.
+func (app *Application) Release() {
+	if !app.running {
+		panic(errAppNotRunning)
+	}
+	close(app.release)
+	app.running = false
 }
