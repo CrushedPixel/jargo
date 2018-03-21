@@ -39,3 +39,17 @@ func NormalizeNamespace(namespace string) string {
 
 	return namespace
 }
+
+// NilNotFound returns ErrNotFound if res is nil.
+// May be used to wrap calls to jargo.Query.Result() to
+// avoid having to handle the nil case explicitly:
+// res, err := jargo.NilNotFound(q.Result())
+func NilNotFound(res interface{}, err error) (interface{}, error) {
+	if res == nil {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
