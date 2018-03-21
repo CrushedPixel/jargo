@@ -30,6 +30,8 @@ type Application struct {
 	maxPageSize          int
 	validate             *validator.Validate
 
+	// ctx is the Context bound to the Application's goroutines.
+	ctx context.Context
 	// cancel is the CancelFunc to call to release
 	// the Application's goroutines.
 	cancel context.CancelFunc
@@ -95,6 +97,15 @@ func (app *Application) RegisterResource(model interface{}) (*Resource, error) {
 				return nil, err
 			}
 
+			// if app is already running,
+			// create resource expirer for resource
+			// if needed
+			if app.running {
+				if ef := resource.schema.ExpireField(); ef != nil {
+					newResourceExpirer(app.ctx, app, resource)
+				}
+			}
+
 			app.resources[schema] = resource
 		}
 	}
@@ -124,14 +135,12 @@ func (app *Application) Start() {
 
 	app.running = true
 
-	var ctx context.Context
-	ctx, app.cancel = context.WithCancel(context.Background())
-
+	app.ctx, app.cancel = context.WithCancel(context.Background())
 	// start a resource expirer for all registered resources
 	// that have an expire field
 	for _, r := range app.resources {
 		if ef := r.schema.ExpireField(); ef != nil {
-			newResourceExpirer(ctx, app, r)
+			newResourceExpirer(app.ctx, app, r)
 		}
 	}
 }

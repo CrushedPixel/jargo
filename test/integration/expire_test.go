@@ -28,7 +28,7 @@ func TestExpire(t *testing.T) {
 	// fetch resource to ensure it is still there
 	res, err = resource.SelectById(app.DB(), res.(*expireAttribute).Id).Result()
 	require.Nil(t, err)
-	require.Equal(t, original.Expires, res.(*expireAttribute).Expires)
+	require.Equal(t, original.Expires.Unix(), res.(*expireAttribute).Expires.Unix())
 
 	// sleep 3 seconds so resource must have timed out
 	time.Sleep(3 * time.Second)

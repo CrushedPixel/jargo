@@ -148,7 +148,7 @@ func (e *resourceExpirer) fetchNextExpiration(ctx context.Context) {
 
 	var nextExpiration time.Time
 	// fetch amount of seconds until next expiration time is reached
-	query := fmt.Sprintf(`SELECT EXTRACT(EPOCH FROM (%s)) AS "interval" FROM "%s" AS "%s" ORDER BY %s ASC LIMIT 1`,
+	query := fmt.Sprintf(`SELECT EXTRACT(EPOCH FROM (%s - NOW())) AS "interval" FROM "%s" AS "%s" ORDER BY %s ASC LIMIT 1`,
 		e.column, e.table, e.alias, e.column)
 	if _, err := e.app.DB().QueryOne(mdl, query); err == nil {
 		nextExpiration = targetTime(mdl.Interval)
