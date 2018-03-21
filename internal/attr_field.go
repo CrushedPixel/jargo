@@ -24,6 +24,7 @@ var (
 	errAutoTimestampsType        = errors.New(`"createdAt" and "updatedAt" options are only allowed on fields of type *time.Time`)
 	errAutoTimestampsWriteable   = errors.New(`"createdAt" and "updatedAt" options are only allowed on writable (non-readonly) fields`)
 	errExpireType                = errors.New(`"expire" option is only allowed on fields of type time.Time or *time.Time`)
+	errMultipleExpireFields      = errors.New(`"expire" option may not occur on multiple attributes`)
 
 	autoTimestampsType = reflect.TypeOf(&time.Time{})
 )

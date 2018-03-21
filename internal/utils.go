@@ -2,7 +2,6 @@ package internal
 
 import (
 	"encoding"
-	"errors"
 	"fmt"
 	"reflect"
 	"regexp"

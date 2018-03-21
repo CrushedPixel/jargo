@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	triggerFunctionName     = "jargo_realtime_notify"
-	notificationChannelName = "jargo_realtime"
+	triggerFunctionName             = "jargo_realtime_notify"
+	realtimeNotificationChannelName = "jargo_realtime"
 )
 
 var (
@@ -55,9 +55,9 @@ END;
 $$ LANGUAGE plpgsql;
 `,
 	triggerFunctionName,
-	notificationChannelName,
-	notificationChannelName,
-	notificationChannelName)
+	realtimeNotificationChannelName,
+	realtimeNotificationChannelName,
+	realtimeNotificationChannelName)
 
 // notificationPayload is a struct representation
 // of the json payload sent to jargo_realtime listeners
@@ -263,8 +263,8 @@ func (r *Realtime) Start() error {
 		}
 	}
 
-	// create notification channel for database trigger
-	notificationChannel := r.app.DB().Listen(notificationChannelName).Channel()
+	// create notification channel
+	notificationChannel := r.app.DB().Listen(realtimeNotificationChannelName).Channel()
 
 	go r.handleConnectingSockets()
 	go r.handleRowUpdates(notificationChannel)
@@ -318,12 +318,13 @@ func (r *Realtime) handleRowUpdates(channel <-chan *pg.Notification) {
 	for {
 		select {
 		case notification := <-channel:
+			// parse notification payload
 			payload := &notificationPayload{}
-			err := json.Unmarshal([]byte(notification.Payload), payload)
-			if err != nil {
+			if err := jsoniter.Unmarshal([]byte(notification.Payload), payload); err != nil {
 				panic(err)
 			}
 
+			// get resource type of affected table
 			var resource *Resource
 			for _, res := range r.app.resources {
 				if res.schema.Table() == payload.Table {
@@ -332,7 +333,7 @@ func (r *Realtime) handleRowUpdates(channel <-chan *pg.Notification) {
 				}
 			}
 			if resource == nil {
-				panic(errors.New("resource for table name not found"))
+				panic("resource for table name not found")
 			}
 
 			// map of all resources affected by the change
@@ -418,7 +419,7 @@ func (r *Realtime) handleRowUpdates(channel <-chan *pg.Notification) {
 					}
 				}
 			} else {
-				panic(errors.New("unknown trigger event type"))
+				panic("unknown trigger event type")
 			}
 
 			if payload.Type == "DELETE" {

@@ -79,6 +79,18 @@ func (r SchemaRegistry) newSchemaDefinition(t reflect.Type) *Schema {
 		pgJoinFields = append(pgJoinFields, field.pgJoinFields()...)
 	}
 
+	// validate schema fields
+	// ensure only a single expire field is set
+	var found bool
+	for _, f := range schema.fields {
+		if _, ok := f.(*expireField); ok {
+			if found {
+				panic(errMultipleExpireFields)
+			}
+			found = true
+		}
+	}
+
 	schema.joinJsonapiModelType = reflect.StructOf(jsonapiJoinFields)
 	schema.joinPGModelType = reflect.StructOf(pgJoinFields)
 	return schema

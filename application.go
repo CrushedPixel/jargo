@@ -1,6 +1,7 @@
 package jargo
 
 import (
+	"context"
 	"errors"
 	"github.com/crushedpixel/jargo/internal"
 	"github.com/go-pg/pg"
@@ -29,9 +30,9 @@ type Application struct {
 	maxPageSize          int
 	validate             *validator.Validate
 
-	// release is the channel that signals internal goroutines
-	// to finish execution when closed.
-	release chan *struct{}
+	// cancel is the CancelFunc to call to release
+	// the Application's goroutines.
+	cancel context.CancelFunc
 
 	// running indicates whether the Application
 	// is currently able to handle requests.
@@ -122,7 +123,17 @@ func (app *Application) Start() {
 	}
 
 	app.running = true
-	app.release = make(chan *struct{}, 0)
+
+	var ctx context.Context
+	ctx, app.cancel = context.WithCancel(context.Background())
+
+	// start a resource expirer for all registered resources
+	// that have an expire field
+	for _, r := range app.resources {
+		if ef := r.schema.ExpireField(); ef != nil {
+			newResourceExpirer(ctx, app, r)
+		}
+	}
 }
 
 // Release stops all internal goroutines.
@@ -131,6 +142,6 @@ func (app *Application) Release() {
 	if !app.running {
 		panic(errAppNotRunning)
 	}
-	close(app.release)
+	app.cancel()
 	app.running = false
 }
