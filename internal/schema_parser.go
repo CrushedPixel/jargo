@@ -31,6 +31,8 @@ const (
 
 	optionCreatedAt = "createdAt"
 	optionUpdatedAt = "updatedAt"
+
+	optionExpire = "expire"
 )
 
 type fieldType int
@@ -75,6 +77,18 @@ func (r SchemaRegistry) newSchemaDefinition(t reflect.Type) *Schema {
 		schema.fields = append(schema.fields, field)
 		jsonapiJoinFields = append(jsonapiJoinFields, field.jsonapiJoinFields()...)
 		pgJoinFields = append(pgJoinFields, field.pgJoinFields()...)
+	}
+
+	// validate schema fields
+	// ensure only a single expire field is set
+	var found bool
+	for _, f := range schema.fields {
+		if _, ok := f.(*expireField); ok {
+			if found {
+				panic(errMultipleExpireFields)
+			}
+			found = true
+		}
 	}
 
 	schema.joinJsonapiModelType = reflect.StructOf(jsonapiJoinFields)

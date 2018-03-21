@@ -18,11 +18,13 @@ var (
 	errNonNullableTypeDefault         = errors.New(`"default" option may only be used on pointer types`)
 	errNotnullWithoutDefault          = errors.New(`"notnull" option may only be used in conjunction with the "default" option. use a primitive type instead`)
 
-	errCreatedAtDefaultForbidden   = errors.New(`"default" option may not be used in conjunction with "createdAt""`)
-	errUpdatedAtDefaultForbidden   = errors.New(`"default" option may not be used in conjunction with "updatedAt""`)
-	errCreatedAtUpdatedAtExclusive = errors.New(`"createdAt" and "updatedAt" options are mutually exclusive`)
-	errCreatedAtUpdatedAtType      = errors.New(`"createdAt" and "updatedAt" options are only allowed on fields of type *time.Time`)
-	errCreatedAtUpdatedAtWritable  = errors.New(`"createdAt" and "updatedAt" options are only allowed on writable (non-readonly) fields`)
+	errCreatedAtDefaultForbidden = errors.New(`"default" option may not be used in conjunction with "createdAt""`)
+	errUpdatedAtDefaultForbidden = errors.New(`"default" option may not be used in conjunction with "updatedAt""`)
+	errAutoTimestampsExclusive   = errors.New(`"createdAt", "updatedAt" and "expire" options are mutually exclusive`)
+	errAutoTimestampsType        = errors.New(`"createdAt" and "updatedAt" options are only allowed on fields of type *time.Time`)
+	errAutoTimestampsWriteable   = errors.New(`"createdAt" and "updatedAt" options are only allowed on writable (non-readonly) fields`)
+	errExpireType                = errors.New(`"expire" option is only allowed on fields of type time.Time or *time.Time`)
+	errMultipleExpireFields      = errors.New(`"expire" option may not occur on multiple attributes`)
 
 	autoTimestampsType = reflect.TypeOf(&time.Time{})
 )
@@ -64,10 +66,7 @@ func newAttrField(schema *Schema, f *reflect.StructField) SchemaField {
 
 	parsed := parseJargoTag(f.Tag.Get(jargoFieldTag))
 
-	var createdAt, updatedAt bool
-
-	// parse default option before others,
-	// so it is set before notnull is processed
+	// parse default option
 	if value, ok := parsed.Options[optionDefault]; ok {
 		if !isNullable(field.fieldType) {
 			// a default value may only be set for
@@ -78,26 +77,24 @@ func newAttrField(schema *Schema, f *reflect.StructField) SchemaField {
 		field.sqlDefault = value
 	}
 
+	// parse notnull option
+	field.notnull = isSet(parsed.Options, optionNotnull)
+	if field.notnull && field.sqlDefault == "" {
+		panic(errNotnullWithoutDefault)
+	}
+
 	// parse options
 	for option, value := range parsed.Options {
 		switch option {
 		case optionColumn:
 			field.column = value
-		case optionNotnull:
-			field.notnull = parseBoolOption(value)
-			if field.notnull && field.sqlDefault == "" {
-				panic(errNotnullWithoutDefault)
-			}
 		case optionType:
 			field.pgType = value
-		case optionCreatedAt:
-			createdAt = parseBoolOption(value)
-		case optionUpdatedAt:
-			updatedAt = parseBoolOption(value)
 		case optionReadonly, optionNoSort, optionNoFilter,
-			optionOmitempty, optionUnique, optionDefault:
-			// these were handled when parsing the baseField
-			// and should therefore not trigger the default handler.
+			optionOmitempty, optionUnique, optionDefault,
+			optionCreatedAt, optionUpdatedAt, optionExpire:
+			// these were handled and should therefore
+			// not trigger the default handler.
 		default:
 			panic(errDisallowedOption(option))
 		}
@@ -109,33 +106,43 @@ func newAttrField(schema *Schema, f *reflect.StructField) SchemaField {
 		field.pgType = "uuid"
 	}
 
-	// validate createdAt and updatedAt tags
-	if createdAt && updatedAt {
-		panic(errCreatedAtUpdatedAtExclusive)
+	createdAt := isSet(parsed.Options, optionCreatedAt)
+	updatedAt := isSet(parsed.Options, optionUpdatedAt)
+	expire := isSet(parsed.Options, optionExpire)
+
+	// ensure mutual exclusivity of createdAt, updatedAt and expire
+	if moreThanOneTrue(createdAt, updatedAt, expire) {
+		panic(errAutoTimestampsExclusive)
 	}
+
+	// validate auto timestamp tags
 	if field.sqlDefault != "" && createdAt {
 		panic(errCreatedAtDefaultForbidden)
 	}
 	if field.sqlDefault != "" && updatedAt {
 		panic(errUpdatedAtDefaultForbidden)
 	}
-
 	if createdAt || updatedAt {
 		field.notnull = true
 
 		if field.fieldType != autoTimestampsType {
-			panic(errCreatedAtUpdatedAtType)
+			panic(errAutoTimestampsType)
 		}
 
 		// disallow explicit writable (readonly:false) option
 		if _, ok := parsed.Options[optionReadonly]; ok && field.jargoWritable {
-			panic(errCreatedAtUpdatedAtWritable)
+			panic(errAutoTimestampsWriteable)
 		}
 		// auto timestamps may not be changed by api users
 		field.jargoWritable = false
 
 		// set default to "NOW()" for createdAt and updatedAt columns
 		field.sqlDefault = "NOW()"
+	}
+
+	// validate expire tag
+	if expire && !isTimeField(field.fieldType) {
+		panic(errExpireType)
 	}
 
 	// validate sql column
@@ -150,10 +157,13 @@ func newAttrField(schema *Schema, f *reflect.StructField) SchemaField {
 	field.jsonapiF = field.jsonapiAttrFields()
 	field.pgF = field.pgAttrFields()
 
-	// wrap updatedAt fields in updatedAtField
-	// for afterCreateTable hook
+	// wrap updatedAt and expire fields in
+	// their specific types for afterCreateTable hook
 	if updatedAt {
 		return &updatedAtField{field}
+	}
+	if expire {
+		return &expireField{field}
 	}
 
 	return field

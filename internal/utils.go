@@ -2,7 +2,6 @@ package internal
 
 import (
 	"encoding"
-	"errors"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -20,16 +19,29 @@ func isValidSQLName(val string) bool {
 	return sqlNameRegex.MatchString(val)
 }
 
-func parseBoolOption(val string) bool {
-	if val == "" {
-		return true
+// isSet returns whether an option is set.
+// It panics if a value is specified.
+func isSet(options map[string]string, key string) bool {
+	val, ok := options[key]
+	if val != "" {
+		panic(fmt.Errorf(`option "%s" does not accept a value`, key))
 	}
+	return ok
+}
 
-	b, err := strconv.ParseBool(val)
-	if err != nil {
-		panic(errors.New(fmt.Sprintf("error parsing bool option: %s", err.Error())))
+// moreThanOneTrue returns whether more than one
+// of the boolean values passed are true.
+func moreThanOneTrue(bools ...bool) bool {
+	var found bool
+	for _, b := range bools {
+		if b {
+			if found {
+				return true
+			}
+			found = true
+		}
 	}
-	return b
+	return false
 }
 
 // wrapper types for at least a bit of type-safety when working with reflection.

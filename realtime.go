@@ -17,13 +17,13 @@ import (
 )
 
 const (
-	triggerFunctionName     = "jargo_realtime_notify"
-	notificationChannelName = "jargo_realtime"
+	triggerFunctionName             = "jargo_realtime_notify"
+	realtimeNotificationChannelName = "jargo_realtime"
 )
 
 var (
-	errAlreadyRunning = errors.New("realtime instance is already running")
-	errNotRunning     = errors.New("realtime instance must be started to be able to handle http requests")
+	errRealtimeAlreadyRunning = errors.New("realtime instance is already running")
+	errRealtimeNotRunning     = errors.New("realtime instance must be started to be able to handle http requests")
 )
 
 // triggerFunctionQuery is a query creating a trigger function
@@ -55,9 +55,9 @@ END;
 $$ LANGUAGE plpgsql;
 `,
 	triggerFunctionName,
-	notificationChannelName,
-	notificationChannelName,
-	notificationChannelName)
+	realtimeNotificationChannelName,
+	realtimeNotificationChannelName,
+	realtimeNotificationChannelName)
 
 // notificationPayload is a struct representation
 // of the json payload sent to jargo_realtime listeners
@@ -153,7 +153,7 @@ type Realtime struct {
 	connectingSockets chan *glue.Socket
 
 	// release is the channel that signals internal goroutines
-	// to finish execution when closed
+	// to finish execution when closed.
 	release chan *struct{}
 
 	// running indicates whether the Realtime instance
@@ -197,7 +197,7 @@ func NewRealtime(app *Application, namespace string) *Realtime {
 // Panics if the realtime instance is running.
 func (r *Realtime) SetNamespace(namespace string) {
 	if r.running {
-		panic(errAlreadyRunning)
+		panic(errRealtimeAlreadyRunning)
 	}
 	r.namespace = NormalizeNamespace(namespace)
 }
@@ -209,7 +209,7 @@ func (r *Realtime) Namespace() string {
 
 func (r *Realtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if !r.running {
-		panic(errNotRunning)
+		panic(errRealtimeNotRunning)
 	}
 	r.Server.ServeHTTP(w, req)
 }
@@ -226,14 +226,13 @@ func (r *Realtime) Bridge(mux *http.ServeMux) error {
 }
 
 // Start prepares the Realtime instance to handle incoming requests.
-// This must be called before registering the Realtime instance
-// as an http handler.
+// This must be called before serving the Realtime instance.
 //
 // After handling is done, Release should be called to stop all internal
 // goroutines.
 func (r *Realtime) Start() error {
 	if r.running {
-		return errAlreadyRunning
+		panic(errRealtimeAlreadyRunning)
 	}
 
 	r.running = true
@@ -264,8 +263,8 @@ func (r *Realtime) Start() error {
 		}
 	}
 
-	// create notification channel for database trigger
-	notificationChannel := r.app.DB().Listen(notificationChannelName).Channel()
+	// create notification channel
+	notificationChannel := r.app.DB().Listen(realtimeNotificationChannelName).Channel()
 
 	go r.handleConnectingSockets()
 	go r.handleRowUpdates(notificationChannel)
@@ -275,6 +274,9 @@ func (r *Realtime) Start() error {
 // Release stops all internal goroutines.
 // Should be called after serving is done.
 func (r *Realtime) Release() {
+	if !r.running {
+		panic(errRealtimeNotRunning)
+	}
 	r.Server.Release()
 	close(r.release)
 	r.running = false
@@ -316,12 +318,13 @@ func (r *Realtime) handleRowUpdates(channel <-chan *pg.Notification) {
 	for {
 		select {
 		case notification := <-channel:
+			// parse notification payload
 			payload := &notificationPayload{}
-			err := json.Unmarshal([]byte(notification.Payload), payload)
-			if err != nil {
+			if err := jsoniter.Unmarshal([]byte(notification.Payload), payload); err != nil {
 				panic(err)
 			}
 
+			// get resource type of affected table
 			var resource *Resource
 			for _, res := range r.app.resources {
 				if res.schema.Table() == payload.Table {
@@ -330,7 +333,7 @@ func (r *Realtime) handleRowUpdates(channel <-chan *pg.Notification) {
 				}
 			}
 			if resource == nil {
-				panic(errors.New("resource for table name not found"))
+				panic("resource for table name not found")
 			}
 
 			// map of all resources affected by the change
@@ -416,7 +419,7 @@ func (r *Realtime) handleRowUpdates(channel <-chan *pg.Notification) {
 					}
 				}
 			} else {
-				panic(errors.New("unknown trigger event type"))
+				panic("unknown trigger event type")
 			}
 
 			if payload.Type == "DELETE" {

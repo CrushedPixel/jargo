@@ -58,6 +58,11 @@ func (s *Schema) Table() string {
 	return s.table
 }
 
+// Alias returns the Schema's alias used in queries.
+func (s *Schema) Alias() string {
+	return s.alias
+}
+
 // Fields returns all of Schema's fields.
 func (s *Schema) Fields() []SchemaField {
 	return s.fields
@@ -71,6 +76,17 @@ func (s *Schema) IdField() SchemaField {
 		}
 	}
 	panic("could not find id field")
+}
+
+// ExpireField returns the Schema's expire field.
+// Returns nil if the Schema has no expire field.
+func (s *Schema) ExpireField() SchemaField {
+	for _, f := range s.fields {
+		if _, ok := f.(*expireField); ok {
+			return f
+		}
+	}
+	return nil
 }
 
 // CreateTable creates the database table
