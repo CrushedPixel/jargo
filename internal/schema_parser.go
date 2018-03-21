@@ -31,6 +31,8 @@ const (
 
 	optionCreatedAt = "createdAt"
 	optionUpdatedAt = "updatedAt"
+
+	optionExpire = "expire"
 )
 
 type fieldType int
