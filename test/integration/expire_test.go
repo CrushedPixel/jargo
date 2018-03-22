@@ -1,4 +1,4 @@
-// +build integration
+// +build expire
 
 package integration
 
@@ -67,7 +67,38 @@ type multipleExpire struct {
 	ExpiresB time.Time `jargo:",expire"`
 }
 
+// TestMultipleExpire tests the behaviour of fields with multiple expire attributes.
 func TestMultipleExpire(t *testing.T) {
 	_, err := app.RegisterResource(multipleExpire{})
 	require.EqualError(t, err, `"expire" option may not occur on multiple attributes`)
+}
+
+type defaultExpire struct {
+	Id      int64
+	Expires *time.Time `jargo:",expire,default:NOW() + INTERVAL '2 seconds'"`
+}
+
+// TestDefaultExpire tests the behaviour of expire fields with a default value.
+func TestDefaultExpire(t *testing.T) {
+	resource, err := app.RegisterResource(defaultExpire{})
+	require.Nil(t, err)
+
+	// insert resource with Expires field set to nil,
+	// causing the default value to be inserted
+	res, err := resource.InsertInstance(app.DB(), &defaultExpire{}).Result()
+	require.Nil(t, err)
+	created := res.(*defaultExpire)
+
+	// fetch resource to ensure it is still there
+	res, err = resource.SelectById(app.DB(), created.Id).Result()
+	require.Nil(t, err)
+	require.Equal(t, created.Id, res.(*defaultExpire).Id)
+
+	// sleep 3 seconds so resource must have timed out
+	time.Sleep(3 * time.Second)
+
+	// fetch resource again, expecting it to have timed out
+	res, err = resource.SelectById(app.DB(), created.Id).Result()
+	require.Nil(t, err)
+	require.Nil(t, res)
 }
