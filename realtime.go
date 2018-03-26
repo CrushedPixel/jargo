@@ -215,14 +215,8 @@ func (r *Realtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 // Bridge registers the Realtime instance with a ServeMux.
-// It prepares the Realtime instance for request handling by invoking Start.
-func (r *Realtime) Bridge(mux *http.ServeMux) error {
-	err := r.Start()
-	if err != nil {
-		return err
-	}
+func (r *Realtime) Bridge(mux *http.ServeMux) {
 	mux.Handle(r.namespace, r)
-	return nil
 }
 
 // Start prepares the Realtime instance to handle incoming requests.
