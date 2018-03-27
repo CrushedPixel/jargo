@@ -11,8 +11,8 @@ import (
 
 var (
 	errNoResponse        = errors.New("the last HandlerFunc returned a nil Response")
-	errAppAlreadyRunning = errors.New("realtime instance is already running")
-	errAppNotRunning     = errors.New("realtime instance must be started to be able to handle http requests")
+	errAppAlreadyRunning = errors.New("application is already running")
+	errAppNotRunning     = errors.New("application must be started to be able to handle http requests")
 )
 
 // Application is the central component of jargo.
