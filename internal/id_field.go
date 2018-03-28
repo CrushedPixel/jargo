@@ -56,17 +56,13 @@ func newIdField(schema *Schema, f *reflect.StructField) SchemaField {
 
 // isValidIdField returns whether typ is a valid type for an id field.
 func isValidIdField(typ reflect.Type) bool {
-	// allow types allowed by jsonapi
 	switch reflect.New(typ).Elem().Interface().(type) {
 	case string, int, int8, int16, int32, int64, uint, uint8, uint16,
-		uint32, uint64:
+		uint32, uint64, encoding.TextMarshaler, encoding.TextUnmarshaler:
 		return true
+	default:
+		return false
 	}
-
-	// allow types implementing TextMarshaler and TextUnmarshaler,
-	// as they can be easily converted to string, which is supported by jsonapi
-	return typ.Implements(reflect.TypeOf(new(encoding.TextMarshaler)).Elem()) &&
-		typ.Implements(reflect.TypeOf(new(encoding.TextUnmarshaler)).Elem())
 }
 
 func (f *idField) jsonapiIdFields() []reflect.StructField {

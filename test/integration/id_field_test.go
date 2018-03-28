@@ -38,7 +38,7 @@ func TestAutoIncrementingIdField(t *testing.T) {
 }
 
 type uuidIdField struct {
-	Id *uuid.UUID
+	Id uuid.UUID
 }
 
 // TestUUID_Id tests the behaviour of UUID id fields.
