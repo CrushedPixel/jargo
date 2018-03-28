@@ -68,7 +68,7 @@ func (r *Resource) ParseJsonapiUpdatePayload(in io.Reader, instance interface{},
 		if e, ok := err.(validator.ValidationErrors); ok {
 			return nil, ErrValidationFailed(e)
 		}
-		return nil, err
+		return nil, ErrInvalidPayload(err.Error())
 	}
 	return instance, nil
 }

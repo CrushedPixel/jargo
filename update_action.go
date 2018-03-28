@@ -34,6 +34,9 @@ func (a *UpdateAction) Handle(req *UpdateRequest) Response {
 
 	// parse update payload, applying it to existing instance
 	instance, err := req.Resource().ParseJsonapiUpdatePayload(req.Payload(), existing, req.Application().Validate())
+	if err != nil {
+		return NewErrorResponse(err)
+	}
 
 	// if set, apply payload handler
 	if a.payloadHandler != nil {
