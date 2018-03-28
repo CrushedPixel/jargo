@@ -19,8 +19,9 @@
   branch = "master"
 
 [[constraint]]
+  branch = "master"
   name = "github.com/google/jsonapi"
-  version = "1.0.0"
+  source = "https://github.com/CrushedPixel/jsonapi"
 
 [[constraint]]
   name = "github.com/json-iterator/go"
