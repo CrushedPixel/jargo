@@ -42,6 +42,11 @@ type Query struct {
 	pagination Pagination
 	filters    *Filters
 
+	// whereCalls contains query calls altering
+	// the WHERE clause. these calls are applied to the
+	// underlying query directly before executing it.
+	whereCalls queryCalls
+
 	// internal
 	executed       bool
 	executionError error
@@ -63,6 +68,68 @@ func newQuery(db orm.DB, resource *Resource, typ queryType, collection bool, pgM
 		collection: collection,
 		model:      reflect.ValueOf(clone),
 	}
+}
+
+type queryCall struct {
+	// name of the method to call
+	function string
+	// the method arguments
+	values []reflect.Value
+}
+
+type queryCalls []*queryCall
+
+// applyToQuery performs all calls on the given query.
+func (c queryCalls) applyToQuery(q *orm.Query) {
+	queryValue := reflect.ValueOf(q)
+	for _, call := range c {
+		queryValue.MethodByName(call.function).Call(call.values)
+	}
+}
+
+// queryCall schedules a call to be made before executing the underlying query.
+func (q *Query) queryCall(function string, args ...interface{}) {
+	call := &queryCall{
+		function: function,
+	}
+	for _, arg := range args {
+		call.values = append(call.values, reflect.ValueOf(arg))
+	}
+	q.whereCalls = append(q.whereCalls, call)
+}
+
+// Where adds a WHERE condition to the query, connected with a logical AND.
+func (q *Query) Where(condition string, params ...interface{}) *Query {
+	args := []interface{}{condition}
+	args = append(args, params...)
+	q.queryCall("Where", args...)
+	return q
+}
+
+// WhereOr adds a WHERE condition to the query, connected with a logical OR.
+func (q *Query) WhereOr(condition string, params ...interface{}) *Query {
+	args := []interface{}{condition}
+	args = append(args, params...)
+	q.queryCall("WhereOr", args...)
+	return q
+}
+
+// WhereIn adds a WHERE IN condition to the query, connected with a logical AND.
+func (q *Query) WhereIn(where string, values ...interface{}) *Query {
+	args := []interface{}{where}
+	args = append(args, values...)
+	q.queryCall("WhereIn", args...)
+	return q
+}
+
+func (q *Query) WhereGroup(fn func(*Query) (*Query, error)) *Query {
+	q.queryCall("WhereGroup", fn)
+	return q
+}
+
+func (q *Query) WhereOrGroup(fn func(*Query) (*Query, error)) *Query {
+	q.queryCall("WhereOrGroup", fn)
+	return q
 }
 
 // Fields sets a FieldSet instance
@@ -182,38 +249,54 @@ func (q *Query) Payload() (string, error) {
 }
 
 func (q *Query) execute() {
-	// execute query
+	query := q.Query.Copy()
+
+	// apply query modifiers
 	switch q.typ {
 	case typeSelect:
-		// apply query modifiers
 		var fields *FieldSet
 		if q.fields != nil {
 			fields = q.fields
 		} else {
 			fields = q.resource.allFields()
 		}
-		fields.applyToQuery(q.Query)
+		fields.applyToQuery(query)
 
 		if q.filters != nil {
-			q.filters.applyToQuery(q.Query)
+			q.filters.applyToQuery(query)
 		}
 
 		if q.collection && q.pagination != nil {
-			q.pagination.applyToQuery(q.Query)
+			q.pagination.applyToQuery(query)
 		}
-
-		q.executionError = q.Select()
-	case typeInsert:
-		_, q.executionError = q.Insert()
-	case typeUpdate:
-		_, q.executionError = q.Update()
 	case typeDelete:
 		if q.filters != nil {
-			q.filters.applyToQuery(q.Query)
+			q.filters.applyToQuery(query)
 		}
+	}
 
+	// to ensure all user-defined WHERE conditions
+	// are separated from the WHERE conditions applied
+	// by the filters, wrap them in a group.
+	if len(q.whereCalls) > 0 {
+		query = query.WhereGroup(func(query *orm.Query) (*orm.Query, error) {
+			// apply user-made query calls
+			q.whereCalls.applyToQuery(query)
+			return query, nil
+		})
+	}
+
+	// execute query
+	switch q.typ {
+	case typeSelect:
+		q.executionError = query.Select()
+	case typeInsert:
+		_, q.executionError = query.Insert()
+	case typeUpdate:
+		_, q.executionError = query.Update()
+	case typeDelete:
 		var result orm.Result
-		result, q.executionError = q.Delete()
+		result, q.executionError = query.Delete()
 		if q.executionError == nil && result.RowsAffected() == 0 {
 			q.executionError = pg.ErrNoRows
 		}
