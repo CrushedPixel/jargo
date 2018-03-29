@@ -14,6 +14,10 @@ type belongsToField struct {
 
 	joinJsonapiFields []reflect.StructField
 	joinPGFields      []reflect.StructField
+
+	// whether the id field was
+	// changed to a pointer type
+	idFieldPointer bool
 }
 
 func newBelongsToField(r SchemaRegistry, schema *Schema, f *reflect.StructField) SchemaField {
@@ -70,6 +74,15 @@ func (f *belongsToField) pgJoinFields() []reflect.StructField {
 func (f *belongsToField) pgBelongsToFields(joinField bool) []reflect.StructField {
 	// every belongsTo association has a column containing
 	// the id of the related resource
+
+	typ := f.relationIdFieldType()
+	// if the relation is nullable,
+	// ensure the id type is a pointer type
+	if typ.Kind() != reflect.Ptr && f.nullable {
+		typ = reflect.New(typ).Type()
+		f.idFieldPointer = true
+	}
+
 	tag := fmt.Sprintf(`sql:"%s`, f.relationIdFieldColumn())
 	if !f.nullable {
 		tag += ",notnull"
@@ -77,7 +90,7 @@ func (f *belongsToField) pgBelongsToFields(joinField bool) []reflect.StructField
 	if f.sqlUnique {
 		tag += ",unique"
 	}
-	typ := f.relationIdFieldType()
+
 	if isUUIDField(typ) {
 		// the sql type must match the
 		// id field's sql type
@@ -174,26 +187,34 @@ func (i *belongsToFieldInstance) sortValue() interface{} {
 // If the relation struct field is nil, but the relation id field (e.g. UserId)
 // is not zero, stores a new instance of the relation type with the id field set
 // in i.values[0].
-func (i *belongsToFieldInstance) parsePGModel(instance *pgModelInstance) {
-	if i.field.schema != instance.schema {
+func (i *belongsToFieldInstance) parsePGModel(source *pgModelInstance) {
+	if i.field.schema != source.schema {
 		panic(errMismatchingSchema)
 	}
 	i.values = nil
 	// do not parse nil models
-	if instance.value.IsNil() {
+	if source.value.IsNil() {
 		return
 	}
 
 	var schemaInstance *SchemaInstance
-	pgModelInstance := instance.value.Elem().FieldByName(i.field.fieldName).Interface()
+	pgModelInstance := source.value.Elem().FieldByName(i.field.fieldName).Interface()
 	schemaInstance = i.relationSchema.parseJoinPGModel(pgModelInstance)
 
 	// if relation struct field is nil, but id field isn't,
 	// create a new instance of the model and set its id field
 	if schemaInstance == nil {
-		idField := instance.value.Elem().FieldByName(i.field.relationIdFieldName())
-		id := idField.Interface()
-		if id != reflect.Zero(idField.Type()).Interface() {
+		idField := source.value.Elem().FieldByName(i.field.relationIdFieldName())
+
+		// if the relation id field was converted to a pointer,
+		// dereference it to be able to assign it to
+		// the target model's id field.
+		if i.field.idFieldPointer {
+			idField = idField.Elem()
+		}
+
+		if idField.IsValid() {
+			id := idField.Interface()
 			schemaInstance = i.relationSchema.createInstance()
 			// set id field
 			for _, f := range schemaInstance.fields {
@@ -209,31 +230,39 @@ func (i *belongsToFieldInstance) parsePGModel(instance *pgModelInstance) {
 
 // sets the value of the pg relation id field (e.g. UserId) to the id value
 // of the Schema instance stored in i.values[0]
-func (i *belongsToFieldInstance) applyToPGModel(instance *pgModelInstance) {
-	if i.field.schema != instance.schema {
+func (i *belongsToFieldInstance) applyToPGModel(target *pgModelInstance) {
+	if i.field.schema != target.schema {
 		panic(errMismatchingSchema)
 	}
 	id, ok := i.relationId()
 	if !ok {
 		return
 	}
-	instance.value.Elem().FieldByName(i.field.relationIdFieldName()).Set(reflect.ValueOf(id))
-	// apply relation instance to pg model field
-	instance.value.Elem().FieldByName(i.field.fieldName).Set(reflect.ValueOf(i.values[0].toJoinPGModel()))
+	// set value of target's relation id field (UserId)
+	i.applyIdValueToPGModel(target.value, id)
+	// set value of target's relation model field (User)
+	target.value.Elem().FieldByName(i.field.fieldName).Set(reflect.ValueOf(i.values[0].toJoinPGModel()))
 }
 
-func (i *belongsToFieldInstance) parseJoinPGModel(instance *joinPGModelInstance) {
-	if i.field.schema != instance.schema {
+func (i *belongsToFieldInstance) parseJoinPGModel(source *joinPGModelInstance) {
+	if i.field.schema != source.schema {
 		panic(errMismatchingSchema)
 	}
 	i.values = nil
 	// do not parse nil models
-	if instance.value.IsNil() {
+	if source.value.IsNil() {
 		return
 	}
 
-	// parse the id field for this relation
-	idValue := instance.value.Elem().FieldByName(i.field.relationIdFieldName())
+	// parse the pg model's relation id field (UserId)
+	idValue := source.value.Elem().FieldByName(i.field.relationIdFieldName())
+	if i.field.idFieldPointer {
+		idValue = idValue.Elem()
+	}
+	// if it's a nil pointer, return
+	if !idValue.IsValid() {
+		return
+	}
 
 	// create an instance of the relation schema and set the id value
 	relationInstance := i.relationSchema.createInstance()
@@ -247,8 +276,8 @@ func (i *belongsToFieldInstance) parseJoinPGModel(instance *joinPGModelInstance)
 	i.values = []*SchemaInstance{relationInstance}
 }
 
-func (i *belongsToFieldInstance) applyToJoinPGModel(instance *joinPGModelInstance) {
-	if i.field.schema != instance.schema {
+func (i *belongsToFieldInstance) applyToJoinPGModel(target *joinPGModelInstance) {
+	if i.field.schema != target.schema {
 		panic(errMismatchingSchema)
 	}
 
@@ -256,11 +285,12 @@ func (i *belongsToFieldInstance) applyToJoinPGModel(instance *joinPGModelInstanc
 	if !ok {
 		return
 	}
-	instance.value.Elem().FieldByName(i.field.relationIdFieldName()).Set(reflect.ValueOf(id))
+	// set value of target's relation id field (UserId)
+	i.applyIdValueToPGModel(target.value, id)
 }
 
-func (i *belongsToFieldInstance) applyToJoinResourceModel(instance *resourceModelInstance) {
-	if i.field.schema != instance.schema {
+func (i *belongsToFieldInstance) applyToJoinResourceModel(source *resourceModelInstance) {
+	if i.field.schema != source.schema {
 		panic(errMismatchingSchema)
 	}
 	if len(i.values) == 0 {
@@ -281,10 +311,11 @@ func (i *belongsToFieldInstance) applyToJoinResourceModel(instance *resourceMode
 	if !isNullable(i.field.fieldType) {
 		val = val.Elem()
 	}
-	instance.value.Elem().FieldByName(i.field.fieldName).Set(val)
+	source.value.Elem().FieldByName(i.field.fieldName).Set(val)
 }
 
-// relationId returns the id value of the relation.
+// relationId returns the id value of the relation,
+// extracting it from the relation model.
 func (i *belongsToFieldInstance) relationId() (interface{}, bool) {
 	if len(i.values) == 0 {
 		return nil, false
@@ -307,4 +338,22 @@ func (i *belongsToFieldInstance) relationId() (interface{}, bool) {
 		panic(errors.New("id field of related resource not found"))
 	}
 	return id, true
+}
+
+// applyIdValueToPGModel sets the target pgModelInstance
+// or joinPgModelInstance's id field (UserId) to the value of id.
+func (i *belongsToFieldInstance) applyIdValueToPGModel(value *reflect.Value, id interface{}) {
+	// set value of relation id field (UserId)
+	idField := value.Elem().FieldByName(i.field.relationIdFieldName())
+
+	if i.field.idFieldPointer {
+		// get pointer to id value,
+		// as relation id field is a pointer type
+		idValue := reflect.New(reflect.TypeOf(id))
+		idValue.Elem().Set(reflect.ValueOf(id))
+
+		idField.Set(idValue)
+	} else {
+		idField.Set(reflect.ValueOf(id))
+	}
 }
