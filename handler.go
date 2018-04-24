@@ -125,7 +125,7 @@ func (c indexHandlerChain) toFerry(app *Application, cont *Controller) ferry.Han
 		// create IndexRequest instance from request
 		req, err := ParseIndexRequest(base)
 		if err != nil {
-			return NewErrorResponse(err)
+			return ResponseToFerry(NewErrorResponse(err))
 		}
 
 		// execute handlers
@@ -159,7 +159,7 @@ func (c showHandlerChain) toFerry(app *Application, cont *Controller) ferry.Hand
 		// create ShowRequest instance from request
 		req, err := ParseShowRequest(base)
 		if err != nil {
-			return NewErrorResponse(err)
+			return ResponseToFerry(NewErrorResponse(err))
 		}
 
 		// execute handlers
@@ -193,7 +193,7 @@ func (c createHandlerChain) toFerry(app *Application, cont *Controller) ferry.Ha
 		// create CreateRequest instance from request
 		req, err := ParseCreateRequest(base)
 		if err != nil {
-			return NewErrorResponse(err)
+			return ResponseToFerry(NewErrorResponse(err))
 		}
 
 		// execute handlers
@@ -227,7 +227,7 @@ func (c updateHandlerChain) toFerry(app *Application, cont *Controller) ferry.Ha
 		// create UpdateRequest instance from request
 		req, err := ParseUpdateRequest(base)
 		if err != nil {
-			return NewErrorResponse(err)
+			return ResponseToFerry(NewErrorResponse(err))
 		}
 
 		// execute handlers
@@ -261,7 +261,7 @@ func (c deleteHandlerChain) toFerry(app *Application, cont *Controller) ferry.Ha
 		// create DeleteRequest instance from request
 		req, err := ParseDeleteRequest(base)
 		if err != nil {
-			return NewErrorResponse(err)
+			return ResponseToFerry(NewErrorResponse(err))
 		}
 
 		// execute handlers

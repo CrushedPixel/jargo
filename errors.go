@@ -43,11 +43,6 @@ func (e *ApiError) Payload() (string, error) {
 	return buf.String(), nil
 }
 
-// Body satisfies the ferry.Response interface.
-func (e *ApiError) Response() (int, string) {
-	return ResponseToFerry(e).Response()
-}
-
 // ToErrorObject converts the ApiError to a jsonapi.ErrorObject.
 func (e *ApiError) ToErrorObject() *jsonapi.ErrorObject {
 	u, err := uuid.NewV4()
@@ -81,15 +76,15 @@ func NewApiError(status int, code string, detail string) *ApiError {
 // the error itself is returned.
 // Otherwise, it logs the error as an internal server error
 // and returns ErrInternalServerError.
-func NewErrorResponse(err error) *ApiError {
-	apiError, ok := err.(*ApiError)
+func NewErrorResponse(err error) Response {
+	res, ok := err.(Response)
 	if !ok {
 		// if error is not an api error, return internal server error response
 		println(fmt.Sprintf("Internal server error: %s", err.Error())) // TODO use a proper logging library
-		apiError = ErrInternalServerError
+		res = ErrInternalServerError
 	}
 
-	return apiError
+	return res
 }
 
 // ErrInternalServerError is an ApiError indicating
