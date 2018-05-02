@@ -122,17 +122,20 @@ func parseSchema(t reflect.Type) *Schema {
 	// parse schema name, sql table and sql alias
 	// from struct tag.
 	// default sql alias is the snake_cased struct name.
-	// default name and sql table is the pluralized version
-	// of the alias.
-	// "UserProfile" => "user_profile", "user_profiles"
-	singleName := inflect.Underscore(t.Name())
-	defaultName := inflect.Pluralize(singleName)
-	parsed := parseJargoTagDefaultName(tag, defaultName)
+	// default sql table name is the pluralized version of the sql alias.
+	// default jsonapi name is the dasherized version of the sql table name.
+
+	// "UserProfile" => "user_profile", "user_profiles", "user-profiles"
+	sqlAlias := inflect.Underscore(t.Name())
+	sqlTable := inflect.Pluralize(sqlAlias)
+	jsonapiName := inflect.Dasherize(sqlTable)
+
+	parsed := parseJargoTagDefaultName(tag, jsonapiName)
 
 	schema := &Schema{
 		name:              parsed.Name,
-		table:             parsed.Name,
-		alias:             singleName,
+		table:             sqlTable,
+		alias:             sqlAlias,
 		resourceModelType: t,
 	}
 

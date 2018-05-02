@@ -8,7 +8,7 @@ import (
 )
 
 type nonNullableSlice struct {
-	Id    int64 `jargo:"non_nullable_slices,alias:non_nullable_slice"`
+	Id    int64 `jargo:"non-nullable-slices,table:non_nullable_slices,alias:non_nullable_slice"`
 	Slice []string
 }
 

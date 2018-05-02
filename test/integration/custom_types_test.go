@@ -50,6 +50,6 @@ func TestCustomTypes(t *testing.T) {
 	json, err := resource.ResponseAllFields(inserted).Payload()
 	require.Nil(t, err)
 	require.Equal(t,
-		`{"data":{"type":"custom_type_attributes","id":"1","attributes":{"age":10,"another-nullable-age":null,"nullable-age":15,"slice":["Lorem","Ipsum"],"struct":{"Key":"Hello","Value":"World"}}}}`,
+		`{"data":{"type":"custom-type-attributes","id":"1","attributes":{"age":10,"another-nullable-age":null,"nullable-age":15,"slice":["Lorem","Ipsum"],"struct":{"Key":"Hello","Value":"World"}}}}`,
 		json)
 }

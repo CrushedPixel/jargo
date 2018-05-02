@@ -37,7 +37,7 @@ func TestOneToManyRelations(t *testing.T) {
 	json, err := resourceA.ResponseAllFields(a).Payload()
 	require.Nil(t, err)
 	require.Equal(t,
-		`{"data":{"type":"one_to_many_as","id":"parent","attributes":{"attr":"test"},"relationships":{"bs":{"data":[]}}}}`,
+		`{"data":{"type":"one-to-many-as","id":"parent","attributes":{"attr":"test"},"relationships":{"bs":{"data":[]}}}}`,
 		json)
 
 	// create instance of oneToManyB with relation to a
@@ -53,7 +53,7 @@ func TestOneToManyRelations(t *testing.T) {
 	json, err = resourceB.ResponseAllFields(b).Payload()
 	require.Nil(t, err)
 	require.Equal(t,
-		`{"data":{"type":"one_to_many_bs","id":"1","relationships":{"a":{"data":{"type":"one_to_many_as","id":"parent"}}}}}`,
+		`{"data":{"type":"one-to-many-bs","id":"1","relationships":{"a":{"data":{"type":"one-to-many-as","id":"parent"}}}}}`,
 		json)
 
 	// fetch oneToManyA to update relations
@@ -68,7 +68,7 @@ func TestOneToManyRelations(t *testing.T) {
 	json, err = resourceA.ResponseAllFields(a).Payload()
 	require.Nil(t, err)
 	require.Equal(t,
-		`{"data":{"type":"one_to_many_as","id":"parent","attributes":{"attr":"test"},"relationships":{"bs":{"data":[{"type":"one_to_many_bs","id":"1"}]}}}}`,
+		`{"data":{"type":"one-to-many-as","id":"parent","attributes":{"attr":"test"},"relationships":{"bs":{"data":[{"type":"one-to-many-bs","id":"1"}]}}}}`,
 		json)
 }
 
@@ -100,7 +100,7 @@ func TestOneToManyNullableRelations(t *testing.T) {
 	json, err := resourceB.ResponseAllFields(b).Payload()
 	require.Nil(t, err)
 	require.Equal(t,
-		`{"data":{"type":"one_to_many_nullable_bs","id":"1","relationships":{"a":{"data":null}}}}`,
+		`{"data":{"type":"one-to-many-nullable-bs","id":"1","relationships":{"a":{"data":null}}}}`,
 		json)
 
 	// create instance of oneToManyNullableA
@@ -118,7 +118,7 @@ func TestOneToManyNullableRelations(t *testing.T) {
 	json, err = resourceB.ResponseAllFields(b).Payload()
 	require.Nil(t, err)
 	require.Equal(t,
-		`{"data":{"type":"one_to_many_nullable_bs","id":"1","relationships":{"a":{"data":{"type":"one_to_many_nullable_as","id":"1"}}}}}`,
+		`{"data":{"type":"one-to-many-nullable-bs","id":"1","relationships":{"a":{"data":{"type":"one-to-many-nullable-as","id":"1"}}}}}`,
 		json)
 }
 
@@ -150,7 +150,7 @@ func TestOneToOneRelations(t *testing.T) {
 	json, err := resourceA.ResponseAllFields(a).Payload()
 	require.Nil(t, err)
 	require.Equal(t,
-		`{"data":{"type":"one_to_one_as","id":"1","attributes":{"attr":"test"},"relationships":{"b":{"data":null}}}}`,
+		`{"data":{"type":"one-to-one-as","id":"1","attributes":{"attr":"test"},"relationships":{"b":{"data":null}}}}`,
 		json)
 
 	// create instance of oneToManyB with relation to a
@@ -166,7 +166,7 @@ func TestOneToOneRelations(t *testing.T) {
 	json, err = resourceB.ResponseAllFields(b).Payload()
 	require.Nil(t, err)
 	require.Equal(t,
-		`{"data":{"type":"one_to_one_bs","id":"1","relationships":{"a":{"data":{"type":"one_to_one_as","id":"1"}}}}}`,
+		`{"data":{"type":"one-to-one-bs","id":"1","relationships":{"a":{"data":{"type":"one-to-one-as","id":"1"}}}}}`,
 		json)
 
 	// fetch oneToManyA to update relations
@@ -181,7 +181,7 @@ func TestOneToOneRelations(t *testing.T) {
 	json, err = resourceA.ResponseAllFields(a).Payload()
 	require.Nil(t, err)
 	require.Equal(t,
-		`{"data":{"type":"one_to_one_as","id":"1","attributes":{"attr":"test"},"relationships":{"b":{"data":{"type":"one_to_one_bs","id":"1"}}}}}`,
+		`{"data":{"type":"one-to-one-as","id":"1","attributes":{"attr":"test"},"relationships":{"b":{"data":{"type":"one-to-one-bs","id":"1"}}}}}`,
 		json)
 }
 
@@ -214,7 +214,7 @@ func TestOneToSelfRelations(t *testing.T) {
 		json, err := resource.ResponseAllFields(child).Payload()
 		require.Nil(t, err)
 		require.Equal(t,
-			fmt.Sprintf(`{"data":{"type":"one_to_selves","id":"%d","relationships":{"children":{"data":[]},"parent":{"data":{"type":"one_to_selves","id":"1"}}}}}`, i+2),
+			fmt.Sprintf(`{"data":{"type":"one-to-selves","id":"%d","relationships":{"children":{"data":[]},"parent":{"data":{"type":"one-to-selves","id":"1"}}}}}`, i+2),
 			json)
 	}
 
@@ -229,7 +229,7 @@ func TestOneToSelfRelations(t *testing.T) {
 	json, err := resource.ResponseAllFields(parent).Payload()
 	require.Nil(t, err)
 	require.Equal(t,
-		`{"data":{"type":"one_to_selves","id":"1","relationships":{"children":{"data":[{"type":"one_to_selves","id":"2"},{"type":"one_to_selves","id":"3"},{"type":"one_to_selves","id":"4"},{"type":"one_to_selves","id":"5"},{"type":"one_to_selves","id":"6"}]},"parent":{"data":null}}}}`,
+		`{"data":{"type":"one-to-selves","id":"1","relationships":{"children":{"data":[{"type":"one-to-selves","id":"2"},{"type":"one-to-selves","id":"3"},{"type":"one-to-selves","id":"4"},{"type":"one-to-selves","id":"5"},{"type":"one-to-selves","id":"6"}]},"parent":{"data":null}}}}`,
 		json)
 }
 

@@ -33,6 +33,6 @@ func TestUUIDAttributes(t *testing.T) {
 	json, err := resource.ResponseAllFields(inserted).Payload()
 	require.Nil(t, err)
 	require.Equal(t,
-		fmt.Sprintf(`{"data":{"type":"uuid_attributes","id":"1","attributes":{"nullable-uuid":null,"uuid":"%s"}}}`, uid.String()),
+		fmt.Sprintf(`{"data":{"type":"uuid-attributes","id":"1","attributes":{"nullable-uuid":null,"uuid":"%s"}}}`, uid.String()),
 		json)
 }

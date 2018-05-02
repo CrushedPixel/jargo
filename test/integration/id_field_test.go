@@ -32,7 +32,7 @@ func TestAutoIncrementingIdField(t *testing.T) {
 		json, err := resource.ResponseAllFields(inserted).Payload()
 		require.Nil(t, err)
 		require.Equal(t,
-			fmt.Sprintf(`{"data":{"type":"auto_incrementing_id_fields","id":"%d"}}`, i+1),
+			fmt.Sprintf(`{"data":{"type":"auto-incrementing-id-fields","id":"%d"}}`, i+1),
 			json)
 	}
 }
@@ -59,7 +59,7 @@ func TestUUID_Id(t *testing.T) {
 		json, err := resource.ResponseAllFields(inserted).Payload()
 		require.Nil(t, err)
 		require.Equal(t,
-			fmt.Sprintf(`{"data":{"type":"uuid_id_fields","id":"%s"}}`, inserted.Id),
+			fmt.Sprintf(`{"data":{"type":"uuid-id-fields","id":"%s"}}`, inserted.Id),
 			json)
 	}
 }
