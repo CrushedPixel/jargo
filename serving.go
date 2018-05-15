@@ -31,6 +31,14 @@ func (app *Application) Bridge(f *ferry.Ferry, namespace string) {
 	for resource, controller := range app.controllers {
 		prefix := namespace + "/" + resource.JSONAPIName()
 
+		// register custom routes first, to try and match them
+		// before the catch-all (/{id}) routes
+		for route, handlers := range controller.customHandlers {
+			if len(handlers) > 0 {
+				f.Handle(route.method, prefix+route.path, app.ensureAppRunning, handlers.toFerry(app, controller))
+			}
+		}
+
 		// TODO: use ensureAppRunning as a router-level middleware once ferry#1 is resolved
 		if len(controller.indexHandlers) > 0 {
 			f.GET(prefix, app.ensureAppRunning, controller.indexHandlers.toFerry(app, controller))
@@ -46,12 +54,6 @@ func (app *Application) Bridge(f *ferry.Ferry, namespace string) {
 		}
 		if len(controller.deleteHandlers) > 0 {
 			f.DELETE(prefix+"/{id}", app.ensureAppRunning, controller.deleteHandlers.toFerry(app, controller))
-		}
-
-		for route, handlers := range controller.customHandlers {
-			if len(handlers) > 0 {
-				f.Handle(route.method, prefix+route.path, app.ensureAppRunning, handlers.toFerry(app, controller))
-			}
 		}
 	}
 }
