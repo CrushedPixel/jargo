@@ -115,7 +115,18 @@ func StringToId(id string, typ reflect.Type) interface{} {
 	case encoding.TextMarshaler:
 		// unmarshal value from string
 		val = reflect.New(typ).Elem().Interface()
-		val.(encoding.TextUnmarshaler).UnmarshalText([]byte(id))
+
+		// sometimes, only the pointer type of a type
+		// implements an interface (e.g. *uuid.UUID),
+		// so we have to check whether the type we have
+		// does actually implement the interface
+		if _, ok := val.(encoding.TextUnmarshaler); !ok {
+			val = reflect.New(typ).Interface()
+			val.(encoding.TextUnmarshaler).UnmarshalText([]byte(id))
+			val = reflect.ValueOf(val).Elem().Interface()
+		} else {
+			val.(encoding.TextUnmarshaler).UnmarshalText([]byte(id))
+		}
 	default:
 		panic("invalid id type")
 	}
