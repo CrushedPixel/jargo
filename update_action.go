@@ -33,7 +33,8 @@ func (a *UpdateAction) Handle(req *UpdateRequest) Response {
 	}
 
 	// parse update payload, applying it to existing instance
-	instance, err := req.Resource().ParseJsonapiUpdatePayload(req.Payload(), existing, req.Application().Validate())
+	instance, err := req.Resource().ParseJsonapiUpdatePayload(req.Payload(), existing,
+		req.Application().Validate(), true)
 	if err != nil {
 		return NewErrorResponse(err)
 	}

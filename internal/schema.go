@@ -437,7 +437,12 @@ func (s *Schema) createInstance() *SchemaInstance {
 	return i
 }
 
-func (s *Schema) UnmarshalJsonapiPayload(in io.Reader, resourceModelInstance interface{}, validate *validator.Validate) (interface{}, error) {
+// UnmarshalJsonapiPayload unmarshals a JSON API payload from a Reader into a
+// resource model instance.
+// If mustBeWritable is true, only writable fields are set,
+// otherwise all fields are set to the values in the payload.
+func (s *Schema) UnmarshalJsonapiPayload(in io.Reader, resourceModelInstance interface{}, validate *validator.Validate,
+	mustBeWritable bool) (interface{}, error) {
 	si := s.ParseResourceModel(resourceModelInstance)
 
 	// parse payload into new jsonapi instance
@@ -457,7 +462,7 @@ func (s *Schema) UnmarshalJsonapiPayload(in io.Reader, resourceModelInstance int
 	// applying writable fields from parsed jsonapi model
 	target := s.newResourceModelInstance()
 	for _, fieldInstance := range si.fields {
-		if fieldInstance.parentField().Writable() {
+		if !mustBeWritable || fieldInstance.parentField().Writable() {
 			fieldInstance.parseJsonapiModel(jmi)
 
 			// NOTE: this validates any writable field,

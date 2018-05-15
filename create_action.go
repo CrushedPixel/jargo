@@ -24,7 +24,7 @@ func NewCreateAction() *CreateAction {
 
 func (a *CreateAction) Handle(req *CreateRequest) Response {
 	// parse create payload
-	instance, err := req.Resource().ParseJsonapiPayload(req.Payload(), req.Application().Validate())
+	instance, err := req.Resource().ParseJsonapiPayload(req.Payload(), req.Application().Validate(), true)
 	if err != nil {
 		return NewErrorResponse(err)
 	}

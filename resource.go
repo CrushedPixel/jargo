@@ -45,16 +45,22 @@ func (r *Resource) JSONAPIName() string {
 // into a Resource Model Instance according to the JSON API spec.
 // If validate is not nil, it is used to validate all writable fields.
 // Returns a new Resource Model Instance.
-func (r *Resource) ParseJsonapiPayload(in io.Reader, validate *validator.Validate) (interface{}, error) {
-	return r.ParseJsonapiUpdatePayload(in, r.schema.NewResourceModelInstance(), validate)
+// If writableOnly is true, only fields marked writable are updated and validated.
+func (r *Resource) ParseJsonapiPayload(in io.Reader, validate *validator.Validate,
+	writableOnly bool) (interface{}, error) {
+
+	return r.ParseJsonapiUpdatePayload(in, r.schema.NewResourceModelInstance(), validate, writableOnly)
 }
 
 // ParseJsonapiPayloadString parses a payload string
 // into a Resource Model Instance according to the JSON API spec.
 // If validate is not nil, it is used to validate all writable fields.
 // Returns a new Resource Model Instance.
-func (r *Resource) ParseJsonapiPayloadString(payload string, validate *validator.Validate) (interface{}, error) {
-	return r.ParseJsonapiPayload(strings.NewReader(payload), validate)
+// If writableOnly is true, only fields marked writable are updated and validated.
+func (r *Resource) ParseJsonapiPayloadString(payload string, validate *validator.Validate,
+	writableOnly bool) (interface{}, error) {
+
+	return r.ParseJsonapiPayload(strings.NewReader(payload), validate, writableOnly)
 }
 
 // ParseJsonapiUpdatePayload parses a payload from a reader
@@ -62,8 +68,11 @@ func (r *Resource) ParseJsonapiPayloadString(payload string, validate *validator
 // applying it to an existing Resource Model Instance.
 // If validate is not nil, it is used to validate all writable fields.
 // Returns a new Resource Model Instance.
-func (r *Resource) ParseJsonapiUpdatePayload(in io.Reader, instance interface{}, validate *validator.Validate) (interface{}, error) {
-	instance, err := r.schema.UnmarshalJsonapiPayload(in, instance, validate)
+// If writableOnly is true, only fields marked writable are updated and validated.
+func (r *Resource) ParseJsonapiUpdatePayload(in io.Reader, instance interface{},
+	validate *validator.Validate, writableOnly bool) (interface{}, error) {
+
+	instance, err := r.schema.UnmarshalJsonapiPayload(in, instance, validate, writableOnly)
 	if err != nil {
 		if e, ok := err.(validator.ValidationErrors); ok {
 			return nil, ErrValidationFailed(e)
@@ -78,8 +87,11 @@ func (r *Resource) ParseJsonapiUpdatePayload(in io.Reader, instance interface{},
 // applying it to an existing Resource Model Instance.
 // If validate is not nil, it is used to validate all writable fields.
 // Returns a new Resource Model Instance.
-func (r *Resource) ParseJsonapiUpdatePayloadString(payload string, instance interface{}, validate *validator.Validate) (interface{}, error) {
-	return r.ParseJsonapiUpdatePayload(strings.NewReader(payload), instance, validate)
+// If writableOnly is true, only fields marked writable are updated and validated.
+func (r *Resource) ParseJsonapiUpdatePayloadString(payload string, instance interface{},
+	validate *validator.Validate, writableOnly bool) (interface{}, error) {
+
+	return r.ParseJsonapiUpdatePayload(strings.NewReader(payload), instance, validate, writableOnly)
 }
 
 // Validate validates a Resource Model Instance
