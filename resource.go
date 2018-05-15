@@ -141,8 +141,12 @@ func (r *Resource) InsertCollection(db orm.DB, instances []interface{}) *Query {
 	return r.newQueryFromResourceData(db, typeInsert, true, instances)
 }
 
-func (r *Resource) updateQuery(db orm.DB, collection bool, data interface{}) *Query {
-	q := r.newQueryFromResourceData(db, typeUpdate, collection, data)
+func (r *Resource) updateQuery(db orm.DB, data interface{}) *Query {
+	q := r.newQueryFromResourceData(db, typeUpdate, false, data)
+
+	// the update query requires a where clause
+	q.Where("id = ?id")
+
 	// some values, for example updatedAt attributes are modified on the server,
 	// so the actual values have to be fetched back from the update request.
 	// this should probably be optimized to only fetch values that
@@ -156,15 +160,7 @@ func (r *Resource) updateQuery(db orm.DB, collection bool, data interface{}) *Qu
 //
 // Panics if instance is not a Resource Model Instance.
 func (r *Resource) UpdateInstance(db orm.DB, instance interface{}) *Query {
-	return r.updateQuery(db, false, instance)
-}
-
-// Update returns a new Update Many Query
-// updating the values of the Resource Model Collection provided.
-//
-// Panics if instances is not a Slice of Resource Model Instances.
-func (r *Resource) UpdateCollection(db orm.DB, instances []interface{}) *Query {
-	return r.updateQuery(db, true, instances)
+	return r.updateQuery(db, instance)
 }
 
 // Delete returns a new Delete Query.
