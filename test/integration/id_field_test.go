@@ -61,6 +61,14 @@ func TestUUID_Id(t *testing.T) {
 		require.Equal(t,
 			fmt.Sprintf(`{"data":{"type":"uuid-id-fields","id":"%s"}}`, inserted.Id),
 			json)
+
+		// ensure the instance can be fetched
+		// by the string representation of the UUID id
+		res, err = resource.SelectById(app.DB(), inserted.Id.String()).Result()
+		require.Nil(t, err)
+		require.Equal(t,
+			fmt.Sprintf(`{"data":{"type":"uuid-id-fields","id":"%s"}}`, inserted.Id),
+			json)
 	}
 }
 

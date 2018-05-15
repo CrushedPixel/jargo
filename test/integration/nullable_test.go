@@ -48,18 +48,6 @@ func TestNullableAttributes(t *testing.T) {
 		json)
 }
 
-/* TODO: re-introduce this check when implementing support for non-int64 id fields
-type nullableIdField struct {
-	Id *int64 // this is invalid
-}
-
-// TestNullableIdFields tests the behaviour of nullable id fields (which is invalid).
-func TestNullableIdFields(t *testing.T) {
-	_, err := app.RegisterResource(nullableIdField{})
-	require.EqualError(t, err, "id field must not be nullable")
-}
-*/
-
 type nullableRelation struct {
 	Id       int64
 	Relation *dummy `jargo:",belongsTo"`
