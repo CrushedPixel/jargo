@@ -1,5 +1,11 @@
 package jargo
 
+// UpdateRequestHandlerFunc allows handling of the request object
+// before any other action is taken.
+// If a Response is returned, it is sent to the client,
+// and no further action is taken.
+type UpdateRequestHandlerFunc func(request *UpdateRequest) Response
+
 type UpdatePayloadHandlerFunc func(request *UpdateRequest, payload interface{}) Response
 
 type BeforeUpdateQueryHandlerFunc func(request *UpdateRequest, query *Query) *Query
@@ -12,6 +18,7 @@ type UpdateResultHandlerFunc func(request *UpdateRequest, result interface{}) Re
 // according to the JSON API spec.
 // http://jsonapi.org/format/#crud-updating
 type UpdateAction struct {
+	requestHandler UpdateRequestHandlerFunc
 	payloadHandler UpdatePayloadHandlerFunc
 	beforeQuery    BeforeUpdateQueryHandlerFunc
 	resultHandler  UpdateResultHandlerFunc
@@ -23,6 +30,13 @@ func NewUpdateAction() *UpdateAction {
 }
 
 func (a *UpdateAction) Handle(req *UpdateRequest) Response {
+	// if set, apply request handler
+	if a.requestHandler != nil {
+		if res := a.requestHandler(req); res != nil {
+			return res
+		}
+	}
+
 	// fetch existing resource from database
 	existing, err := req.Resource().SelectById(req.DB(), req.ResourceId()).Result()
 	if err != nil {
@@ -70,6 +84,12 @@ func (a *UpdateAction) Handle(req *UpdateRequest) Response {
 
 	// default result handling
 	return req.Resource().Response(result, req.Fields())
+}
+
+// UpdateRequestHandlerFunc sets the UpdateRequestHandlerFunc
+// to be applied, replacing the existing handler function.
+func (a *UpdateAction) UpdateRequestHandlerFunc(f UpdateRequestHandlerFunc) {
+	a.requestHandler = f
 }
 
 // BeforeQueryHandlerFunc sets the BeforeUpdateQueryHandlerFunc

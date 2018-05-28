@@ -1,5 +1,11 @@
 package jargo
 
+// CreateRequestHandlerFunc allows handling of the request object
+// before any other action is taken.
+// If a Response is returned, it is sent to the client,
+// and no further action is taken.
+type CreateRequestHandlerFunc func(request *CreateRequest) Response
+
 // CreatePayloadHandlerFunc allows control over the resource instance the user is creating.
 // The instance parsed from the request payload is replaced with the instance
 // returned by the handler.
@@ -17,6 +23,7 @@ type CreateResultHandlerFunc func(request *CreateRequest, result interface{}) Re
 // according to the JSON API spec.
 // http://jsonapi.org/format/#crud-creating
 type CreateAction struct {
+	requestHandler CreateRequestHandlerFunc
 	payloadHandler CreatePayloadHandlerFunc
 	beforeQuery    BeforeCreateQueryHandlerFunc
 	resultHandler  CreateResultHandlerFunc
@@ -28,6 +35,13 @@ func NewCreateAction() *CreateAction {
 }
 
 func (a *CreateAction) Handle(req *CreateRequest) Response {
+	// if set, apply request handler
+	if a.requestHandler != nil {
+		if res := a.requestHandler(req); res != nil {
+			return res
+		}
+	}
+
 	// parse create payload
 	instance, err := req.Resource().ParseJsonapiPayload(req.Payload(), req.Application().Validate(), true)
 	if err != nil {
@@ -66,6 +80,12 @@ func (a *CreateAction) Handle(req *CreateRequest) Response {
 
 	// default result handling
 	return req.Resource().Response(result, req.Fields())
+}
+
+// CreateRequestHandlerFunc sets the CreateRequestHandlerFunc
+// to be applied, replacing the existing handler function.
+func (a *CreateAction) CreateRequestHandlerFunc(f CreateRequestHandlerFunc) {
+	a.requestHandler = f
 }
 
 // CreatePayloadHandlerFunc sets the CreatePayloadHandlerFunc

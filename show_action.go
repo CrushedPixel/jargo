@@ -1,5 +1,11 @@
 package jargo
 
+// ShowRequestHandlerFunc allows handling of the request object
+// before any other action is taken.
+// If a Response is returned, it is sent to the client,
+// and no further action is taken.
+type ShowRequestHandlerFunc func(request *ShowRequest) Response
+
 type BeforeShowQueryHandlerFunc func(request *ShowRequest, query *Query) *Query
 
 type ShowResultHandlerFunc func(request *ShowRequest, result interface{}) Response
@@ -10,8 +16,9 @@ type ShowResultHandlerFunc func(request *ShowRequest, result interface{}) Respon
 // according to the JSON API spec.
 // http://jsonapi.org/format/#fetching
 type ShowAction struct {
-	beforeQuery   BeforeShowQueryHandlerFunc
-	resultHandler ShowResultHandlerFunc
+	requestHandler ShowRequestHandlerFunc
+	beforeQuery    BeforeShowQueryHandlerFunc
+	resultHandler  ShowResultHandlerFunc
 }
 
 // NewShowAction creates a new default ShowAction instance.
@@ -20,6 +27,13 @@ func NewShowAction() *ShowAction {
 }
 
 func (a *ShowAction) Handle(req *ShowRequest) Response {
+	// if set, apply request handler
+	if a.requestHandler != nil {
+		if res := a.requestHandler(req); res != nil {
+			return res
+		}
+	}
+
 	// create show query
 	q := req.Resource().SelectById(req.DB(), req.ResourceId()).
 		Fields(req.Fields())
@@ -47,6 +61,12 @@ func (a *ShowAction) Handle(req *ShowRequest) Response {
 		return ErrNotFound
 	}
 	return req.Resource().Response(result, req.Fields())
+}
+
+// ShowRequestHandlerFunc sets the ShowRequestHandlerFunc
+// to be applied, replacing the existing handler function.
+func (a *ShowAction) ShowRequestHandlerFunc(f ShowRequestHandlerFunc) {
+	a.requestHandler = f
 }
 
 // BeforeQueryHandlerFunc sets the BeforeShowQueryHandlerFunc
