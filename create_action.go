@@ -1,6 +1,11 @@
 package jargo
 
-type CreatePayloadHandlerFunc func(request *CreateRequest, payload interface{}) Response
+// CreatePayloadHandlerFunc allows control over the resource instance the user is creating.
+// The instance parsed from the request payload is replaced with the instance
+// returned by the handler.
+// If a Response is returned, it is immediately sent to the client,
+// and the resource instance is not created.
+type CreatePayloadHandlerFunc func(request *CreateRequest, payload interface{}) (interface{}, Response)
 
 type BeforeCreateQueryHandlerFunc func(request *CreateRequest, query *Query) *Query
 
@@ -31,7 +36,8 @@ func (a *CreateAction) Handle(req *CreateRequest) Response {
 
 	// if set, apply payload handler
 	if a.payloadHandler != nil {
-		if res := a.payloadHandler(req, instance); res != nil {
+		var res Response
+		if instance, res = a.payloadHandler(req, instance); res != nil {
 			return res
 		}
 	}
@@ -60,6 +66,13 @@ func (a *CreateAction) Handle(req *CreateRequest) Response {
 
 	// default result handling
 	return req.Resource().Response(result, req.Fields())
+}
+
+// CreatePayloadHandlerFunc sets the CreatePayloadHandlerFunc
+// to be applied after parsing the resource instance
+// created by the user, replacing the existing handler function.
+func (a *CreateAction) CreatePayloadHandlerFunc(f CreatePayloadHandlerFunc) {
+	a.payloadHandler = f
 }
 
 // BeforeQueryHandlerFunc sets the BeforeCreateQueryHandlerFunc
