@@ -1,6 +1,7 @@
 package jargo
 
 import (
+	"context"
 	"github.com/crushedpixel/ferry"
 	"github.com/crushedpixel/http_bridge"
 	"net/http"
@@ -66,12 +67,29 @@ func (app *Application) ToFerry(namespace string) *ferry.Ferry {
 	return f
 }
 
-// ServeHTTP serves the Application via HTTP under the given namespace.
+// ServeHTTP serves the Application via HTTP under the given namespace until ctx is done.
 // This is a blocking method.
-func (app *Application) ServeHTTP(addr string, namespace string) error {
+func (app *Application) ServeHTTP(addr string, namespace string, ctx context.Context) error {
 	mux := http.NewServeMux()
 	http_bridge.BridgeRoot(app.ToFerry(namespace), mux)
-	app.Start()
-	defer app.Release()
-	return http.ListenAndServe(addr, mux)
+
+	errorChan := make(chan error, 1)
+
+	go func() {
+		app.Run(ctx)
+	}()
+
+	server := &http.Server{Addr: addr, Handler: mux}
+	go func() {
+		if err := server.ListenAndServe(); err != nil {
+			errorChan <- err
+		}
+	}()
+
+	select {
+	case err := <-errorChan:
+		return err
+	case <-ctx.Done():
+		return nil
+	}
 }

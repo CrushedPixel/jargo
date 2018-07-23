@@ -1,6 +1,7 @@
 package jargo
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,7 +24,7 @@ const (
 
 var (
 	errRealtimeAlreadyRunning = errors.New("realtime instance is already running")
-	errRealtimeNotRunning     = errors.New("realtime instance must be started to be able to handle http requests")
+	errRealtimeNotRunning     = errors.New("realtime instance must be running to be able to handle http requests")
 )
 
 // triggerFunctionQuery is a query creating a trigger function
@@ -152,10 +153,6 @@ type Realtime struct {
 	// all sockets that have just connected are written.
 	connectingSockets chan *glue.Socket
 
-	// release is the channel that signals internal goroutines
-	// to finish execution when closed.
-	release chan *struct{}
-
 	// running indicates whether the Realtime instance
 	// is currently able to handle requests.
 	running bool
@@ -219,18 +216,14 @@ func (r *Realtime) Bridge(mux *http.ServeMux) {
 	mux.Handle(r.namespace, r)
 }
 
-// Start prepares the Realtime instance to handle incoming requests.
+// Run starts handling incoming requests.
 // This must be called before serving the Realtime instance.
-//
-// After handling is done, Release should be called to stop all internal
-// goroutines.
-func (r *Realtime) Start() error {
+func (r *Realtime) Run(ctx context.Context) error {
 	if r.running {
 		panic(errRealtimeAlreadyRunning)
 	}
 
 	r.running = true
-	r.release = make(chan *struct{}, 0)
 
 	// initialize glue server
 	s := glue.NewServer(glue.Options{
@@ -260,27 +253,19 @@ func (r *Realtime) Start() error {
 	// create notification channel
 	notificationChannel := r.app.DB().Listen(realtimeNotificationChannelName).Channel()
 
-	go r.handleConnectingSockets()
-	go r.handleRowUpdates(notificationChannel)
-	return nil
-}
+	go r.handleConnectingSockets(ctx)
+	go r.handleRowUpdates(notificationChannel, ctx)
 
-// Release stops all internal goroutines.
-// Should be called after serving is done.
-func (r *Realtime) Release() {
-	if !r.running {
-		panic(errRealtimeNotRunning)
-	}
-	r.Server.Release()
-	close(r.release)
-	r.running = false
+	// wait until context is finished and return
+	<-ctx.Done()
+	return nil
 }
 
 func (r *Realtime) onNewSocket(s *glue.Socket) {
 	r.connectingSockets <- s
 }
 
-func (r *Realtime) handleConnectingSockets() {
+func (r *Realtime) handleConnectingSockets(ctx context.Context) {
 	for {
 		select {
 		case socket := <-r.connectingSockets:
@@ -301,14 +286,13 @@ func (r *Realtime) handleConnectingSockets() {
 			}
 
 			r.initSocketConnection(socket)
-		case <-r.release:
-			// closing the release channel escapes the for loop
+		case <-ctx.Done():
 			return
 		}
 	}
 }
 
-func (r *Realtime) handleRowUpdates(channel <-chan *pg.Notification) {
+func (r *Realtime) handleRowUpdates(channel <-chan *pg.Notification, ctx context.Context) {
 	for {
 		select {
 		case notification := <-channel:
@@ -446,8 +430,7 @@ func (r *Realtime) handleRowUpdates(channel <-chan *pg.Notification) {
 			}
 
 			break
-		case <-r.release:
-			// closing the release channel escapes the for loop
+		case <-ctx.Done():
 			return
 		}
 	}

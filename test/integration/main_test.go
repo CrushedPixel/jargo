@@ -3,6 +3,7 @@
 package integration
 
 import (
+	"context"
 	"flag"
 	"github.com/crushedpixel/jargo"
 	"github.com/go-pg/pg"
@@ -67,8 +68,7 @@ func TestMain(m *testing.M) {
 	}
 
 	// drop entire database
-	_, err = db.Exec(clearQuery)
-	if err != nil {
+	if _, err = db.Exec(clearQuery); err != nil {
 		panic(err)
 	}
 
@@ -76,8 +76,11 @@ func TestMain(m *testing.M) {
 		DB: db,
 	})
 
-	app.Start()
-	defer app.Release()
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	defer cancelCtx()
+	go func() {
+		app.Run(ctx)
+	}()
 
 	dummyResource = app.MustRegisterResource(dummy{})
 	res, err := dummyResource.InsertInstance(app.DB(), &dummy{}).Result()

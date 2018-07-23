@@ -19,6 +19,29 @@ type expireNotificationPayload struct {
 	Interval float64 `json:"interval"`
 }
 
+// resourceExpirers handles multiple resource expirers.
+type resourceExpirers struct {
+	app *Application
+	ctx context.Context
+}
+
+func newResourceExpirers(app *Application, ctx context.Context) *resourceExpirers {
+	return &resourceExpirers{
+		app: app,
+		ctx: ctx,
+	}
+}
+
+func (e *resourceExpirers) addExpirer(resource *Resource) {
+	select {
+	case <-e.ctx.Done():
+		panic("context is already done")
+	default:
+	}
+
+	runResourceExpirer(e.ctx, e.app, resource)
+}
+
 // resourceExpirer is responsible for expiring
 // a Resource's records.
 type resourceExpirer struct {
@@ -42,8 +65,8 @@ type resourceExpirer struct {
 	cancel context.CancelFunc
 }
 
-// newResourceExpirer creates and starts a new resourceExpirer.
-func newResourceExpirer(ctx context.Context, app *Application, resource *Resource) *resourceExpirer {
+// runResourceExpirer creates and starts a new resourceExpirer.
+func runResourceExpirer(ctx context.Context, app *Application, resource *Resource) *resourceExpirer {
 	e := &resourceExpirer{
 		app:    app,
 		table:  resource.schema.Table(),

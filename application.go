@@ -12,7 +12,7 @@ import (
 var (
 	errNoResponse        = errors.New("the last HandlerFunc returned a nil Response")
 	errAppAlreadyRunning = errors.New("application is already running")
-	errAppNotRunning     = errors.New("application must be started to be able to handle http requests")
+	errAppNotRunning     = errors.New("application must be running to be able to handle http requests")
 )
 
 // Application is the central component of jargo.
@@ -30,15 +30,11 @@ type Application struct {
 	maxPageSize          int
 	validate             *validator.Validate
 
-	// ctx is the Context bound to the Application's goroutines.
-	ctx context.Context
-	// cancel is the CancelFunc to call to release
-	// the Application's goroutines.
-	cancel context.CancelFunc
-
 	// running indicates whether the Application
 	// is currently able to handle requests.
 	running bool
+
+	resourceExpirers *resourceExpirers
 }
 
 // NewApplication returns a new Application
@@ -102,7 +98,7 @@ func (app *Application) RegisterResource(model interface{}) (*Resource, error) {
 			// if needed
 			if app.running {
 				if ef := resource.schema.ExpireField(); ef != nil {
-					newResourceExpirer(app.ctx, app, resource)
+					app.resourceExpirers.addExpirer(resource)
 				}
 			}
 
@@ -123,34 +119,25 @@ func (app *Application) MustRegisterResource(model interface{}) *Resource {
 	return r
 }
 
-// Start prepares the Application to handle incoming requests.
+// Run handles incoming requests until ctx is done.
 // This must be called before serving the Application.
-//
-// After handling is done, Release should be called to stop all internal
-// goroutines.
-func (app *Application) Start() {
+// This is a blocking operation.
+func (app *Application) Run(ctx context.Context) {
 	if app.running {
 		panic(errAppAlreadyRunning)
 	}
 
 	app.running = true
+	app.resourceExpirers = newResourceExpirers(app, ctx)
 
-	app.ctx, app.cancel = context.WithCancel(context.Background())
 	// start a resource expirer for all registered resources
 	// that have an expire field
 	for _, r := range app.resources {
 		if ef := r.schema.ExpireField(); ef != nil {
-			newResourceExpirer(app.ctx, app, r)
+			app.resourceExpirers.addExpirer(r)
 		}
 	}
-}
 
-// Release stops all internal goroutines.
-// Should be called after serving is done.
-func (app *Application) Release() {
-	if !app.running {
-		panic(errAppNotRunning)
-	}
-	app.cancel()
-	app.running = false
+	// wait until context is done
+	<-ctx.Done()
 }
