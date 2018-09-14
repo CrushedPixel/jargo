@@ -85,6 +85,10 @@ const (
 	// if Realtime.HandleConnection returns false.
 	msgConnectionDisallowed = "CONNECTION_DISALLOWED"
 
+	// msgConnectionAccepted is sent to the client
+	// after the connection was accepted.
+	msgConnectionAccepted = "CONNECTION_ACCEPTED"
+
 	subscribeChannelName = "subscribe"
 	deletedChannelName   = "deleted"
 	updatedChannelName   = "updated"
@@ -285,6 +289,7 @@ func (r *Realtime) handleConnectingSockets(ctx context.Context) {
 				break
 			}
 
+			socket.Write(msgConnectionAccepted)
 			r.initSocketConnection(socket)
 		case <-ctx.Done():
 			return
@@ -346,7 +351,7 @@ func (r *Realtime) handleRowUpdates(channel <-chan *pg.Notification, ctx context
 							for _, id := range ids {
 								stringIds = append(stringIds, internal.IdToString(id))
 							}
-							updated[res] = stringIds
+							updated[res] = append(updated[res], stringIds...)
 						}
 					}
 				}
