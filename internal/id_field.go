@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"encoding"
 	"errors"
 	"fmt"
 	"gopkg.in/go-playground/validator.v9"
@@ -20,11 +19,22 @@ const (
 	IdFieldJsonapiName = "id"
 )
 
+type FieldKind int
+
+const (
+	primitive FieldKind = iota
+	uuid
+	textMarshaler
+)
+
 // implements field
 type idField struct {
 	schema *Schema
 
 	fieldType reflect.Type
+
+	// the kind of the id field
+	kind FieldKind
 
 	jsonapiF []reflect.StructField
 	pgF      []reflect.StructField
@@ -36,10 +46,11 @@ func newIdField(schema *Schema, f *reflect.StructField) SchemaField {
 		fieldType: f.Type,
 	}
 
-	valid := isValidIdField(idf.fieldType)
+	valid, kind := isValidIdField(idf.fieldType)
 	if !valid {
 		panic(errInvalidIdType)
 	}
+	idf.kind = kind
 
 	// generate jsonapi and pg attribute fields
 	idf.jsonapiF = idf.jsonapiIdFields()
@@ -47,7 +58,7 @@ func newIdField(schema *Schema, f *reflect.StructField) SchemaField {
 
 	// wrap id fields with uuid type in uuidIdField
 	// for afterCreateTable hook
-	if isUUIDField(idf.fieldType) {
+	if kind == uuid {
 		return &uuidIdField{idf}
 	}
 
@@ -55,14 +66,25 @@ func newIdField(schema *Schema, f *reflect.StructField) SchemaField {
 }
 
 // isValidIdField returns whether typ is a valid type for an id field.
-func isValidIdField(typ reflect.Type) bool {
-	switch reflect.New(typ).Elem().Interface().(type) {
+func isValidIdField(typ reflect.Type) (bool, FieldKind) {
+	i := reflect.New(typ).Elem().Interface()
+
+	switch i.(type) {
 	case string, int, int8, int16, int32, int64, uint, uint8, uint16,
-		uint32, uint64, encoding.TextMarshaler, encoding.TextUnmarshaler:
-		return true
-	default:
-		return false
+		uint32, uint64:
+		return true, primitive
 	}
+
+	if (isTextMarshaler(typ) || pointerTypeIsTextMarshaler(typ)) &&
+		(isTextUnmarshaler(typ) || pointerTypeIsTextUnmarshaler(typ)) {
+		kind := textMarshaler
+		if isUUIDField(typ) {
+			kind = uuid
+		}
+		return true, kind
+	}
+
+	return false, 0
 }
 
 func (f *idField) jsonapiIdFields() []reflect.StructField {
@@ -88,14 +110,21 @@ func (f *idField) pgIdFields() []reflect.StructField {
 	}
 
 	pgTag := fmt.Sprintf(`sql:"%s,pk`, IdFieldColumn)
-	if isUUIDField(f.fieldType) {
+	if f.kind == uuid {
 		pgTag += `,type:uuid,default:uuid_generate_v4()`
 	}
+
+	typ := f.fieldType
+	if f.kind == textMarshaler {
+		// text marshaler types have to be stored as strings
+		typ = reflect.TypeOf("")
+	}
+
 	pgTag += `"`
 
 	idField := reflect.StructField{
 		Name: idFieldName,
-		Type: f.fieldType,
+		Type: typ,
 		Tag:  reflect.StructTag(pgTag),
 	}
 
@@ -235,36 +264,37 @@ func (i *idFieldInstance) parsePGModel(instance *pgModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	i.parse(instance.value)
+	i.parsePG(instance.value)
 }
 
 func (i *idFieldInstance) applyToPGModel(instance *pgModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	i.apply(instance.value)
+	i.applyPG(instance.value)
 }
 
 func (i *idFieldInstance) parseJoinPGModel(instance *joinPGModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	i.parse(instance.value)
+	i.parsePG(instance.value)
 }
 
 func (i *idFieldInstance) applyToJoinPGModel(instance *joinPGModelInstance) {
 	if i.field.schema != instance.schema {
 		panic(errMismatchingSchema)
 	}
-	i.apply(instance.value)
+	i.applyPG(instance.value)
 }
 
 // the id field is named "Id" in every representation,
 // so the value of that field can be copied in any case.
 func (i *idFieldInstance) parse(v *reflect.Value) {
-	if !v.IsNil() {
-		i.value = v.Elem().FieldByName(idFieldName).Interface()
+	if v.IsNil() {
+		panic(errNilPointer)
 	}
+	i.value = v.Elem().FieldByName(idFieldName).Interface()
 }
 
 func (i *idFieldInstance) apply(v *reflect.Value) {
@@ -276,7 +306,7 @@ func (i *idFieldInstance) apply(v *reflect.Value) {
 
 func (i *idFieldInstance) parseJsonapi(v *reflect.Value) {
 	if v.IsNil() {
-		return
+		panic(errNilPointer)
 	}
 	i.value = StringToId(v.Elem().FieldByName(idFieldName).String(), i.field.fieldType)
 }
@@ -286,4 +316,30 @@ func (i *idFieldInstance) applyJsonapi(v *reflect.Value) {
 		panic(errNilPointer)
 	}
 	v.Elem().FieldByName(idFieldName).SetString(IdToString(i.value))
+}
+
+func (i *idFieldInstance) parsePG(v *reflect.Value) {
+	if v.IsNil() {
+		panic(errNilPointer)
+	}
+
+	if i.field.kind == textMarshaler {
+		// unmarshal the PG field's string value into the appropiate type
+		i.value = StringToTextUnmarshaler(v.Elem().FieldByName(idFieldName).String(), i.field.fieldType)
+	} else {
+		i.value = v.Elem().FieldByName(idFieldName).Interface()
+	}
+}
+
+func (i *idFieldInstance) applyPG(v *reflect.Value) {
+	if v.IsNil() {
+		panic(errNilPointer)
+	}
+
+	if i.field.kind == textMarshaler {
+		// marshal the id field's value into a string
+		v.Elem().FieldByName(idFieldName).SetString(IdToString(i.value))
+	} else {
+		v.Elem().FieldByName(idFieldName).Set(reflect.ValueOf(i.value))
+	}
 }

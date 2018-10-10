@@ -3,7 +3,9 @@
 package integration
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/json-iterator/go"
 	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -70,6 +72,58 @@ func TestUUID_Id(t *testing.T) {
 			fmt.Sprintf(`{"data":{"type":"uuid-id-fields","id":"%s"}}`, inserted.Id),
 			json)
 	}
+}
+
+type MarshalerType struct {
+	A string
+	B int
+	C bool
+}
+
+func (m *MarshalerType) MarshalText() ([]byte, error) {
+	return json.Marshal(*m)
+}
+
+func (m *MarshalerType) UnmarshalText(text []byte) error {
+	// we can't use encoding/json here directly.
+	// see https://github.com/golang/go/issues/28119
+	it := jsoniter.ParseBytes(jsoniter.ConfigDefault, text)
+
+	it.ReadObject()
+	m.A = it.ReadString()
+	it.ReadObject()
+	m.B = it.ReadInt()
+	it.ReadObject()
+	m.C = it.ReadBool()
+	return it.Error
+}
+
+type marshalerIdField struct {
+	Id MarshalerType
+}
+
+func TestTextMarshalerIdFields(t *testing.T) {
+	resource, err := app.RegisterResource(marshalerIdField{})
+	require.Nil(t, err)
+
+	_, err = resource.InsertInstance(app.DB(), &marshalerIdField{
+		Id: MarshalerType{
+			A: "hello world",
+			B: 10,
+			C: true,
+		},
+	}).Result()
+	require.Nil(t, err)
+
+	res, err := resource.Select(app.DB()).Result()
+	require.Nil(t, err)
+
+	values := res.([]*marshalerIdField)
+	require.Equal(t, 1, len(values))
+
+	require.Equal(t, "hello world", values[0].Id.A)
+	require.Equal(t, 10, values[0].Id.B)
+	require.Equal(t, true, values[0].Id.C)
 }
 
 type invalidIdFieldA struct {

@@ -70,65 +70,89 @@ type (
 
 // IdToString converts an id value into its string representation.
 func IdToString(id interface{}) string {
-	var str string
-
-	switch i := id.(type) {
-	case string:
-		str = id.(string)
-	case int, int8, int16, int32, int64:
-		str = strconv.FormatInt(reflect.ValueOf(id).Int(), 10)
-	case uint, uint8, uint16, uint32, uint64:
-		str = strconv.FormatUint(reflect.ValueOf(id).Uint(), 10)
-	case encoding.TextMarshaler:
-		b, err := i.MarshalText()
+	typ := reflect.TypeOf(id)
+	if isTextMarshaler(typ) {
+		b, err := id.(encoding.TextMarshaler).MarshalText()
 		if err != nil {
 			panic(err)
 		}
-		str = string(b)
+		return string(b)
+	} else if pointerTypeIsTextMarshaler(typ) {
+		i := reflect.New(typ)
+		i.Elem().Set(reflect.ValueOf(id))
+
+		b, err := i.Interface().(encoding.TextMarshaler).MarshalText()
+		if err != nil {
+			panic(err)
+		}
+		return string(b)
+	}
+
+	switch id.(type) {
+	case string:
+		return id.(string)
+	case int, int8, int16, int32, int64:
+		return strconv.FormatInt(reflect.ValueOf(id).Int(), 10)
+	case uint, uint8, uint16, uint32, uint64:
+		return strconv.FormatUint(reflect.ValueOf(id).Uint(), 10)
 	default:
 		panic("invalid id type")
 	}
-
-	return str
 }
 
 // StringToId converts the string representation of an id
 // into the target type.
 func StringToId(id string, typ reflect.Type) interface{} {
-	var val interface{}
+	if isTextUnmarshaler(typ) || pointerTypeIsTextUnmarshaler(typ) {
+		// unmarshal value from string
+		return StringToTextUnmarshaler(id, typ)
+	}
 
 	switch reflect.New(typ).Elem().Interface().(type) {
 	case string:
-		val = id
+		return id
 	case int, int8, int16, int32, int64:
-		var err error
-		val, err = strconv.ParseInt(id, 10, 0)
+		val, err := strconv.ParseInt(id, 10, 0)
 		if err != nil {
 			panic(err)
 		}
+		return val
 	case uint, uint8, uint16, uint32, uint64:
-		var err error
-		val, err = strconv.ParseUint(id, 10, 0)
+		val, err := strconv.ParseUint(id, 10, 0)
 		if err != nil {
 			panic(err)
 		}
-	case encoding.TextMarshaler:
-		// unmarshal value from string
-		val = reflect.New(typ).Elem().Interface()
-
-		// sometimes, only the pointer type of a type
-		// implements an interface (e.g. *uuid.UUID),
-		// so we have to check whether the type we have
-		// does actually implement the interface
-		if _, ok := val.(encoding.TextUnmarshaler); !ok {
-			val = reflect.New(typ).Interface()
-			val.(encoding.TextUnmarshaler).UnmarshalText([]byte(id))
-			val = reflect.ValueOf(val).Elem().Interface()
-		} else {
-			val.(encoding.TextUnmarshaler).UnmarshalText([]byte(id))
-		}
+		return val
 	default:
 		panic("invalid id type")
+	}
+}
+
+// StringToTextUnmarshaler converts a string to an instance
+// of the given type, whose pointer type or itself
+// must implement encoding.TextMarshaler.
+func StringToTextUnmarshaler(id string, typ reflect.Type) interface{} {
+	// create a new instance of the unmarshaler type
+	val := reflect.New(typ).Elem().Interface()
+
+	// sometimes, only the pointer type of a type
+	// implements an interface (e.g. *uuid.UUID),
+	// so we have to check whether the type we have
+	// does actually implement the interface,
+	// or whether whe have to operate on the pointer.
+
+	if isTextUnmarshaler(typ) {
+		if err := val.(encoding.TextUnmarshaler).UnmarshalText([]byte(id)); err != nil {
+			panic(err)
+		}
+	} else if pointerTypeIsTextUnmarshaler(typ) {
+		val = reflect.New(typ).Interface()
+		if err := val.(encoding.TextUnmarshaler).UnmarshalText([]byte(id)); err != nil {
+			panic(err)
+		}
+		val = reflect.ValueOf(val).Elem().Interface()
+	} else {
+		panic("typ is not an encoding.TextUnmarshaler")
 	}
 
 	return val

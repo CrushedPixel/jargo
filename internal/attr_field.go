@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"encoding"
 	"errors"
 	"fmt"
 	"github.com/c9s/inflect"
@@ -284,6 +285,50 @@ func isUUIDField(typ reflect.Type) bool {
 		typ.Kind() == reflect.Array &&
 		typ.Elem().Kind() == reflect.Uint8 && // byte is an alias for uint8
 		typ.Len() == 16
+}
+
+// isTextMarshaler returns whether typ
+// implements encoding.TextMarshaler.
+func isTextMarshaler(typ reflect.Type) bool {
+	switch reflect.New(typ).Elem().Interface().(type) {
+	case encoding.TextMarshaler:
+		return true
+	}
+
+	return false
+}
+
+// pointerTypeIsTextMarshaler returns whether typ's pointer type
+// implements encoding.TextMarshaler.
+func pointerTypeIsTextMarshaler(typ reflect.Type) bool {
+	switch reflect.New(typ).Interface().(type) {
+	case encoding.TextMarshaler:
+		return true
+	}
+
+	return false
+}
+
+// isTextUnmarshaler returns whether typ
+// implements encoding.TextUnmarshaler.
+func isTextUnmarshaler(typ reflect.Type) bool {
+	switch reflect.New(typ).Elem().Interface().(type) {
+	case encoding.TextUnmarshaler:
+		return true
+	}
+
+	return false
+}
+
+// pointerTypeIsTextUnmarshaler returns whether typ's pointer type
+// implements encoding.TextUnmarshaler.
+func pointerTypeIsTextUnmarshaler(typ reflect.Type) bool {
+	switch reflect.New(typ).Interface().(type) {
+	case encoding.TextUnmarshaler:
+		return true
+	}
+
+	return false
 }
 
 type attrFieldInstance struct {
