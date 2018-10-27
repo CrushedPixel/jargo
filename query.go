@@ -7,6 +7,7 @@ import (
 	"github.com/mohae/deepcopy"
 	"net/http"
 	"reflect"
+	"regexp"
 )
 
 var (
@@ -338,6 +339,8 @@ func (q *Query) execute() {
 	}
 }
 
+var constraintSuffixRegex = regexp.MustCompile(`_([^_]+)?\z`)
+
 // pgErrToApiErr returns descriptive ApiError instances
 // for specific pg.Error types. For unexpected errors,
 // it returns the error itself.
@@ -349,10 +352,11 @@ func (q *Query) pgErrToApiErr(pgErr pg.Error) error {
 	case "23505": // unique_violation
 		// parse constraint name to get column name
 		constraint := pgErr.Field('n')
-		// unique constraint is always in the format "table_column_key",
+		// unique constraint is always in the format "table_column_suffix",
 		// so we can strip away the table name and following underscore
-		// from the start, and _key from the end
-		column := constraint[len(q.resource.schema.Table())+1 : len(constraint)-len("_key")]
+		// from the start, and _suffix from the end
+		column := constraint[len(q.resource.schema.Table())+1:]
+		column = constraintSuffixRegex.ReplaceAllString(column, "")
 
 		// get json api field name for column
 		var field string
