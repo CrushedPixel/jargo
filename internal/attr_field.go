@@ -16,7 +16,6 @@ const validationTag = "validate"
 var (
 	errJsonapiOptionOnUnexportedField = errors.New("jsonapi-related option on unexported field")
 	errInvalidColumnName              = errors.New("column name may only consist of [0-9,a-z,A-Z$_]")
-	errNonNullableTypeDefault         = errors.New(`"default" option may only be used on pointer types`)
 	errNotnullWithoutDefault          = errors.New(`"notnull" option may only be used in conjunction with the "default" option. use a primitive type instead`)
 
 	errCreatedAtDefaultForbidden = errors.New(`"default" option may not be used in conjunction with "createdAt""`)
@@ -69,12 +68,6 @@ func newAttrField(schema *Schema, f *reflect.StructField) SchemaField {
 
 	// parse default option
 	if value, ok := parsed.Options[optionDefault]; ok {
-		if !isNullable(field.fieldType) {
-			// a default value may only be set for
-			// pointer types, to avoid zero values
-			// being omitted by go-pg (go-pg#790)
-			panic(errNonNullableTypeDefault)
-		}
 		field.sqlDefault = value
 	}
 

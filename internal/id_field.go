@@ -17,6 +17,10 @@ var (
 const (
 	IdFieldColumn      = "id"
 	IdFieldJsonapiName = "id"
+
+	// the name of the field containing
+	// table information in the pg struct tag
+	pgTableNameFieldName = "TableName"
 )
 
 type FieldKind int
@@ -103,7 +107,7 @@ func (f *idField) jsonapiIdFields() []reflect.StructField {
 
 func (f *idField) pgIdFields() []reflect.StructField {
 	tableNameField := reflect.StructField{
-		Name: "TableName",
+		Name: pgTableNameFieldName,
 		Type: emptyStructType,
 		// quote table name and alias as go-pg doesn't do it for aliases
 		Tag: reflect.StructTag(fmt.Sprintf(`sql:"\"%s\",alias:\"%s\""`, f.schema.table, f.schema.alias)),

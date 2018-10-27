@@ -24,18 +24,6 @@ func TestDefaultValues(t *testing.T) {
 	require.Equal(t, "John Doe", *inserted.Name)
 }
 
-type defaultOnNonPointer struct {
-	Id   int64
-	Name string `jargo:",default:'John Doe'"`
-}
-
-// TestDefaultOnNonPointer asserts that the default option is not
-// allowed on non-pointer types.
-func TestDefaultOnNonPointer(t *testing.T) {
-	_, err := app.RegisterResource(defaultOnNonPointer{})
-	require.EqualError(t, err, `"default" option may only be used on pointer types`)
-}
-
 type notnullWithoutDefault struct {
 	Id   int64
 	Name *string `jargo:",notnull"`

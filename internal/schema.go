@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/go-pg/pg"
-	"github.com/go-pg/pg/orm"
 	"github.com/google/jsonapi"
 	"gopkg.in/go-playground/validator.v9"
 	"io"
@@ -91,6 +90,8 @@ func (s *Schema) ExpireField() SchemaField {
 
 // CreateTable creates the database table
 // for this Schema if it doesn't exist yet.
+// It also implements primitive migration efforts,
+// creating columns that don't yet exist.
 func (s *Schema) CreateTable(db *pg.DB) error {
 	// call beforeCreateTable hooks on fields
 	for _, f := range s.Fields() {
@@ -101,8 +102,16 @@ func (s *Schema) CreateTable(db *pg.DB) error {
 		}
 	}
 
-	if err := db.CreateTable(s.NewPGModelInstance(), &orm.CreateTableOptions{IfNotExists: true}); err != nil {
-		return err
+	// create table
+	if err := db.CreateTable(s.NewPGModelInstance(), nil); err != nil {
+		if pgErr, ok := err.(pg.Error); ok && pgErr.Field('C') == "42P07" {
+			// the table already exists - perform migration
+			if err := s.performMigration(db); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
 	}
 
 	// call afterCreateTable hooks on fields
