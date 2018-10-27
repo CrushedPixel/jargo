@@ -274,6 +274,7 @@ func (r *Realtime) handleConnectingSockets(ctx context.Context) {
 		select {
 		case socket := <-r.connectingSockets:
 			message, err := socket.Read(r.ConnectionMessageTimeout)
+			socket.DiscardRead()
 			if err != nil {
 				if err != glue.ErrSocketClosed {
 					// no connection message received
