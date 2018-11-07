@@ -16,8 +16,8 @@ type MigrationTestType0 struct {
 type MigrationTestType1 struct {
 	Id    int64 `jargo:",table:migration_test_types"`
 	Name  string
-	Valid bool `jargo:",default:TRUE"`
 	Age   int
+	Valid bool `jargo:",default:TRUE"`
 }
 
 func TestMigrations(t *testing.T) {

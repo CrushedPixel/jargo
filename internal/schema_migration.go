@@ -74,16 +74,8 @@ func (s *Schema) performMigration(db *pg.DB) error {
 
 	// the new table has a different schema.
 	if err := db.RunInTransaction(func(tx *pg.Tx) error {
-		// try to copy all data from the old table's columns into the new table
-		var columnNames string
-		for i, column := range oldColumns {
-			if i > 0 {
-				columnNames += ", "
-			}
-			columnNames += fmt.Sprintf(`"%s"`, column.ColumnName)
-		}
-
-		if _, err := tx.Exec(fmt.Sprintf(`INSERT INTO "%s" (%s) SELECT * FROM "%s"`, tmpTableName, columnNames, s.table)); err != nil {
+		// try to copy all data from the old table into the new table
+		if _, err := tx.Exec(fmt.Sprintf(`INSERT INTO "%s" SELECT * FROM "%s"`, tmpTableName, s.table)); err != nil {
 			return err
 		}
 
