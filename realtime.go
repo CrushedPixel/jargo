@@ -336,7 +336,9 @@ func (r *Realtime) handleRowUpdates(channel <-chan *pg.Notification, ctx context
 
 				instance, err := decodeJsonRecord(resource, recordPayload)
 				if err != nil {
-					panic(err)
+					// TODO: proper logging
+					println("Error decoding JSON record", recordPayload)
+					continue
 				}
 
 				// get all resources this resource was/is now
@@ -359,13 +361,17 @@ func (r *Realtime) handleRowUpdates(channel <-chan *pg.Notification, ctx context
 			} else if payload.Type == "UPDATE" {
 				oldInstance, err := decodeJsonRecord(resource, payload.OldRecord)
 				if err != nil {
-					panic(err)
+					// TODO: proper logging
+					println("Error decoding JSON record", payload.OldRecord)
+					continue
 				}
 				oldRelations := resource.schema.ParsePGModel(oldInstance).GetRelationIds()
 
 				newInstance, err := decodeJsonRecord(resource, payload.NewRecord)
 				if err != nil {
-					panic(err)
+					// TODO: proper logging
+					println("Error decoding JSON record", payload.NewRecord)
+					continue
 				}
 				modifiedInstance = resource.schema.ParsePGModel(newInstance)
 				newRelations := modifiedInstance.GetRelationIds()
