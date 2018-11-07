@@ -443,8 +443,14 @@ func (r *Realtime) handleRowUpdates(channel <-chan *pg.Notification, ctx context
 }
 
 // decodeJsonRecord parses a json-encoded record into a pg model instance
-func decodeJsonRecord(resource *Resource, payload string) (interface{}, error) {
-	instance := resource.schema.NewPGModelInstance()
+func decodeJsonRecord(resource *Resource, payload string) (instance interface{}, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err, _ = r.(error)
+		}
+	}()
+
+	instance = resource.schema.NewPGModelInstance()
 	model, err := orm.NewModel(instance)
 	if err != nil {
 		return nil, err
@@ -455,8 +461,7 @@ func decodeJsonRecord(resource *Resource, payload string) (interface{}, error) {
 	for i, key := range record.Keys() {
 		model.ScanColumn(i, key, []byte(record.Get(key).ToString()))
 	}
-
-	return instance, nil
+	return
 }
 
 func (r *Realtime) initSocketConnection(socket *glue.Socket) {
