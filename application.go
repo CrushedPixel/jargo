@@ -3,6 +3,7 @@ package jargo
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/crushedpixel/jargo/internal"
 	"github.com/go-pg/pg"
 	"gopkg.in/go-playground/validator.v9"
@@ -78,7 +79,7 @@ func (app *Application) Validate() *validator.Validate {
 func (app *Application) RegisterResource(model interface{}) (*Resource, error) {
 	s, err := app.registry.RegisterSchema(reflect.TypeOf(model))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error registering schema: %s", err.Error())
 	}
 
 	if resource, ok := app.resources[s]; ok {
@@ -88,9 +89,9 @@ func (app *Application) RegisterResource(model interface{}) (*Resource, error) {
 	for _, schema := range app.registry {
 		if _, ok := app.resources[schema]; !ok {
 			resource := &Resource{schema: schema}
-			err := resource.Initialize(app.DB())
-			if err != nil {
-				return nil, err
+			if err := resource.Initialize(app.DB()); err != nil {
+				return nil, fmt.Errorf("error initializing resource %s: %s",
+					schema.JSONAPIName(), err.Error())
 			}
 
 			// if app is already running,
