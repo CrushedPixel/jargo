@@ -13,7 +13,7 @@ type SchemaInstance struct {
 // for a given field for use when sorting.
 func (i *SchemaInstance) SortValue(field SchemaField) interface{} {
 	for _, fi := range i.fields {
-		if fi.parentField() == field {
+		if fi.parentField().JSONAPIName() == field.JSONAPIName() {
 			return fi.sortValue()
 		}
 	}
