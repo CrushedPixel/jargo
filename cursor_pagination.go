@@ -1,11 +1,9 @@
 package jargo
 
 import (
-	"errors"
 	"fmt"
 	"github.com/crushedpixel/jargo/internal"
 	"github.com/go-pg/pg/orm"
-	"strconv"
 )
 
 const keyCursor = "cursor"
@@ -29,14 +27,9 @@ type cursorPagination struct {
 // are specified and they are either invalid
 // or cursor pagination is disabled for the Application.
 func (app *Application) parseCursorPagination(r *Resource, base *basePagination, pageParams map[string]string) (Pagination, error) {
-	if v, ok := pageParams[keyCursor]; ok {
+	if id, ok := pageParams[keyCursor]; ok {
 		if !app.paginationStrategies.Offset {
 			return nil, apiErrCursorPaginationDisabled
-		}
-
-		id, err := strconv.ParseInt(v, 10, 0)
-		if err != nil {
-			return nil, apiErrInvalidCursor
 		}
 
 		// fetch resource instance from database
@@ -45,7 +38,7 @@ func (app *Application) parseCursorPagination(r *Resource, base *basePagination,
 			return nil, err
 		}
 		if res == nil {
-			return nil, errors.New("invalid page cursor")
+			return nil, apiErrInvalidCursor
 		}
 		cursor := r.schema.ParseResourceModel(res)
 
