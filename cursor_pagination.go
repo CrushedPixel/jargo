@@ -67,10 +67,7 @@ func (p *cursorPagination) keySort(q *orm.Query) *orm.Query {
 			dir = "DESC"
 		}
 
-		// escape column name
-		column := escapePGColumn(e.field.PGFilterColumn())
-
-		q = q.OrderExpr(fmt.Sprintf(`"%s" %s`, column, dir))
+		q = q.Order(fmt.Sprintf("%s %s", e.field.PGFilterColumn(), dir))
 	}
 
 	return q
