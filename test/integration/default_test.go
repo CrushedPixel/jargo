@@ -33,7 +33,7 @@ type defaultOnNonPointer struct {
 // allowed on non-pointer types.
 func TestDefaultOnNonPointer(t *testing.T) {
 	_, err := app.RegisterResource(defaultOnNonPointer{})
-	require.EqualError(t, err, `"default" option may only be used on pointer types`)
+	require.EqualError(t, err, `error registering schema: "default" option may only be used on pointer types`)
 }
 
 type notnullWithoutDefault struct {
@@ -45,5 +45,5 @@ type notnullWithoutDefault struct {
 // allowed on fields with a default value.
 func TestNotnullWithoutDefault(t *testing.T) {
 	_, err := app.RegisterResource(notnullWithoutDefault{})
-	require.EqualError(t, err, `"notnull" option may only be used in conjunction with the "default" option. use a primitive type instead`)
+	require.EqualError(t, err, `error registering schema: "notnull" option may only be used in conjunction with the "default" option. use a primitive type instead`)
 }

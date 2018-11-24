@@ -143,11 +143,11 @@ type invalidIdFieldC struct {
 // TestInvalidIdFields ensures the behaviour of non-supported id field types.
 func TestInvalidIdFields(t *testing.T) {
 	_, err := app.RegisterResource(invalidIdFieldA{})
-	require.EqualError(t, err, "id field type must be string or non-float numeric, or implement encoding.TextMarshaler and encoding.TextUnmarshaler")
+	require.EqualError(t, err, "error registering schema: id field type must be string or non-float numeric, or implement encoding.TextMarshaler and encoding.TextUnmarshaler")
 
 	_, err = app.RegisterResource(invalidIdFieldB{})
-	require.EqualError(t, err, "id field type must be string or non-float numeric, or implement encoding.TextMarshaler and encoding.TextUnmarshaler")
+	require.EqualError(t, err, "error registering schema: id field type must be string or non-float numeric, or implement encoding.TextMarshaler and encoding.TextUnmarshaler")
 
 	_, err = app.RegisterResource(invalidIdFieldC{})
-	require.EqualError(t, err, "id field type must be string or non-float numeric, or implement encoding.TextMarshaler and encoding.TextUnmarshaler")
+	require.EqualError(t, err, "error registering schema: id field type must be string or non-float numeric, or implement encoding.TextMarshaler and encoding.TextUnmarshaler")
 }
