@@ -104,7 +104,7 @@ func (p *cursorPagination) appendWhere(q *orm.Query, i int) *orm.Query {
 	q = q.Where(fmt.Sprintf(`%s %s ?`, column, op), value)
 	if i+1 < len(p.entries) {
 		q.WhereGroup(func(q *orm.Query) (*orm.Query, error) {
-			q = q.Where(fmt.Sprintf(`"%s" != ?`, column), value)
+			q = q.Where(fmt.Sprintf(`%s != ?`, column), value)
 
 			// append WHERE clause for next sorting instruction inside nested condition
 			q = q.WhereOrGroup(func(q *orm.Query) (*orm.Query, error) {
