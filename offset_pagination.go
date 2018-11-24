@@ -1,12 +1,16 @@
 package jargo
 
 import (
-	"errors"
 	"github.com/go-pg/pg/orm"
 	"strconv"
 )
 
 const keyNumber = "number"
+
+var (
+	apiErrOffsetPaginationDisabled = ErrInvalidQueryParams("offset-based pagination is disabled")
+	apiErrInvalidPageNumber        = ErrInvalidQueryParams("page number must be an integer")
+)
 
 type offsetPagination struct {
 	*basePagination
@@ -32,12 +36,12 @@ func (p *offsetPagination) applyToQuery(q *orm.Query) *orm.Query {
 func (app *Application) parseOffsetPagination(base *basePagination, pageParams map[string]string) (Pagination, error) {
 	if v, ok := pageParams[keyNumber]; ok {
 		if !app.paginationStrategies.Offset {
-			return nil, errors.New("offset-based pagination is disabled")
+			return nil, apiErrOffsetPaginationDisabled
 		}
 
 		n, err := strconv.Atoi(v)
 		if err != nil {
-			return nil, errors.New("page number must be an integer")
+			return nil, apiErrInvalidPageNumber
 		}
 
 		return &offsetPagination{base, n}, nil

@@ -10,6 +10,11 @@ import (
 
 const keyCursor = "cursor"
 
+var (
+	apiErrCursorPaginationDisabled = ErrInvalidQueryParams("cursor-based pagination is disabled")
+	apiErrInvalidCursor            = ErrInvalidQueryParams("invalid page cursor")
+)
+
 type cursorPagination struct {
 	*basePagination
 
@@ -26,12 +31,12 @@ type cursorPagination struct {
 func (app *Application) parseCursorPagination(r *Resource, base *basePagination, pageParams map[string]string) (Pagination, error) {
 	if v, ok := pageParams[keyCursor]; ok {
 		if !app.paginationStrategies.Offset {
-			return nil, errors.New("cursor-based pagination is disabled")
+			return nil, apiErrCursorPaginationDisabled
 		}
 
 		id, err := strconv.ParseInt(v, 10, 0)
 		if err != nil {
-			return nil, errors.New("invalid page cursor")
+			return nil, apiErrInvalidCursor
 		}
 
 		// fetch resource instance from database
