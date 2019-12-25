@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/crushedpixel/jargo/internal"
 	"github.com/go-pg/pg"
-	"gopkg.in/go-playground/validator.v9"
+	"github.com/go-playground/validator/v10"
 	"reflect"
 )
 

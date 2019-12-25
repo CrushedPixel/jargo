@@ -3,9 +3,9 @@ package jargo
 import (
 	"bytes"
 	"fmt"
+	"github.com/go-playground/validator/v10"
 	"github.com/google/jsonapi"
 	"github.com/satori/go.uuid"
-	"gopkg.in/go-playground/validator.v9"
 	"net/http"
 	"strconv"
 	"strings"

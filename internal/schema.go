@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/go-pg/pg"
 	"github.com/go-pg/pg/orm"
+	"github.com/go-playground/validator/v10"
 	"github.com/google/jsonapi"
-	"gopkg.in/go-playground/validator.v9"
 	"io"
 	"reflect"
 )

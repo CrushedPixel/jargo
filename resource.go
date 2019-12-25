@@ -5,7 +5,7 @@ import (
 	"github.com/crushedpixel/jargo/internal"
 	"github.com/go-pg/pg"
 	"github.com/go-pg/pg/orm"
-	"gopkg.in/go-playground/validator.v9"
+	"github.com/go-playground/validator/v10"
 	"io"
 	"net/http"
 	"reflect"

@@ -2,7 +2,7 @@ package jargo
 
 import (
 	"github.com/go-pg/pg"
-	"gopkg.in/go-playground/validator.v9"
+	"github.com/go-playground/validator/v10"
 )
 
 // DefaultMaxPageSize is the default maximum number

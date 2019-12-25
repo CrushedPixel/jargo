@@ -1,6 +1,6 @@
 package internal
 
-import "gopkg.in/go-playground/validator.v9"
+import "github.com/go-playground/validator/v10"
 
 // A SchemaInstance is an instance of a Schema
 // holding values for each of the Schema fields.
