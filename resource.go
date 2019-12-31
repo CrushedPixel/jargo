@@ -137,7 +137,7 @@ func (r *Resource) InsertInstance(db orm.DB, instance interface{}) *Query {
 // inserting the Resource Model Collection provided.
 //
 // Panics if instances is not a Slice of Resource Model Instances.
-func (r *Resource) InsertCollection(db orm.DB, instances []interface{}) *Query {
+func (r *Resource) InsertCollection(db orm.DB, instances interface{}) *Query {
 	return r.newQueryFromResourceData(db, typeInsert, true, instances)
 }
 
