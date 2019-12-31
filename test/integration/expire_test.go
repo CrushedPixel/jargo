@@ -70,7 +70,7 @@ type multipleExpire struct {
 // TestMultipleExpire tests the behaviour of fields with multiple expire attributes.
 func TestMultipleExpire(t *testing.T) {
 	_, err := app.RegisterResource(multipleExpire{})
-	require.EqualError(t, err, `"expire" option may not occur on multiple attributes`)
+	require.EqualError(t, err, `error registering schema: "expire" option may not occur on multiple attributes`)
 }
 
 type defaultExpire struct {

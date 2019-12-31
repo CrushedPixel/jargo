@@ -213,9 +213,9 @@ func (r *Resource) newQueryFromResourceData(db orm.DB, typ queryType, collection
 		// convert resource model instances to slice of pg instances
 		pgInstances := make([]interface{}, len(instances))
 		for i := 0; i < len(instances); i++ {
-			pgInstances = append(pgInstances, instances[i].ToPGModel())
+			pgInstances = append(pgInstances, reflect.ValueOf(instances[i].ToPGModel()).Elem().Interface())
 		}
-		pgModel = pgInstances
+		pgModel = &pgInstances
 	} else {
 		if isCollection {
 			panic(errors.New("data must be a resource model instance"))
